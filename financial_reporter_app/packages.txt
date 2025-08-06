@@ -7,3 +7,5 @@ requests
 plotly
 fpdf2
 kaleido
+libgl1-mesa-glx
+libxext6
