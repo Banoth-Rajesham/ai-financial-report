@@ -1,0 +1,51 @@
+# agents/agent_3_aggregator.py
+
+import pandas as pd
+
+def hierarchical_aggregator_agent(source_df, notes_structure):
+    """
+    AGENT 3: Uses the mapping rules to recursively sum up the source data.
+    """
+    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data... ---")
+
+    def initialize_structure(sub_items_template):
+        initialized = {}
+        for key, value in sub_items_template.items():
+            initialized[key] = initialize_structure(value) if isinstance(value, dict) else {'CY': 0, 'PY': 0}
+        return initialized
+
+    def match_and_aggregate(current_data, current_template, full_df):
+        total_cy, total_py = 0, 0
+        for key, template_value in current_template.items():
+            if isinstance(template_value, dict):
+                sub_total_cy, sub_total_py = match_and_aggregate(current_data[key], template_value, full_df)
+                current_data[key]['total'] = {'CY': sub_total_cy, 'PY': sub_total_py}
+                total_cy += sub_total_cy
+                total_py += sub_total_py
+            else:
+                item_total_cy, item_total_py = 0, 0
+                keywords = [kw.lower() for kw in (template_value if isinstance(template_value, list) else [template_value])]
+                for keyword in keywords:
+                    matched_rows = full_df[full_df['Particulars'].str.lower().str.contains(keyword, na=False)]
+                    if not matched_rows.empty:
+                        item_total_cy += matched_rows['Amount_CY'].sum()
+                        item_total_py += matched_rows['Amount_PY'].sum()
+
+                current_data[key] = {'CY': item_total_cy, 'PY': item_total_py}
+                total_cy += item_total_cy
+                total_py += item_total_py
+        return total_cy, total_py
+
+    aggregated_data = {}
+    for note_num, note_data in notes_structure.items():
+        if 'sub_items' in note_data:
+            sub_items_result = initialize_structure(note_data['sub_items'])
+            note_total_cy, note_total_py = match_and_aggregate(sub_items_result, note_data['sub_items'], source_df)
+            aggregated_data[note_num] = {
+                'total': {'CY': note_total_cy, 'PY': note_total_py},
+                'sub_items': sub_items_result,
+                'title': note_data['title']
+            }
+
+    print("✅ Aggregation SUCCESS: Data processed into hierarchical structure.")
+    return aggregated_data
