@@ -1,4 +1,4 @@
-# FINAL, CORRECTED app.py
+# FINAL, CORRECTED app.py (with the BOLD font fix)
 
 import streamlit as st
 import sys
@@ -11,13 +11,7 @@ import time
 import numpy as np
 import os
 
-# ==========================================================
-# == THIS IS THE FIX for "No module named 'config'" ==
-# ==========================================================
-# This line tells the app to also look inside the sub-folder
-# for the files it needs.
 sys.path.append('financial_reporter_app')
-# ==========================================================
 
 try:
     from config import NOTES_STRUCTURE_AND_MAPPING
@@ -33,9 +27,10 @@ except ImportError as e:
     st.stop()
 
 
-# --- HELPER FUNCTIONS --- (No changes needed below)
+# --- HELPER FUNCTIONS ---
 
 def calculate_metrics(agg_data):
+    # This function is correct
     metrics = {}
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
@@ -58,6 +53,7 @@ def calculate_metrics(agg_data):
     return metrics
 
 def generate_ai_analysis(metrics):
+    # This function is correct
     try:
         YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
         YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
@@ -88,6 +84,7 @@ class PDF(FPDF):
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def create_professional_pdf(metrics, ai_analysis, charts):
+    # This function is correct
     temp_dir = "temp_charts"
     if not os.path.exists(temp_dir): os.makedirs(temp_dir)
     chart_paths = {}
@@ -97,7 +94,14 @@ def create_professional_pdf(metrics, ai_analysis, charts):
         chart_paths[name] = path
     
     pdf = PDF('P', 'mm', 'A4')
+    
+    # --- THIS IS THE FINAL FONT FIX ---
+    # Register the REGULAR font file
     pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+    # Register the BOLD font file
+    pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
+    # ----------------------------------
+    
     pdf.add_page()
     pdf.set_font('DejaVu', 'B', 12)
     pdf.cell(0, 10, 'Top KPI Summary', 0, 1)
@@ -135,7 +139,7 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     return bytes(pdf.output())
 
-# --- MAIN APP UI ---
+# --- MAIN APP UI --- (No changes needed here)
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
 st.title("Financial Dashboard")
