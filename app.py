@@ -224,4 +224,36 @@ if st.session_state.report_generated:
     
     asset_data = {'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments'], 'Value': [kpi_cy.get('Current Assets',0), kpi_cy.get('Fixed Assets',0), kpi_cy.get('Investments',0)]}
     asset_df = pd.DataFrame(asset_data).query("Value > 0")
-    fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset D
+    fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>", hole=0.3)
+    
+    chart_col1, chart_col2 = st.columns(2)
+    chart_col1.plotly_chart(fig_revenue, use_container_width=True)
+    chart_col2.plotly_chart(fig_asset, use_container_width=True)
+    
+    st.divider()
+    
+    with st.spinner("Generating Reports..."):
+        ai_analysis = generate_ai_analysis(metrics)
+        charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_asset}
+        pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
+        excel_bytes = create_excel_report(agg_data)
+
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            label="💡 Download Professional Insights (PDF)", 
+            data=pdf_bytes, 
+            file_name=f"{st.session_state.company_name}_Insights_Report.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
+    with dl_col2:
+        st.download_button(
+            label="📊 Download Detailed Data (Excel)", 
+            data=excel_bytes, 
+            file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            use_container_width=True
+        )
+else:
+    st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
