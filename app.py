@@ -1,4 +1,4 @@
-# COPY THIS ENTIRE, FINAL VERSION OF app.py
+# FINAL CORRECTED app.py
 
 import streamlit as st
 import sys
@@ -11,10 +11,7 @@ import time
 import numpy as np
 import os
 
-# ==========================================================
-# == THIS IS THE FINAL FIX TO THE IMPORT STATEMENTS ==
-# ==========================================================
-# We now tell Python to look inside the 'financial_reporter_app' folder
+# This line tells the app where to find your 'agents' and 'config' files.
 sys.path.append('financial_reporter_app')
 
 try:
@@ -29,10 +26,9 @@ try:
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
     st.stop()
-# ==========================================================
 
 
-# --- HELPER FUNCTIONS --- (No changes needed below here)
+# --- HELPER FUNCTIONS ---
 
 def calculate_metrics(agg_data):
     metrics = {}
@@ -150,7 +146,13 @@ with st.sidebar:
             with st.spinner("Executing financial agent pipeline..."):
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 if source_df is None: st.error("Pipeline Failed: Data Intake"); st.stop()
-                refined_mapping = ai_mapping_agent(_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                
+                # ==========================================================
+                # == THIS IS THE LINE I HAVE NOW CORRECTED ==
+                # ==========================================================
+                refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                # ==========================================================
+                
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
                 final_report_bytes = report_finalizer_agent(aggregated_data, company_name)
