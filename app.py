@@ -1,4 +1,4 @@
-# app.py
+# COPY THIS ENTIRE, FINAL VERSION OF app.py
 
 import streamlit as st
 import sys
@@ -11,7 +11,12 @@ import time
 import numpy as np
 import os
 
-# This part should be correct, but let's ensure it stays
+# ==========================================================
+# == THIS IS THE FINAL FIX TO THE IMPORT STATEMENTS ==
+# ==========================================================
+# We now tell Python to look inside the 'financial_reporter_app' folder
+sys.path.append('financial_reporter_app')
+
 try:
     from config import NOTES_STRUCTURE_AND_MAPPING
     from agents import (
@@ -21,15 +26,15 @@ try:
         data_validation_agent,
         report_finalizer_agent
     )
-except ImportError:
-    st.error("Could not import local agent files. Ensure they are in the correct folder.")
+except ImportError as e:
+    st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
     st.stop()
+# ==========================================================
 
 
-# --- HELPER FUNCTIONS ---
+# --- HELPER FUNCTIONS --- (No changes needed below here)
 
 def calculate_metrics(agg_data):
-    # This function is correct and does not need changes.
     metrics = {}
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
@@ -52,7 +57,6 @@ def calculate_metrics(agg_data):
     return metrics
 
 def generate_ai_analysis(metrics):
-    # This function is correct and does not need changes.
     try:
         YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
         YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
@@ -72,24 +76,16 @@ def generate_ai_analysis(metrics):
     except requests.exceptions.RequestException as e:
         return f"Could not generate AI analysis. API connection error: {e}"
 
-# ==========================================================
-# == SECTION 1: UPDATE THIS CLASS TO USE THE NEW FONT ==
-# ==========================================================
 class PDF(FPDF):
     def header(self):
-        # Change font from 'Arial' to 'DejaVu'
         self.set_font('DejaVu', 'B', 16)
         self.cell(0, 10, 'Financial Dashboard Report', 0, 0, 'L')
         self.ln(15)
     def footer(self):
         self.set_y(-15)
-        # Change font from 'Arial' to 'DejaVu'
         self.set_font('DejaVu', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-# =================================================================
-# == SECTION 2: UPDATE THIS ENTIRE FUNCTION WITH THE FONT FIX ==
-# =================================================================
 def create_professional_pdf(metrics, ai_analysis, charts):
     temp_dir = "temp_charts"
     if not os.path.exists(temp_dir): os.makedirs(temp_dir)
@@ -100,15 +96,8 @@ def create_professional_pdf(metrics, ai_analysis, charts):
         chart_paths[name] = path
     
     pdf = PDF('P', 'mm', 'A4')
-    
-    # --- THIS IS THE MOST IMPORTANT FIX ---
-    # Load the Unicode font file you uploaded to GitHub.
     pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-    # ----------------------------------------
-
     pdf.add_page()
-    
-    # Now, use 'DejaVu' for all text to prevent errors
     pdf.set_font('DejaVu', 'B', 12)
     pdf.cell(0, 10, 'Top KPI Summary', 0, 1)
     
@@ -121,8 +110,6 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     pdf.set_font('DejaVu', '', 10)
     kpi_cy = metrics['CY']; kpi_py = metrics['PY']
     get_change = lambda cy, py: f' ({"⬆" if cy >= py else "⬇"} {abs((cy - py) / py * 100):.1f}%)' if py else " (new)"
-    
-    # This data contains symbols that will now work correctly
     kpi_data = [
         ("Total Revenue", f"₹ {kpi_cy['Total Revenue']:,.0f}{get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates sales or operational growth."),
         ("Net Profit", f"₹ {kpi_cy['Net Profit']:,.0f}{get_change(kpi_cy['Net Profit'], kpi_py['Net Profit'])}", "Indicates cost control or margin improvement."),
@@ -147,7 +134,7 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     return bytes(pdf.output())
 
-# --- MAIN APP UI --- (This section is correct and does not need changes)
+# --- MAIN APP UI ---
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
 st.title("Financial Dashboard")
@@ -163,7 +150,7 @@ with st.sidebar:
             with st.spinner("Executing financial agent pipeline..."):
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 if source_df is None: st.error("Pipeline Failed: Data Intake"); st.stop()
-                refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                refined_mapping = ai_mapping_agent(_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
                 final_report_bytes = report_finalizer_agent(aggregated_data, company_name)
