@@ -1,4 +1,4 @@
-# FINAL CORRECTED app.py
+# FINAL, CORRECTED app.py
 
 import streamlit as st
 import sys
@@ -11,8 +11,13 @@ import time
 import numpy as np
 import os
 
-# This line tells the app where to find your 'agents' and 'config' files.
-sys.path.append('ai-financial-report')
+# ==========================================================
+# == THIS IS THE FIX for "No module named 'config'" ==
+# ==========================================================
+# This line tells the app to also look inside the sub-folder
+# for the files it needs.
+sys.path.append('financial_reporter_app')
+# ==========================================================
 
 try:
     from config import NOTES_STRUCTURE_AND_MAPPING
@@ -28,7 +33,7 @@ except ImportError as e:
     st.stop()
 
 
-# --- HELPER FUNCTIONS ---
+# --- HELPER FUNCTIONS --- (No changes needed below)
 
 def calculate_metrics(agg_data):
     metrics = {}
@@ -147,11 +152,7 @@ with st.sidebar:
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 if source_df is None: st.error("Pipeline Failed: Data Intake"); st.stop()
                 
-                # ==========================================================
-                # == THIS IS THE LINE I HAVE NOW CORRECTED ==
-                # ==========================================================
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
-                # ==========================================================
                 
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
@@ -201,4 +202,3 @@ if st.session_state.report_generated:
     st.download_button("💡 Download Professional Insights (PDF)", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", "application/pdf", use_container_width=True)
 else:
     st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
-
