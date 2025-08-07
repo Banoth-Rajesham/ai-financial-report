@@ -12,7 +12,7 @@ import numpy as np
 import os
 
 # This line tells the app where to find your 'agents' and 'config' files.
-sys.path.append('financial_reporter_app')
+sys.path.append('ai-financial-report')
 
 try:
     from config import NOTES_STRUCTURE_AND_MAPPING
@@ -201,3 +201,4 @@ if st.session_state.report_generated:
     st.download_button("💡 Download Professional Insights (PDF)", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", "application/pdf", use_container_width=True)
 else:
     st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
+
