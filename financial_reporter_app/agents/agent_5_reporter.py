@@ -1,39 +1,29 @@
-# PASTE THIS ENTIRE, COMPLETE, AND FINAL CODE BLOCK INTO: agent_5_reporter.py
+# PASTE THIS ENTIRE, FINAL, AND CORRECTED CODE BLOCK INTO: agent_5_reporter.py
 
 import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
-# ================================================================================= #
-# == THIS IS THE FIX: The function now correctly accepts 3 arguments == #
-# ================================================================================= #
 def apply_main_sheet_styling(ws, template, company_name):
     """Applies the beautiful, professional styling to the Balance Sheet and P&L."""
     
-    # --- Define Fills (Colors) ---
-    header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid") # Grey
-    revenue_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid") # Green
-    expenses_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid") # Red
-    net_income_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid") # Blue
-
-    # --- Define Fonts ---
+    header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
+    revenue_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid")
+    expenses_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid")
+    net_income_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid")
     title_font = Font(bold=True, size=16)
     subtitle_font = Font(bold=True, size=12)
     header_font = Font(bold=True)
     bold_font = Font(bold=True)
-
-    # --- Define Number Format ---
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
 
-    # --- Set Column Widths ---
     ws.column_dimensions['A'].width = 5
     ws.column_dimensions['B'].width = 65
     ws.column_dimensions['C'].width = 8
     ws.column_dimensions['D'].width = 20
     ws.column_dimensions['E'].width = 20
     
-    # --- Apply Company and Sheet Titles ---
     ws.merge_cells('A1:E1')
     ws['A1'] = company_name
     ws['A1'].font = title_font
@@ -44,16 +34,13 @@ def apply_main_sheet_styling(ws, template, company_name):
     ws['A2'].font = subtitle_font
     ws['A2'].alignment = Alignment(horizontal='center')
 
-    # --- Style the Header Row ---
-    header_row = ws[4]
-    for cell in header_row:
+    for cell in ws[4]:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
 
-    # --- Iterate through template to apply row-specific styles ---
     for i, row_template in enumerate(template):
-        row_num = i + 4 # Data starts at row 4
+        row_num = i + 4
         row_type = row_template[3]
         
         if row_type in ['header', 'sub_header']:
@@ -61,18 +48,21 @@ def apply_main_sheet_styling(ws, template, company_name):
         
         elif row_type == 'total':
             fill_color = None
+            # ========================================================== #
+            # == THIS IS THE FIX that prevents the crash              == #
+            # ========================================================== #
             particulars = ws[f'B{row_num}'].value
-            if "Revenue" in particulars: fill_color = revenue_fill
-            elif "Expenses" in particulars: fill_color = expenses_fill
-            elif "Profit" in particulars or "TOTAL" in particulars: fill_color = net_income_fill
+            if particulars and "Revenue" in particulars: fill_color = revenue_fill
+            elif particulars and "Expenses" in particulars: fill_color = expenses_fill
+            elif particulars and ("Profit" in particulars or "TOTAL" in particulars): fill_color = net_income_fill
 
             for cell in ws[row_num]:
                 cell.font = bold_font
                 if fill_color: cell.fill = fill_color
 
-        # Apply number formatting to all numerical columns
         for col_letter in ['D', 'E']:
-            ws[f'{col_letter}{row_num}'].number_format = currency_format
+            if ws[f'{col_letter}{row_num}'].value is not None:
+                ws[f'{col_letter}{row_num}'].number_format = currency_format
 
 
 def apply_note_sheet_styling(ws):
@@ -113,7 +103,6 @@ def report_finalizer_agent(aggregated_data, company_name):
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             
-            # --- PROCESS AND STYLE BALANCE SHEET AND PROFIT & LOSS ---
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), 
                                          ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
                 
@@ -145,7 +134,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     elif note == "PBT":
                         pbt_cy = total_revenue_cy - total_expenses_cy
                         pbt_py = total_revenue_py - total_expenses_py
-                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, pbt_py
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, py_val
                     elif note == "PAT":
                         row['As at March 31, 2025'] = pbt_cy - total_tax_cy
                         row['As at March 31, 2024'] = pbt_py - total_tax_py
@@ -159,7 +148,6 @@ def report_finalizer_agent(aggregated_data, company_name):
                 apply_main_sheet_styling(ws, template, company_name)
 
 
-            # --- PROCESS AND STYLE ALL NOTES ---
             for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
                 note_info = NOTES_STRUCTURE_AND_MAPPING[note_num_str]
                 note_data = aggregated_data.get(note_num_str)
