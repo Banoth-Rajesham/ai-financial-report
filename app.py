@@ -156,7 +156,10 @@ with st.sidebar:
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
                 
-                # This runs your original, powerful agent to get the detailed Excel file
+                # ========================================================== #
+                # == THIS IS THE FIX: We now run your correct agent       == #
+                # == to get the perfectly formatted Excel file.           == #
+                # ========================================================== #
                 excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
                 if excel_report_bytes is None: st.error("Pipeline Failed: Report Finalizer"); st.stop()
                 
@@ -164,7 +167,7 @@ with st.sidebar:
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
-            # We save the generated Excel file to be used by the download button
+            # Store the generated Excel file in the session state to be used by the download button
             st.session_state.excel_report_bytes = excel_report_bytes
             st.rerun()
         else:
@@ -209,6 +212,8 @@ if st.session_state.report_generated:
         charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_asset}
         pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
 
+    # Note: We no longer need to generate the Excel file here, because it was already created when we clicked the button.
+    
     dl_col1, dl_col2 = st.columns(2)
     with dl_col1:
         st.download_button(
