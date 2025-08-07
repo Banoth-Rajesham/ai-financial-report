@@ -1,4 +1,4 @@
-# FINAL, COMPLETE, AND CORRECTED app.py
+# FINAL, COMPLETE app.py (Uses the correct agent for the Excel report)
 
 import streamlit as st
 import sys
@@ -10,7 +10,7 @@ import json
 import time
 import numpy as np
 import os
-import io # Required for creating the in-memory Excel file
+import io
 
 # This line tells the app to also look inside the sub-folder for helper files.
 sys.path.append('financial_reporter_app')
@@ -22,7 +22,7 @@ try:
         ai_mapping_agent,
         hierarchical_aggregator_agent,
         data_validation_agent,
-        report_finalizer_agent
+        report_finalizer_agent # This is the correct agent for your Excel file
     )
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
@@ -134,41 +134,7 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     return bytes(pdf.output())
 
-# --- Excel Generation Code ---
-def create_excel_report(aggregated_data):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        summary_data = []
-        for note_num, note_content in NOTES_STRUCTURE_AND_MAPPING.items():
-            note_title = note_content.get('title', f'Note {note_num}')
-            cy_total = aggregated_data.get(note_num, {}).get('total', {}).get('CY', 0)
-            py_total = aggregated_data.get(note_num, {}).get('total', {}).get('PY', 0)
-            summary_data.append([note_num, note_title, cy_total, py_total])
-        
-        summary_df = pd.DataFrame(summary_data, columns=["Note No.", "Particulars", "Current Year", "Previous Year"])
-        summary_df.to_excel(writer, sheet_name='Summary', index=False)
-
-        for note_num, note_details in aggregated_data.items():
-            if 'sub_items' in note_details and note_details['sub_items']:
-                
-                # ========================================================== #
-                # == THIS IS THE FIX for the "Invalid character /" error  == #
-                # ========================================================== #
-                raw_title = NOTES_STRUCTURE_AND_MAPPING.get(note_num, {}).get('title', f'Note {note_num}')
-                # Replace illegal characters and limit length for sheet names
-                safe_title = raw_title.replace('/', '-').replace('\\', '-').replace('?', '').replace('*', '').replace('[', '').replace(']', '')
-                sheet_title = safe_title[:31]
-                # ========================================================== #
-
-                df = pd.DataFrame.from_dict(note_details['sub_items'], orient='index')
-                df.loc['Total'] = note_details.get('total', {})
-                if 'CY' in df.columns and 'PY' in df.columns:
-                    df = df[['CY', 'PY']]
-                df.to_excel(writer, sheet_name=sheet_title)
-    
-    excel_bytes = output.getvalue()
-    return excel_bytes
-
+# NOTE: The simple `create_excel_report` function has been REMOVED.
 
 # --- MAIN APP UI ---
 
@@ -192,10 +158,19 @@ with st.sidebar:
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
                 
+                # ========================================================== #
+                # == THIS IS THE FIX: We now run your correct agent       == #
+                # == and SAVE its output to use later.                    == #
+                # ========================================================== #
+                excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
+                if excel_report_bytes is None: st.error("Pipeline Failed: Report Finalizer"); st.stop()
+                
             st.success("Dashboard Generated!")
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
+            # Store the generated Excel file in the session state
+            st.session_state.excel_report_bytes = excel_report_bytes
             st.rerun()
         else:
             st.warning("Please upload a file.")
@@ -213,6 +188,7 @@ if st.session_state.report_generated:
     col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
     col4.metric("Debt-to-Equity", f"₹{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
     
+    # We keep the charts for the dashboard view
     months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
     def generate_monthly(total):
         if total == 0: return [0]*12
@@ -231,12 +207,13 @@ if st.session_state.report_generated:
     chart_col2.plotly_chart(fig_asset, use_container_width=True)
     
     st.divider()
+
+    # --- Generate PDF and Create Two Download Buttons ---
     
-    with st.spinner("Generating Reports..."):
+    with st.spinner("Generating PDF Report..."):
         ai_analysis = generate_ai_analysis(metrics)
         charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_asset}
         pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
-        excel_bytes = create_excel_report(agg_data)
 
     dl_col1, dl_col2 = st.columns(2)
     with dl_col1:
@@ -248,9 +225,13 @@ if st.session_state.report_generated:
             use_container_width=True
         )
     with dl_col2:
+        # ========================================================== #
+        # == THIS IS THE FIX: This button now uses the correct    == #
+        # == Excel file that was saved in the session state.      == #
+        # ========================================================== #
         st.download_button(
-            label="📊 Download Detailed Data (Excel)", 
-            data=excel_bytes, 
+            label="📊 Download Detailed Report (Excel)", 
+            data=st.session_state.excel_report_bytes, # Use the saved file
             file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
             use_container_width=True
