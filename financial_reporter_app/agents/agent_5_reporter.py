@@ -1,124 +1,121 @@
-# agents/agent_5_reporter.py
+# PASTE THIS ENTIRE CODE BLOCK INTO: agent_5_reporter.py
 
+import pandas as pd
 import io
-import traceback
-from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Border, Side, Alignment
-from config import MASTER_TEMPLATE # This import is correct for the new structure
+from openpyxl.styles import Font, Alignment, Border, Side
+from config import SCHEDULE_III_CONFIG, NOTES_STRUCTURE_AND_MAPPING
 
-def report_finalizer_agent(aggregated_data, company_name="ABC Private Limited"):
+def report_finalizer_agent(aggregated_data, company_name):
     """
-    AGENT 5: Builds the final Excel report with high-fidelity styling.
-    Returns the file as in-memory bytes on success, or None on failure.
+    AGENT 5: This agent takes the final aggregated data and constructs a
+    Schedule III compliant, multi-sheet Excel report.
     """
     print("\n--- Agent 5 (Report Finalizer): Building styled report... ---")
+
     try:
-        wb = Workbook()
-        wb.remove(wb.active)
-        
-        # Define styles for the report
-        company_title_font = Font(name='Calibri', size=16, bold=True, color="0070C0")
-        sheet_title_font = Font(name='Calibri', size=14, bold=True)
-        header_font = Font(name='Calibri', size=11, bold=True)
-        subheader_font = Font(name='Calibri', size=11, bold=True)
-        total_font = Font(name='Calibri', size=11, bold=True)
-        item_font = Font(name='Calibri', size=11)
-        header_fill = PatternFill(start_color="DDEBF7", end_color="DDEBF7", fill_type="solid")
-        thin_side = Side(style='thin', color="000000")
-        top_border = Border(top=thin_side)
-        bottom_border = Border(bottom=thin_side)
-        number_format = '#,##0.00;(#,##0.00);"-"'
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
 
-        def build_styled_vertical_sheet(ws, sheet_name, template_data):
-            ws.title = sheet_name
-            ws.column_dimensions['A'].width = 3
-            ws.column_dimensions['B'].width = 5
-            ws.column_dimensions['C'].width = 45
-            ws.column_dimensions['D'].width = 8
-            ws.column_dimensions['E'].width = 20
-            ws.column_dimensions['F'].width = 20
-            
-            ws.merge_cells('B1:F1')
-            cell = ws['B1']
-            cell.value = company_name
-            cell.font = company_title_font
-            cell.alignment = Alignment(horizontal='center')
-            
-            ws.merge_cells('B2:F2')
-            cell = ws['B2']
-            cell.value = sheet_name
-            cell.font = sheet_title_font
-            cell.alignment = Alignment(horizontal='center')
-            
-            row = 4
-            headers = ["", "Particulars", "Note", "As at March 31, 2025", "As at March 31, 2024"]
-            for col, text in enumerate(headers, 2):
-                cell = ws.cell(row, col, text)
-                cell.font = header_font
-                cell.alignment = Alignment(horizontal='center')
-                cell.border = bottom_border
-            row += 1
-            
-            for idx, desc, note_key, line_type in template_data:
-                cells = [ws.cell(row, c) for c in range(2, 7)]
-                
-                if line_type == 'header':
-                    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
-                    cells[0].value = desc
-                    cells[0].font = header_font
-                    cells[0].fill = header_fill
-                elif line_type == 'sub_header':
-                    ws.merge_cells(start_row=row, start_column=3, end_row=row, end_column=6)
-                    cells[1].value = desc
-                    cells[1].font = subheader_font
-                elif line_type in ['item', 'item_no_alpha']:
-                    cells[0].value = idx if line_type == 'item' else ""
-                    cells[1].value = desc
-                    cells[2].value = note_key
-                    cells[2].alignment = Alignment(horizontal='center')
-                    
-                    amount_cy = aggregated_data.get(note_key, {}).get('total', {}).get('CY', 0)
-                    amount_py = aggregated_data.get(note_key, {}).get('total', {}).get('PY', 0)
-                    
-                    cells[3].value = amount_cy
-                    cells[3].number_format = number_format
-                    cells[4].value = amount_py
-                    cells[4].number_format = number_format
-                elif line_type == 'total':
-                    ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=4)
-                    cells[0].value = desc
-                    cells[0].font = total_font
-                    
-                    total_cy = sum(aggregated_data.get(n, {}).get('total', {}).get('CY', 0) for n in note_key)
-                    total_py = sum(aggregated_data.get(n, {}).get('total', {}).get('PY', 0) for n in note_key)
-                    
-                    cells[3].value = total_cy
-                    cells[3].font = total_font
-                    cells[3].number_format = number_format
-                    cells[4].value = total_py
-                    cells[4].font = total_font
-                    cells[4].number_format = number_format
-                    
-                    for c in range(2, 7):
-                        ws.cell(row, c).border = top_border
-                
-                row += 1
-                if line_type == 'spacer':
-                    row += 1
+            # --- 1. PREPARE BALANCE SHEET ---
+            bs_data = []
+            for item in SCHEDULE_III_CONFIG['balance_sheet']:
+                row = {
+                    'Particulars': item['label'],
+                    'Note': item.get('note', ''),
+                    'CY': 0,
+                    'PY': 0
+                }
+                if item.get('is_total'):
+                    # Calculate totals based on the 'sum_of' key
+                    for note_to_sum in item.get('sum_of', []):
+                        row['CY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
+                        row['PY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
+                elif 'note' in item and item['note']:
+                    note_str = str(item['note'])
+                    row['CY'] = aggregated_data.get(note_str, {}).get('total', {}).get('CY', 0)
+                    row['PY'] = aggregated_data.get(note_str, {}).get('total', {}).get('PY', 0)
+                bs_data.append(row)
 
-        # Build the main sheets
-        build_styled_vertical_sheet(wb.create_sheet("Balance Sheet", 0), "Balance Sheet", MASTER_TEMPLATE["Balance Sheet"])
-        build_styled_vertical_sheet(wb.create_sheet("Profit and Loss", 1), "Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])
-        
-        # (Note sheets are omitted for simplicity in this version, but can be added back)
+            bs_df = pd.DataFrame(bs_data).rename(columns={'CY': 'As at March 31, 2025', 'PY': 'As at March 31, 2024'})
+            
+            # --- 2. PREPARE PROFIT & LOSS ---
+            pl_data = []
+            for item in SCHEDULE_III_CONFIG['profit_and_loss']:
+                row = {
+                    'Particulars': item['label'],
+                    'Note': item.get('note', ''),
+                    'CY': 0,
+                    'PY': 0
+                }
+                if item.get('is_total'):
+                    # Handle special case for Total Revenue
+                    if item['id'] == 'total_revenue':
+                        for note_to_sum in item.get('sum_of', []):
+                            row['CY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
+                            row['PY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
+                    # Handle other totals
+                    else:
+                         for note_to_sum in item.get('sum_of', []):
+                            row['CY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
+                            row['PY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
+                elif 'note' in item and item['note']:
+                     note_str = str(item['note'])
+                     row['CY'] = aggregated_data.get(note_str, {}).get('total', {}).get('CY', 0)
+                     row['PY'] = aggregated_data.get(note_str, {}).get('total', {}).get('PY', 0)
+                pl_data.append(row)
 
-        wb.active = 0
-        output_buffer = io.BytesIO()
-        wb.save(output_buffer)
+            pl_df = pd.DataFrame(pl_data).rename(columns={'CY': 'As at March 31, 2025', 'PY': 'As at March 31, 2024'})
+
+            # --- 3. WRITE MAIN SHEETS ---
+            bs_df.to_excel(writer, sheet_name='Balance Sheet', index=False, startrow=3)
+            pl_df.to_excel(writer, sheet_name='Profit and Loss', index=False, startrow=3)
+            
+            # Add titles to main sheets
+            ws_bs = writer.sheets['Balance Sheet']
+            ws_bs['A1'] = company_name
+            ws_bs['A2'] = 'Balance Sheet'
+            
+            ws_pl = writer.sheets['Profit and Loss']
+            ws_pl['A1'] = company_name
+            ws_pl['A2'] = 'Profit and Loss'
+
+
+            # ========================================================== #
+            # == THIS IS THE CRUCIAL PART THAT ADDS ALL THE NOTES     == #
+            # ========================================================== #
+            for note_num_str, note_data in aggregated_data.items():
+                if note_num_str in NOTES_STRUCTURE_AND_MAPPING and 'sub_items' in note_data:
+                    sheet_name = f'Note {note_num_str}'
+                    note_title = NOTES_STRUCTURE_AND_MAPPING[note_num_str]['title']
+
+                    note_df_data = []
+                    for particular, values in note_data['sub_items'].items():
+                        note_df_data.append({
+                            'Particulars': particular,
+                            'As at March 31, 2025': values.get('CY', 0),
+                            'As at March 31, 2024': values.get('PY', 0)
+                        })
+
+                    note_df = pd.DataFrame(note_df_data)
+
+                    # Add the total row
+                    total_row = pd.DataFrame([{
+                        'Particulars': 'Total',
+                        'As at March 31, 2025': note_data['total'].get('CY', 0),
+                        'As at March 31, 2024': note_data['total'].get('PY', 0)
+                    }])
+                    note_df = pd.concat([note_df, total_row], ignore_index=True)
+
+                    # Write to Excel
+                    note_df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1)
+                    ws_note = writer.sheets[sheet_name]
+                    ws_note['A1'] = f'Note {note_num_str}: {note_title}'
+            # ========================================================== #
+
+
         print("✅ Report Finalizer SUCCESS: Report generated.")
-        return output_buffer.getvalue()
+        return output.getvalue()
 
     except Exception as e:
-        traceback.print_exc()
         print(f"❌ Report Finalizer FAILED: {e}")
         return None
