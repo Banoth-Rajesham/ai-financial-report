@@ -10,18 +10,26 @@ import json
 import time
 import numpy as np
 import os
-from config import NOTES_STRUCTURE_AND_MAPPING
-from agents import (
-    intelligent_data_intake_agent,
-    ai_mapping_agent,
-    hierarchical_aggregator_agent,
-    data_validation_agent,
-    report_finalizer_agent
-)
+
+# This part should be correct, but let's ensure it stays
+try:
+    from config import NOTES_STRUCTURE_AND_MAPPING
+    from agents import (
+        intelligent_data_intake_agent,
+        ai_mapping_agent,
+        hierarchical_aggregator_agent,
+        data_validation_agent,
+        report_finalizer_agent
+    )
+except ImportError:
+    st.error("Could not import local agent files. Ensure they are in the correct folder.")
+    st.stop()
+
 
 # --- HELPER FUNCTIONS ---
 
 def calculate_metrics(agg_data):
+    # This function is correct and does not need changes.
     metrics = {}
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
@@ -44,6 +52,7 @@ def calculate_metrics(agg_data):
     return metrics
 
 def generate_ai_analysis(metrics):
+    # This function is correct and does not need changes.
     try:
         YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
         YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
@@ -63,16 +72,24 @@ def generate_ai_analysis(metrics):
     except requests.exceptions.RequestException as e:
         return f"Could not generate AI analysis. API connection error: {e}"
 
+# ==========================================================
+# == SECTION 1: UPDATE THIS CLASS TO USE THE NEW FONT ==
+# ==========================================================
 class PDF(FPDF):
     def header(self):
-        self.set_font('Arial', 'B', 16)
+        # Change font from 'Arial' to 'DejaVu'
+        self.set_font('DejaVu', 'B', 16)
         self.cell(0, 10, 'Financial Dashboard Report', 0, 0, 'L')
         self.ln(15)
     def footer(self):
         self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
+        # Change font from 'Arial' to 'DejaVu'
+        self.set_font('DejaVu', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
+# =================================================================
+# == SECTION 2: UPDATE THIS ENTIRE FUNCTION WITH THE FONT FIX ==
+# =================================================================
 def create_professional_pdf(metrics, ai_analysis, charts):
     temp_dir = "temp_charts"
     if not os.path.exists(temp_dir): os.makedirs(temp_dir)
@@ -81,34 +98,56 @@ def create_professional_pdf(metrics, ai_analysis, charts):
         path = os.path.join(temp_dir, f"{name}.png")
         fig.write_image(path, scale=2, width=600, height=350)
         chart_paths[name] = path
+    
     pdf = PDF('P', 'mm', 'A4')
+    
+    # --- THIS IS THE MOST IMPORTANT FIX ---
+    # Load the Unicode font file you uploaded to GitHub.
+    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+    # ----------------------------------------
+
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 12)
+    
+    # Now, use 'DejaVu' for all text to prevent errors
+    pdf.set_font('DejaVu', 'B', 12)
     pdf.cell(0, 10, 'Top KPI Summary', 0, 1)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(50, 8, 'Metric', 1); pdf.cell(60, 8, 'Value', 1); pdf.cell(80, 8, 'Interpretation', 1); pdf.ln()
-    pdf.set_font('Arial', '', 10)
+    
+    pdf.set_font('DejaVu', 'B', 10)
+    pdf.cell(60, 8, 'Metric', 1)
+    pdf.cell(60, 8, 'Value', 1)
+    pdf.cell(70, 8, 'Interpretation', 1)
+    pdf.ln()
+
+    pdf.set_font('DejaVu', '', 10)
     kpi_cy = metrics['CY']; kpi_py = metrics['PY']
     get_change = lambda cy, py: f' ({"⬆" if cy >= py else "⬇"} {abs((cy - py) / py * 100):.1f}%)' if py else " (new)"
+    
+    # This data contains symbols that will now work correctly
     kpi_data = [
         ("Total Revenue", f"₹ {kpi_cy['Total Revenue']:,.0f}{get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates sales or operational growth."),
         ("Net Profit", f"₹ {kpi_cy['Net Profit']:,.0f}{get_change(kpi_cy['Net Profit'], kpi_py['Net Profit'])}", "Indicates cost control or margin improvement."),
     ]
     for title, value, interp in kpi_data:
-        pdf.cell(50, 8, title, 1); pdf.cell(60, 8, value, 1); pdf.cell(80, 8, interp, 1); pdf.ln()
+        pdf.cell(60, 8, title, 1)
+        pdf.cell(60, 8, value, 1)
+        pdf.cell(70, 8, interp, 1)
+        pdf.ln()
+    
     pdf.ln(10)
-    pdf.set_font('Arial', 'B', 12)
+    pdf.set_font('DejaVu', 'B', 12)
     pdf.cell(0, 10, 'Visualizations', 0, 1)
     pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w / 2 - 15)
     pdf.image(chart_paths["asset_distribution"], x=pdf.w / 2 + 5, w=pdf.w / 2 - 15)
     pdf.ln(70)
-    pdf.set_font('Arial', 'B', 12)
+    
+    pdf.set_font('DejaVu', 'B', 12)
     pdf.cell(0, 10, 'AI-Generated SWOT Analysis', 0, 1)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('DejaVu', '', 10)
     pdf.multi_cell(0, 5, ai_analysis)
+    
     return bytes(pdf.output())
 
-# --- MAIN APP UI ---
+# --- MAIN APP UI --- (This section is correct and does not need changes)
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
 st.title("Financial Dashboard")
