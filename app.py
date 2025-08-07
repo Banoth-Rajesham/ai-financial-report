@@ -1,4 +1,4 @@
-# FINAL, CORRECTED app.py (with the BOLD font fix)
+# FINAL, COMPLETE, AND CORRECTED app.py
 
 import streamlit as st
 import sys
@@ -30,7 +30,6 @@ except ImportError as e:
 # --- HELPER FUNCTIONS ---
 
 def calculate_metrics(agg_data):
-    # This function is correct
     metrics = {}
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
@@ -53,7 +52,6 @@ def calculate_metrics(agg_data):
     return metrics
 
 def generate_ai_analysis(metrics):
-    # This function is correct
     try:
         YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
         YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
@@ -76,15 +74,14 @@ def generate_ai_analysis(metrics):
 class PDF(FPDF):
     def header(self):
         self.set_font('DejaVu', 'B', 16)
-        self.cell(0, 10, 'Financial Dashboard Report', 0, 0, 'L')
-        self.ln(15)
+        self.cell(0, 10, 'Financial Dashboard Report', new_x="LMARGIN", new_y="NEXT")
+        self.ln(5) # Keep a little extra space
     def footer(self):
         self.set_y(-15)
         self.set_font('DejaVu', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def create_professional_pdf(metrics, ai_analysis, charts):
-    # This function is correct
     temp_dir = "temp_charts"
     if not os.path.exists(temp_dir): os.makedirs(temp_dir)
     chart_paths = {}
@@ -96,21 +93,21 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     pdf = PDF('P', 'mm', 'A4')
     
     # --- THIS IS THE FINAL FONT FIX ---
-    # Register the REGULAR font file
-    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-    # Register the BOLD font file
-    pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
+    # Register all four font styles to prevent any more errors.
+    pdf.add_font('DejaVu', '', 'DejaVuSans.ttf')
+    pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf')
+    pdf.add_font('DejaVu', 'I', 'DejaVuSans-Oblique.ttf')
+    pdf.add_font('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf')
     # ----------------------------------
     
     pdf.add_page()
     pdf.set_font('DejaVu', 'B', 12)
-    pdf.cell(0, 10, 'Top KPI Summary', 0, 1)
+    pdf.cell(0, 10, 'Top KPI Summary', new_x="LMARGIN", new_y="NEXT")
     
     pdf.set_font('DejaVu', 'B', 10)
     pdf.cell(60, 8, 'Metric', 1)
     pdf.cell(60, 8, 'Value', 1)
-    pdf.cell(70, 8, 'Interpretation', 1)
-    pdf.ln()
+    pdf.cell(70, 8, 'Interpretation', 1, new_x="LMARGIN", new_y="NEXT")
 
     pdf.set_font('DejaVu', '', 10)
     kpi_cy = metrics['CY']; kpi_py = metrics['PY']
@@ -122,24 +119,23 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     for title, value, interp in kpi_data:
         pdf.cell(60, 8, title, 1)
         pdf.cell(60, 8, value, 1)
-        pdf.cell(70, 8, interp, 1)
-        pdf.ln()
+        pdf.cell(70, 8, interp, 1, new_x="LMARGIN", new_y="NEXT")
     
     pdf.ln(10)
     pdf.set_font('DejaVu', 'B', 12)
-    pdf.cell(0, 10, 'Visualizations', 0, 1)
+    pdf.cell(0, 10, 'Visualizations', new_x="LMARGIN", new_y="NEXT")
     pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w / 2 - 15)
     pdf.image(chart_paths["asset_distribution"], x=pdf.w / 2 + 5, w=pdf.w / 2 - 15)
     pdf.ln(70)
     
     pdf.set_font('DejaVu', 'B', 12)
-    pdf.cell(0, 10, 'AI-Generated SWOT Analysis', 0, 1)
+    pdf.cell(0, 10, 'AI-Generated SWOT Analysis', new_x="LMARGIN", new_y="NEXT")
     pdf.set_font('DejaVu', '', 10)
     pdf.multi_cell(0, 5, ai_analysis)
     
     return bytes(pdf.output())
 
-# --- MAIN APP UI --- (No changes needed here)
+# --- MAIN APP UI ---
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
 st.title("Financial Dashboard")
