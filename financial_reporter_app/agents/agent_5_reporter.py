@@ -6,10 +6,9 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 # ================================================================================= #
-# == NEW STYLING ENGINE: This part understands how to make the report beautiful == #
+# == THIS IS THE FIX: The function now correctly accepts 3 arguments == #
 # ================================================================================= #
-
-def apply_main_sheet_styling(ws, template):
+def apply_main_sheet_styling(ws, template, company_name):
     """Applies the beautiful, professional styling to the Balance Sheet and P&L."""
     
     # --- Define Fills (Colors) ---
@@ -19,8 +18,10 @@ def apply_main_sheet_styling(ws, template):
     net_income_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid") # Blue
 
     # --- Define Fonts ---
-    bold_font = Font(bold=True)
+    title_font = Font(bold=True, size=16)
+    subtitle_font = Font(bold=True, size=12)
     header_font = Font(bold=True)
+    bold_font = Font(bold=True)
 
     # --- Define Number Format ---
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
@@ -32,8 +33,20 @@ def apply_main_sheet_styling(ws, template):
     ws.column_dimensions['D'].width = 20
     ws.column_dimensions['E'].width = 20
     
-    # --- Style the Header Row (which is row 4) ---
-    for cell in ws[4]:
+    # --- Apply Company and Sheet Titles ---
+    ws.merge_cells('A1:E1')
+    ws['A1'] = company_name
+    ws['A1'].font = title_font
+    ws['A1'].alignment = Alignment(horizontal='center')
+    
+    ws.merge_cells('A2:E2')
+    ws['A2'] = ws.title
+    ws['A2'].font = subtitle_font
+    ws['A2'].alignment = Alignment(horizontal='center')
+
+    # --- Style the Header Row ---
+    header_row = ws[4]
+    for cell in header_row:
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
@@ -60,6 +73,7 @@ def apply_main_sheet_styling(ws, template):
         # Apply number formatting to all numerical columns
         for col_letter in ['D', 'E']:
             ws[f'{col_letter}{row_num}'].number_format = currency_format
+
 
 def apply_note_sheet_styling(ws):
     """Applies professional styling to a Note sheet."""
@@ -139,7 +153,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     sheet_data.append(row)
 
                 df = pd.DataFrame(sheet_data)
-                df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=3)
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=0)
                 
                 ws = writer.sheets[sheet_name]
                 apply_main_sheet_styling(ws, template, company_name)
