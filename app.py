@@ -1,4 +1,4 @@
-# FINAL, COMPLETE app.py (Uses the correct agent for the Excel report)
+# FINAL, COMPLETE app.py (Uses your correct agent for the detailed Excel report)
 
 import streamlit as st
 import sys
@@ -12,7 +12,7 @@ import numpy as np
 import os
 import io
 
-# This line tells the app to also look inside the sub-folder for helper files.
+# This line tells the app where to find your 'agents' and 'config' files.
 sys.path.append('financial_reporter_app')
 
 try:
@@ -134,8 +134,6 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     return bytes(pdf.output())
 
-# NOTE: The simple `create_excel_report` function has been REMOVED.
-
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
@@ -158,10 +156,7 @@ with st.sidebar:
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
                 
-                # ========================================================== #
-                # == THIS IS THE FIX: We now run your correct agent       == #
-                # == and SAVE its output to use later.                    == #
-                # ========================================================== #
+                # This runs your original, powerful agent to get the detailed Excel file
                 excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
                 if excel_report_bytes is None: st.error("Pipeline Failed: Report Finalizer"); st.stop()
                 
@@ -169,7 +164,7 @@ with st.sidebar:
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
-            # Store the generated Excel file in the session state
+            # We save the generated Excel file to be used by the download button
             st.session_state.excel_report_bytes = excel_report_bytes
             st.rerun()
         else:
@@ -188,7 +183,6 @@ if st.session_state.report_generated:
     col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
     col4.metric("Debt-to-Equity", f"₹{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
     
-    # We keep the charts for the dashboard view
     months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
     def generate_monthly(total):
         if total == 0: return [0]*12
@@ -225,13 +219,9 @@ if st.session_state.report_generated:
             use_container_width=True
         )
     with dl_col2:
-        # ========================================================== #
-        # == THIS IS THE FIX: This button now uses the correct    == #
-        # == Excel file that was saved in the session state.      == #
-        # ========================================================== #
         st.download_button(
             label="📊 Download Detailed Report (Excel)", 
-            data=st.session_state.excel_report_bytes, # Use the saved file
+            data=st.session_state.excel_report_bytes, # This now uses the correct file
             file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
             use_container_width=True
