@@ -777,4 +777,3 @@ MASTER_TEMPLATE = {
     ],
     "Notes to Accounts": NOTES_STRUCTURE_AND_MAPPING
 }
-
