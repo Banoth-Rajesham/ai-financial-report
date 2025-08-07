@@ -1,4 +1,4 @@
-# FINAL, COMPLETE, AND CORRECTED app.py
+# FINAL, COMPLETE app.py (Generates BOTH PDF and Excel reports)
 
 import streamlit as st
 import sys
@@ -10,7 +10,9 @@ import json
 import time
 import numpy as np
 import os
+import io # Required for creating the in-memory Excel file
 
+# This line tells the app to also look inside the sub-folder for helper files.
 sys.path.append('financial_reporter_app')
 
 try:
@@ -30,6 +32,7 @@ except ImportError as e:
 # --- HELPER FUNCTIONS ---
 
 def calculate_metrics(agg_data):
+    # This function is correct
     metrics = {}
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
@@ -52,6 +55,7 @@ def calculate_metrics(agg_data):
     return metrics
 
 def generate_ai_analysis(metrics):
+    # This function is correct
     try:
         YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
         YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
@@ -71,11 +75,12 @@ def generate_ai_analysis(metrics):
     except requests.exceptions.RequestException as e:
         return f"Could not generate AI analysis. API connection error: {e}"
 
+# --- PDF Generation Code ---
 class PDF(FPDF):
     def header(self):
         self.set_font('DejaVu', 'B', 16)
         self.cell(0, 10, 'Financial Dashboard Report', new_x="LMARGIN", new_y="NEXT")
-        self.ln(5) # Keep a little extra space
+        self.ln(5)
     def footer(self):
         self.set_y(-15)
         self.set_font('DejaVu', 'I', 8)
@@ -92,13 +97,10 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     pdf = PDF('P', 'mm', 'A4')
     
-    # --- THIS IS THE FINAL FONT FIX ---
-    # Register all four font styles to prevent any more errors.
     pdf.add_font('DejaVu', '', 'DejaVuSans.ttf')
     pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf')
     pdf.add_font('DejaVu', 'I', 'DejaVuSans-Oblique.ttf')
     pdf.add_font('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf')
-    # ----------------------------------
     
     pdf.add_page()
     pdf.set_font('DejaVu', 'B', 12)
@@ -135,6 +137,33 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     
     return bytes(pdf.output())
 
+# --- Excel Generation Code ---
+def create_excel_report(aggregated_data):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        summary_data = []
+        for note_num, note_content in NOTES_STRUCTURE_AND_MAPPING.items():
+            note_title = note_content.get('title', f'Note {note_num}')
+            cy_total = aggregated_data.get(note_num, {}).get('total', {}).get('CY', 0)
+            py_total = aggregated_data.get(note_num, {}).get('total', {}).get('PY', 0)
+            summary_data.append([note_num, note_title, cy_total, py_total])
+        
+        summary_df = pd.DataFrame(summary_data, columns=["Note No.", "Particulars", "Current Year", "Previous Year"])
+        summary_df.to_excel(writer, sheet_name='Summary', index=False)
+
+        for note_num, note_details in aggregated_data.items():
+            if 'sub_items' in note_details and note_details['sub_items']:
+                note_title = NOTES_STRUCTURE_AND_MAPPING.get(note_num, {}).get('title', f'Note {note_num}').replace(" ", "_")[:31]
+                df = pd.DataFrame.from_dict(note_details['sub_items'], orient='index')
+                df.loc['Total'] = note_details.get('total', {})
+                if 'CY' in df.columns and 'PY' in df.columns:
+                    df = df[['CY', 'PY']]
+                df.to_excel(writer, sheet_name=note_title)
+    
+    excel_bytes = output.getvalue()
+    return excel_bytes
+
+
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
@@ -156,8 +185,7 @@ with st.sidebar:
                 
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
-                final_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                if final_report_bytes is None: st.error("Pipeline Failed: Report Finalizer"); st.stop()
+                
             st.success("Dashboard Generated!")
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
@@ -167,10 +195,12 @@ with st.sidebar:
             st.warning("Please upload a file.")
 
 if st.session_state.report_generated:
-    metrics = calculate_metrics(st.session_state.aggregated_data)
+    agg_data = st.session_state.aggregated_data
+    metrics = calculate_metrics(agg_data)
     kpi_cy = metrics.get('CY', {}); kpi_py = metrics.get('PY', {})
     get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else 0
     st.success("Dashboard generated from extracted financial data.")
+    
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
     col2.metric("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.0f}", f"{get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0)):.1f}%")
@@ -195,10 +225,36 @@ if st.session_state.report_generated:
     chart_col2.plotly_chart(fig_asset, use_container_width=True)
     
     st.divider()
+
+    # --- Generate Both Reports and Create Two Download Buttons ---
+    
+    # Generate PDF
     with st.spinner("Generating PDF Report..."):
         ai_analysis = generate_ai_analysis(metrics)
         charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_asset}
         pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
-    st.download_button("💡 Download Professional Insights (PDF)", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", "application/pdf", use_container_width=True)
+
+    # Generate Excel
+    with st.spinner("Generating Excel Report..."):
+        excel_bytes = create_excel_report(agg_data)
+
+    # Display Download Buttons side-by-side
+    dl_col1, dl_col2 = st.columns(2)
+    with dl_col1:
+        st.download_button(
+            label="💡 Download Professional Insights (PDF)", 
+            data=pdf_bytes, 
+            file_name=f"{st.session_state.company_name}_Insights_Report.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
+    with dl_col2:
+        st.download_button(
+            label="📊 Download Detailed Data (Excel)", 
+            data=excel_bytes, 
+            file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            use_container_width=True
+        )
 else:
     st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
