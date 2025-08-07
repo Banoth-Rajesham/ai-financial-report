@@ -3,53 +3,141 @@
 import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-
-# (I have added back the MASTER_TEMPLATE import)
+from openpyxl.utils import get_column_letter
 from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
-def set_styles(ws):
-    """Applies professional styling to a worksheet."""
-    # Headers and Totals
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
-    total_font = Font(bold=True)
-    thin_border = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))
+# ================================================================================= #
+# == NEW STYLING ENGINE: Defines all the colors and formats from your example  == #
+# ================================================================================= #
 
-    # Column widths
+def apply_main_sheet_styling(ws, template, company_name):
+    """Applies the beautiful, professional styling to the Balance Sheet and P&L."""
+    
+    # --- Define Fills (Colors) ---
+    header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid") # Grey
+    revenue_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid") # Green
+    expenses_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid") # Red
+    net_income_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid") # Blue
+
+    # --- Define Fonts ---
+    title_font = Font(bold=True, size=16)
+    subtitle_font = Font(bold=True, size=12)
+    header_font = Font(bold=True)
+    bold_font = Font(bold=True)
+
+    # --- Define Borders ---
+    thin_bottom_border = Border(bottom=Side(style='thin'))
+    dashed_right_border = Border(right=Side(style='dashed'))
+    
+    # --- Define Number Format ---
+    currency_format = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)'
+
+    # --- Set Column Widths ---
     ws.column_dimensions['A'].width = 5
-    ws.column_dimensions['B'].width = 60
-    ws.column_dimensions['C'].width = 10
+    ws.column_dimensions['B'].width = 65
+    ws.column_dimensions['C'].width = 8
     ws.column_dimensions['D'].width = 20
     ws.column_dimensions['E'].width = 20
 
-    for row in ws.iter_rows():
-        for cell in row:
-            cell.border = thin_border
-            if cell.row == 1 or cell.row == 2: # Company Name and Sheet Title
-                cell.font = Font(bold=True, size=14)
-                cell.alignment = Alignment(horizontal='center')
+    # --- Apply Company and Sheet Titles ---
+    ws.merge_cells('B1:E1')
+    ws['B1'] = company_name
+    ws['B1'].font = title_font
+    ws['B1'].alignment = Alignment(horizontal='center')
     
-    # Style main data headers
-    for cell in ws[4]:
-        cell.font = header_font
+    ws.merge_cells('B2:E2')
+    ws['B2'] = ws.title
+    ws['B2'].font = subtitle_font
+    ws['B2'].alignment = Alignment(horizontal='center')
+
+    # --- Style the Header Row ---
+    header_row = ws[4]
+    for cell in header_row:
         cell.fill = header_fill
+        cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
+
+    # --- Iterate through template to apply row-specific styles ---
+    for i, row_template in enumerate(template):
+        row_num = i + 5 # Data starts at row 5
+        row_type = row_template[3]
+        
+        if row_type == 'header' or row_type == 'sub_header':
+            ws[f'B{row_num}'].font = bold_font
+        
+        elif row_type == 'total':
+            fill_color = None
+            if "Revenue" in ws[f'B{row_num}'].value:
+                fill_color = revenue_fill
+            elif "Expenses" in ws[f'B{row_num}'].value:
+                fill_color = expenses_fill
+            elif "Profit" in ws[f'B{row_num}'].value or "TOTAL" in ws[f'B{row_num}'].value:
+                fill_color = net_income_fill
+
+            for cell in ws[row_num]:
+                cell.font = bold_font
+                if fill_color:
+                    cell.fill = fill_color
+                if cell.column > 3: # Columns D and E
+                    cell.number_format = currency_format
+
+    # --- Apply Borders and Final Formatting ---
+    for row in ws.iter_rows(min_row=4, max_row=ws.max_row):
+        for cell in row:
+            if cell.column in [2, 3, 4]: # Apply dashed vertical borders
+                cell.border = Border(right=Side(style='dashed'))
+    
+    for cell in ws[ws.max_row]: # Bottom border for the last total row
+        cell.border = Border(bottom=Side(style='double'))
+
+
+def apply_note_sheet_styling(ws):
+    """Applies professional styling to a Note sheet."""
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    title_font = Font(bold=True, size=14)
+    total_font = Font(bold=True)
+    currency_format = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)'
+
+    # --- Set Column Widths ---
+    ws.column_dimensions['A'].width = 65
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 20
+
+    # --- Style Title and Headers ---
+    ws.merge_cells('A1:C1')
+    ws['A1'].font = title_font
+    for cell in ws[2]:
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    # --- Style Data Rows and Total Row ---
+    for row_idx, row in enumerate(ws.iter_rows(min_row=3)):
+        is_total_row = (row_idx == ws.max_row - 3)
+        for cell in row:
+            if cell.column > 1: # Columns B and C
+                cell.number_format = currency_format
+            if is_total_row:
+                cell.font = total_font
+                cell.border = Border(top=Side(style='thin'))
+
 
 def report_finalizer_agent(aggregated_data, company_name):
     """
     AGENT 5: This agent uses the MASTER_TEMPLATE to construct a detailed,
-    multi-sheet Schedule III compliant Excel report WITH STYLING.
+    multi-sheet Schedule III compliant Excel report WITH PROFESSIONAL STYLING.
     """
     print("\n--- Agent 5 (Report Finalizer): Building styled report... ---")
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             
-            # --- 1. PROCESS BALANCE SHEET AND PROFIT & LOSS ---
+            # --- PROCESS AND STYLE BALANCE SHEET AND PROFIT & LOSS ---
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), 
                                          ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
                 
                 sheet_data = []
+                # ... (rest of the data processing logic is the same)
                 pbt_cy, pbt_py = 0, 0
                 total_revenue_cy, total_revenue_py = 0, 0
                 total_expenses_cy, total_expenses_py = 0, 0
@@ -59,52 +147,48 @@ def report_finalizer_agent(aggregated_data, company_name):
                     _, particulars, note, row_type = row_template
                     
                     row = {
-                        'Particulars': particulars,
-                        'Note': "" if not isinstance(note, str) or note in ["PBT", "PAT"] else note,
-                        'CY': None, # Use None for placeholders
-                        'PY': None
+                        '':_[0], 'Particulars': particulars, 'Note': "" if not isinstance(note, str) else note,
+                        'As at March 31, 2025': None, 'As at March 31, 2024': None
                     }
 
                     if row_type in ["item", "item_no_alpha"]:
                         note_str = str(note)
-                        row['CY'] = aggregated_data.get(note_str, {}).get('total', {}).get('CY', 0)
-                        row['PY'] = aggregated_data.get(note_str, {}).get('total', {}).get('PY', 0)
+                        row['As at March 31, 2025'] = aggregated_data.get(note_str, {}).get('total', {}).get('CY', 0)
+                        row['As at March 31, 2024'] = aggregated_data.get(note_str, {}).get('total', {}).get('PY', 0)
                     
                     elif row_type == "total" and isinstance(note, list):
-                        row['CY'], row['PY'] = 0, 0
+                        cy_val, py_val = 0, 0
                         for note_to_sum in note:
-                            row['CY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
-                            row['PY'] += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
-                        
+                            cy_val += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
+                            py_val += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = cy_val, py_val
+
                         if particulars.startswith("Total Revenue"):
-                            total_revenue_cy, total_revenue_py = row['CY'], row['PY']
+                            total_revenue_cy, total_revenue_py = cy_val, py_val
                         if particulars == "Total Expenses":
-                            total_expenses_cy, total_expenses_py = row['CY'], row['PY']
+                            total_expenses_cy, total_expenses_py = cy_val, py_val
                         if particulars.startswith("Total Tax Expense"):
-                            total_tax_cy, total_tax_py = row['CY'], row['PY']
+                            total_tax_cy, total_tax_py = cy_val, py_val
 
                     elif note == "PBT":
                         pbt_cy = total_revenue_cy - total_expenses_cy
                         pbt_py = total_revenue_py - total_expenses_py
-                        row['CY'], row['PY'] = pbt_cy, pbt_py
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, pbt_py
 
                     elif note == "PAT":
-                        row['CY'] = pbt_cy - total_tax_cy
-                        row['PY'] = pbt_py - total_tax_py
-
+                        row['As at March 31, 2025'] = pbt_cy - total_tax_cy
+                        row['As at March 31, 2024'] = pbt_py - total_tax_py
+                    
                     sheet_data.append(row)
 
-                df = pd.DataFrame(sheet_data).rename(columns={'CY': 'As at March 31, 2025', 'PY': 'As at March 31, 2024'})
+                df = pd.DataFrame(sheet_data)
                 df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=3)
                 
                 ws = writer.sheets[sheet_name]
-                ws.merge_cells('A1:E1')
-                ws['A1'] = company_name
-                ws.merge_cells('A2:E2')
-                ws['A2'] = sheet_name
-                set_styles(ws)
+                apply_main_sheet_styling(ws, template, company_name)
 
-            # --- 2. PROCESS ALL NOTES ---
+
+            # --- PROCESS AND STYLE ALL NOTES ---
             for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
                 note_info = NOTES_STRUCTURE_AND_MAPPING[note_num_str]
                 note_data = aggregated_data.get(note_num_str)
@@ -112,21 +196,17 @@ def report_finalizer_agent(aggregated_data, company_name):
                     sheet_name = f'Note {note_num_str}'
                     note_title = note_info['title']
 
-                    note_df_data = []
-                    
+                    note_df_data = [{'Particulars': '', 'As at March 31, 2025': 'As at March 31, 2025', 'As at March 31, 2024': 'As at March 31, 2024'}]
+
                     def process_sub_items(items, level=0):
                         for key, value in items.items():
-                            indent = ' ' * (level * 4)
+                            indent = '  ' * level
                             if isinstance(value, dict) and 'CY' in value and 'PY' in value:
-                                note_df_data.append({
-                                    'Particulars': indent + key,
-                                    'As at March 31, 2025': value.get('CY', 0),
-                                    'As at March 31, 2024': value.get('PY', 0)
-                                })
+                                note_df_data.append({'Particulars': indent + key, 'As at March 31, 2025': value.get('CY', 0), 'As at March 31, 2024': value.get('PY', 0)})
                             elif isinstance(value, dict):
-                                note_df_data.append({'Particulars': indent + key, 'As at March 31, 2025': None, 'As at March 31, 2024': None})
+                                note_df_data.append({'Particulars': indent + key, 'As at March 31, 2025': '', 'As at March 31, 2024': ''})
                                 process_sub_items(value, level + 1)
-
+                    
                     process_sub_items(note_data['sub_items'])
                     
                     note_df = pd.DataFrame(note_df_data)
@@ -135,13 +215,8 @@ def report_finalizer_agent(aggregated_data, company_name):
                     
                     note_df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=1)
                     ws_note = writer.sheets[sheet_name]
-                    ws_note.merge_cells('A1:C1')
+                    apply_note_sheet_styling(ws_note)
                     ws_note['A1'] = f'Note {note_num_str}: {note_title}'
-                    # Basic styling for notes
-                    ws_note.column_dimensions['A'].width = 60
-                    ws_note.column_dimensions['B'].width = 20
-                    ws_note.column_dimensions['C'].width = 20
-                    ws_note['A1'].font = Font(bold=True, size=12)
 
 
         print("✅ Report Finalizer SUCCESS: Report generated with styling.")
