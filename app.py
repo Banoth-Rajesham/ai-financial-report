@@ -231,3 +231,77 @@ if st.session_state.report_generated:
         )
 else:
     st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
+
+# ==============================================================================
+# PASTE THIS ENTIRE BLOCK AT THE VERY BOTTOM OF YOUR app.py FILE
+# This is the CSS that creates the new modern look and feel.
+# ==============================================================================
+
+st.markdown("""
+<style>
+    /* Main background color */
+    .stApp {
+        background-color: #F0F2F6;
+    }
+
+    /* Sidebar styling */
+    [data-testid="stSidebar"] {
+        background-color: #FFFFFF;
+        border-right: 1px solid #E0E0E0;
+    }
+    
+    .st-emotion-cache-16txtl3 {
+        padding: 2rem 1.5rem;
+    }
+
+    /* Main dashboard container */
+    .block-container {
+        padding-top: 2rem;
+    }
+
+    /* KPI Card Styling */
+    .st-emotion-cache-17c3p0c {
+        border-radius: 10px;
+        background-color: #FFFFFF;
+        padding: 20px !important;
+        border: 1px solid #E0E0E0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        transition: all 0.3s ease-in-out;
+    }
+    .st-emotion-cache-17c3p0c:hover {
+        box-shadow: 0 8px 12px rgba(0,0,0,0.06);
+        transform: translateY(-3px);
+    }
+    .st-emotion-cache-17c3p0c .stMetricLabel {
+        color: #5A5A5A; /* KPI title color */
+    }
+     .st-emotion-cache-17c3p0c .stMetricValue {
+        color: #1E1E1E; /* KPI value color */
+        font-size: 2.2rem;
+    }
+
+    /* Chart and other container styling */
+    .st-emotion-cache-0 {
+        border-radius: 10px;
+        background-color: #FFFFFF;
+        padding: 20px;
+        border: 1px solid #E0E0E0;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+    }
+    
+    /* Download button styling */
+    .stDownloadButton > button {
+        width: 100%;
+        background-color: #28a745; /* Green color */
+        color: white;
+    }
+    
+    /* Main title styling */
+    h1 {
+        color: #333333;
+    }
+    
+</style>
+""", unsafe_allow_html=True)
+
+
