@@ -2,7 +2,6 @@
 # PASTE THIS ENTIRE BLOCK INTO: financial_reporter_app/agents/agent_3_aggregator.py
 # This version includes the definitive Data Propagation logic.
 # ==============================================================================
-
 import pandas as pd
 
 def hierarchical_aggregator_agent(source_df, notes_structure):
@@ -49,33 +48,27 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
             note_total_cy, note_total_py = match_and_aggregate(sub_items_result, note_data['sub_items'], source_df)
             
             # --- DEFINITIVE DATA PROPAGATION LOGIC ---
-            if note_num == '1' and sub_items_result['Issued, subscribed and fully paid up capital']['Equity shares of Rs. 10 each ']['CY'] == 0:
-                sub_items_result['Issued, subscribed and fully paid up capital']['Equity shares of Rs. 10 each ']['CY'] = note_total_cy
-                sub_items_result['Issued, subscribed and fully paid up capital']['Equity shares of Rs. 10 each ']['PY'] = note_total_py
-            
-            if note_num == '2' and sub_items_result['2.6 Surplus / (Deficit) in Statement of Profit and Loss']['Balance at the end of the year     ']['CY'] == 0:
-                other_reserves_cy = sub_items_result['2.1 Capital reserve']['total']['CY'] + sub_items_result['2.2 Securities premium account']['total']['CY'] + sub_items_result['2.4 General reserve']['total']['CY']
-                other_reserves_py = sub_items_result['2.1 Capital reserve']['total']['PY'] + sub_items_result['2.2 Securities premium account']['total']['PY'] + sub_items_result['2.4 General reserve']['total']['PY']
-                surplus_cy = note_total_cy - other_reserves_cy
-                surplus_py = note_total_py - other_reserves_py
-                sub_items_result['2.6 Surplus / (Deficit) in Statement of Profit and Loss']['Balance at the end of the year     ']['CY'] = surplus_cy
-                sub_items_result['2.6 Surplus / (Deficit) in Statement of Profit and Loss']['Balance at the end of the year     ']['PY'] = surplus_py
+            # This logic checks if the note's sub-items were filled. If not, it propagates the note's total
+            # down to the most logical sub-item, ensuring summary data fills the detailed report.
 
-            if note_num == '26':
-                # Check if the detailed lines were found. If not, propagate the total.
-                sum_of_details_cy = sum(v['CY'] for k, v in sub_items_result.items() if k != 'Other expenses')
-                if sum_of_details_cy == 0 and note_total_cy != 0:
-                    sub_items_result['Other expenses']['CY'] = note_total_cy
-                    sub_items_result['Other expenses']['PY'] = note_total_py
+            sum_of_sub_items_cy = sum(v['CY'] for k,v in sub_items_result.items() if isinstance(v, dict) and 'CY' in v) + \
+                                  sum(v['total']['CY'] for k,v in sub_items_result.items() if isinstance(v, dict) and 'total' in v)
             
-            # General propagation for any simple, single-item note that was missed
-            if len(note_data['sub_items']) == 1:
-                first_key = next(iter(sub_items_result))
-                if isinstance(sub_items_result[first_key], dict) and len(sub_items_result[first_key]) == 1:
-                     second_key = next(iter(sub_items_result[first_key]))
-                     if sub_items_result[first_key][second_key]['CY'] == 0 and note_total_cy != 0:
-                        sub_items_result[first_key][second_key]['CY'] = note_total_cy
-                        sub_items_result[first_key][second_key]['PY'] = note_total_py
+            if note_total_cy != 0 and sum_of_sub_items_cy == 0:
+                # Find the first valid line-item (not a sub-header) to place the total
+                for key, value in sub_items_result.items():
+                    if isinstance(value, dict) and 'CY' in value: # It's a line item
+                        sub_items_result[key]['CY'] = note_total_cy
+                        sub_items_result[key]['PY'] = note_total_py
+                        break 
+                    elif isinstance(value, dict): # It's a sub-header, look inside it
+                         for sub_key, sub_value in value.items():
+                             if isinstance(sub_value, dict) and 'CY' in sub_value:
+                                 sub_items_result[key][sub_key]['CY'] = note_total_cy
+                                 sub_items_result[key][sub_key]['PY'] = note_total_py
+                                 break
+                         else: continue
+                         break
             # --- END OF PROPAGATION LOGIC ---
 
             aggregated_data[note_num] = {
