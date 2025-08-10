@@ -406,5 +406,32 @@ st.markdown("""
         font-weight: 700;
     }
 
+    /* --------------------------------------------- */
+    /* 🌟 NEW: GLOW + 3D ENHANCEMENT BETWEEN COLUMNS */
+    /* --------------------------------------------- */
+
+    div[data-testid="stHorizontalBlock"] > div {
+        background: #2c2f36 !important;
+        border-radius: 20px;
+        padding: 20px;
+        margin: 10px;
+
+        box-shadow:
+            8px 8px 16px #1c1d21,
+            -8px -8px 16px #3c3f45;
+
+        transition: all 0.3s ease-in-out;
+    }
+
+    @keyframes border-glow {
+        0% { box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; }
+        50% { box-shadow: 0 0 20px #0099ff, 0 0 30px #0099ff; }
+        100% { box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; }
+    }
+
+    div[data-testid="stHorizontalBlock"] > div:hover {
+        animation: border-glow 2s infinite alternate;
+    }
+
 </style>
 """, unsafe_allow_html=True)
