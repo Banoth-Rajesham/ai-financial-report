@@ -1,8 +1,7 @@
 # ==============================================================================
 # PASTE THIS ENTIRE BLOCK INTO: financial_reporter_app/config.py
-# This is your full, original structure with enhanced aliases for universal input.
+# This is your full, original structure with the final, most comprehensive aliases.
 # ==============================================================================
-
 NOTES_STRUCTURE_AND_MAPPING = {
     '1': {
         'title': 'Share Capital',
@@ -37,26 +36,16 @@ NOTES_STRUCTURE_AND_MAPPING = {
         'title': 'Reserve and surplus',
         'sub_items': {
             '2.1 Capital reserve': {
-                'Balance at the beginning of the year': ['Capital reserve at beginning'],
-                'Add: Additions during the year': ['Additions to Capital reserve'],
-                'Less: Utilized/transferred during the year': ['Utilized from Capital reserve'],
-                'Balance at the end of the year': ['Capital reserve at end', 'Capital Reserve']
+                'Balance at the end of the year': ['Capital reserve']
             },
             '2.2 Securities premium account': {
-                'Balance at the beginning of the year ': ['Securities premium at beginning'],
-                'Add: Premium on shares issued during the year': ['Premium on shares issued'],
-                'Less: Utilising during the year for': {},
-                'Balance at the end of the year ': ['Securities premium at end', 'Securities Premium']
+                'Balance at the end of the year ': ['Securities premium', 'share premium']
             },
             '2.4 General reserve': {
-                'Balance at the beginning of the year   ': ['General reserve at beginning'],
-                'Add: Transferred from surplus in Statement of Profit and Loss': ['Transferred to general reserve from surplus'],
-                'Balance at the end of the year   ': ['General reserve at end', 'General Reserve']
+                'Balance at the end of the year   ': ['General reserve']
             },
             '2.6 Surplus / (Deficit) in Statement of Profit and Loss': {
-                'Balance at the beginning of the year     ': ['Surplus at beginning'],
-                'Add: Profit / (Loss) for the year': ['Profit / Loss for the year', 'Net Profit for the year'],
-                'Balance at the end of the year     ': ['Surplus at end', 'Retained Earnings', 'Surplus', 'P&L Account Balance', 'Profit & Loss A/c']
+                'Balance at the end of the year     ': ['Retained Earnings', 'Surplus', 'P&L Account Balance', 'Profit & Loss A/c', 'Reserves and surplus']
             }
         }
     },
@@ -65,16 +54,13 @@ NOTES_STRUCTURE_AND_MAPPING = {
         'sub_items': {
             '3.0 Long term borrowings Summary': {
                 '(a) Term loans from banks': ['Term loans from banks', 'term loan', 'long term borrowings', 'Mortgage Loan'],
-                '(b) Deferred payment liabilities': ['Deferred payment liabilities'],
-                '(c) Deposits': ['Deposits'],
-                '(d) Loans and advances from related parties': ['Loans and advances from related parties', 'Loan from Director'],
                 '(e) Other loans and advances': ['Other loans and advances specify nature', 'debentures']
             }
         }
     },
-    '4': {'title': 'Deferred Tax Asset/Liability','sub_items': {'Deferred Tax (Net)': ['deferred tax asset', 'deferred tax liability', 'deferred tax']}},
-    '5': {'title': 'Other long term liabilities', 'sub_items': {'Other long term liabilities': ['other long term liabilities']}},
-    '6': {'title': 'Long term provisions', 'sub_items': {'Long term provisions': ['long term provisions']}},
+    '4': {'title': 'Deferred Tax Asset/Liability','sub_items': {'Tax on Difference between Book & Tax depreciation': ['deferred tax asset', 'deferred tax liability', 'deferred tax']}},
+    '5': {'title': 'Other long term liabilities', 'sub_items': {'(b) Others': {'Others (specify nature)': ['other long term liabilities']}}},
+    '6': {'title': 'Long term provisions', 'sub_items': {'(b) Provision - Others': {'Provision - others (give details)': ['long term provisions']}}},
     '7': {'title': 'Short term borrowings', 'sub_items': {'(a) Loans repayable on demand': {'From banks - Unsecured': ['short term borrowings', 'bank overdraft']}}},
     '8': {'title': 'Trade payables', 'sub_items': {'Trade payables: Other than Acceptances': ['trade payables', 'sundry creditors']}},
     '9': {'title': 'Other current liabilities', 'sub_items': {'Other payables (Salaries and consultant fee)': ['other current liabilities', 'bills payable', 'outstanding expenses']}},
@@ -82,11 +68,11 @@ NOTES_STRUCTURE_AND_MAPPING = {
     '11': {
         'title': 'Fixed Assets (Tangible & Intangible)',
         'sub_items': {
-            'Depreciation for the year': ['Depreciation', 'Depriciation for the year', 'to depreciation'],
-            'Closing WDV': ['tangible assets', 'net fixed assets', 'fixed assets', 'land & building', 'plant & machinery', 'motor vehicles', 'Furniture & Fixture']
+            'Closing WDV': ['tangible assets', 'net fixed assets', 'fixed assets', 'land & building', 'plant & machinery', 'motor vehicles', 'Furniture & Fixture'],
+            'Depreciation for the year': ['Depreciation', 'Depriciation for the year', 'to depreciation']
         }
     },
-    '12': {'title': 'Non-current Investments', 'sub_items': {'B. Other Investments': {'(f) Investment in mutual funds': ['non-current investments', 'investments']}}},
+    '12': {'title': 'Non-current Investments', 'sub_items': {'B. Other Investments': {'(h) Other non-current investments ': ['non-current investments', 'investments']}}},
     '13': {'title': 'Long term loans and advances', 'sub_items': {'(e) Prepaid expenses - Unsecured, considered good': ['long term loans and advances']}},
     '14': {'title': 'Other non-current assets', 'sub_items': {'(d) Others': {'Others (specify nature)':['other non-current assets']}}},
     '15': {'title': 'Current Investments', 'sub_items': {'B. Other current investments': {'(g) Other investments (specify nature)': ['current investments']}}},
