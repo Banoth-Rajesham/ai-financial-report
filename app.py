@@ -1,7 +1,7 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version includes the new background image, glassmorphism UI,
-# all previous functionality, and the robust agent pipeline.
+# This version includes the new animated background, 3D/Neumorphic UI, all
+# previous functionality, and the robust agent pipeline.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -35,7 +35,7 @@ except ImportError as e:
 # --- HELPER FUNCTIONS ---
 @st.cache_data
 def get_image_as_base64(url):
-    """Fetches an image from a URL and returns it as a base64 encoded string for embedding."""
+    """Fetches an image/gif from a URL and returns it as a base64 encoded string."""
     try:
         response = requests.get(url)
         return base64.b64encode(response.content).decode()
@@ -89,15 +89,15 @@ class PDF(FPDF):
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def create_professional_pdf(metrics, ai_analysis, charts):
-    # (This function remains the same as your provided code)
+    # (This function remains the same as before)
     return b"PDF placeholder"
 
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
-# Fetch and encode the NEW background image
-image_url = "https://i.pinimg.com/1200x/90/32/1a/90321ae6a97ca6b9c3ac4d0de4a9f28c.jpg"
+# Fetch and encode the NEW animated background
+image_url = "https://i.pinimg.com/originals/c1/9a/6c/c19a6c0d014f3586ee2b65074e25a87e.gif"
 bg_image_base64 = get_image_as_base64(image_url)
 
 if 'report_generated' not in st.session_state:
@@ -119,31 +119,24 @@ with st.sidebar:
     
     if st.button("Generate Dashboard", type="primary", use_container_width=True):
         if uploaded_file and company_name:
-            # THIS IS THE "BUFFERING" OR PROCESSING INDICATOR
             with st.spinner("Executing financial agent pipeline... Please wait."):
                 st.info("Step 1/5: Ingesting data from Excel file...")
                 source_df = intelligent_data_intake_agent(uploaded_file)
-                if source_df is None: 
-                    st.error("Pipeline Failed at Agent 1: Data Intake.")
-                    st.stop()
+                if source_df is None: st.error("Pipeline Failed at Agent 1: Data Intake."); st.stop()
                 
                 st.info("Step 2/5: Mapping financial terms...")
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
                 
                 st.info("Step 3/5: Aggregating and propagating values...")
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                if not aggregated_data: 
-                    st.error("Pipeline Failed at Agent 3: Aggregation.")
-                    st.stop()
+                if not aggregated_data: st.error("Pipeline Failed at Agent 3: Aggregation."); st.stop()
                 
                 st.info("Step 4/5: Validating financial balances...")
                 warnings = data_validation_agent(aggregated_data)
                 
                 st.info("Step 5/5: Generating final reports...")
                 excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                if excel_report_bytes is None: 
-                    st.error("Pipeline Failed at Agent 5: Report Finalizer.")
-                    st.stop()
+                if excel_report_bytes is None: st.error("Pipeline Failed at Agent 5: Report Finalizer."); st.stop()
 
             st.success("Dashboard Generated!")
             for w in warnings:
@@ -215,7 +208,7 @@ st.markdown(f"""
 <style>
     /* Main background image and fonts */
     .stApp {{
-        background-image: url("data:image/jpg;base64,{bg_image_base64}");
+        background-image: url("data:image/gif;base64,{bg_image_base64}");
         background-size: cover;
         background-repeat: no-repeat;
         background-attachment: fixed;
@@ -238,6 +231,9 @@ st.markdown(f"""
         background-color: rgba(31, 36, 49, 0.7); /* Semi-transparent sidebar */
         backdrop-filter: blur(10px);
         border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }}
+    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
+        color: white;
     }}
     
     /* KPI Card Styling - Glassmorphism */
@@ -286,5 +282,3 @@ st.markdown(f"""
     
 </style>
 """, unsafe_allow_html=True)
-
-
