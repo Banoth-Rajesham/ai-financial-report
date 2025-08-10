@@ -279,39 +279,34 @@ else:
     st.info("Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.")
 
 
-import streamlit as st
-
-# Apply the CSS for glowing neumorphic style
+# CSS for neumorphic cards with hover glow effect
 st.markdown("""
 <style>
-    /* Page background and text */
+    /* Page base */
     .stApp {
         background-color: #1e1e2f;
         color: #e0e0e0;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-
-    /* Container padding */
     .block-container {
         padding: 2rem 3rem;
     }
 
-    /* Header Title */
-    .main-title h1, .main-title h3 {
-        color: #e0e0e0;
+    /* Header */
+    .main-title h1 {
         font-weight: 700;
-        margin-bottom: 0.2rem;
+        margin-bottom: 0.1rem;
+        color: #e0e0e0;
+        font-size: 2.2rem;
     }
-
-    /* Subtitle below title */
     .main-title p {
+        margin-top: 0;
         color: #b0b0b0;
         font-size: 1.1rem;
-        margin-top: 0;
-        margin-bottom: 1rem;
+        margin-bottom: 2rem;
     }
 
-    /* Success banner styling */
+    /* Success alert banner */
     .stAlert {
         background-color: #1d3d2f !important;
         border-left: 6px solid #00cc7a !important;
@@ -322,89 +317,99 @@ st.markdown("""
         box-shadow:
             0 0 15px #00cc7a88,
             0 0 30px #00cc7a55;
-        margin-bottom: 2rem;
+        margin-bottom: 2.5rem;
     }
 
-    /* KPI cards container */
+    /* KPI cards container - flex with wrapping */
     .kpi-container {
         display: flex;
-        gap: 2rem;
         flex-wrap: wrap;
+        gap: 2rem;
+        justify-content: flex-start;
         margin-bottom: 2rem;
     }
 
-    /* Individual KPI cards - always glowing */
+    /* Individual KPI card */
     .kpi-card {
         background: #2b2b3c;
         border-radius: 15px;
         padding: 1.5rem 2rem;
         box-shadow: 
-            0 0 20px #00ff9faa,
             6px 6px 16px #14141e,
             -6px -6px 16px #38384a;
         min-width: 250px;
         color: #e0e0e0;
-        position: relative;
+        cursor: default;
+        transition: box-shadow 0.3s ease;
         display: flex;
         flex-direction: column;
+        user-select: none;
+    }
+
+    /* Glow on hover */
+    .kpi-card:hover {
+        box-shadow:
+            0 0 20px #00ff9f,
+            6px 6px 16px #14141e,
+            -6px -6px 16px #38384a;
     }
 
     /* KPI title */
     .kpi-card .title {
         font-weight: 600;
         font-size: 1rem;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.3rem;
         color: #a0a0a0;
     }
 
-    /* KPI main value */
+    /* KPI value */
     .kpi-card .value {
         font-size: 2.2rem;
         font-weight: 700;
         margin-bottom: 0.5rem;
+        line-height: 1.1;
     }
 
-    /* Percentage delta badge */
+    /* Percentage delta */
     .kpi-card .delta {
         display: inline-flex;
         align-items: center;
         font-weight: 600;
         font-size: 0.9rem;
         border-radius: 20px;
-        padding: 0.2rem 0.7rem;
-        background-color: #00cc7a;
-        color: #0f2f1f;
+        padding: 0.25rem 0.8rem;
         width: fit-content;
-        box-shadow: 0 0 8px #00cc7aaa;
+        box-shadow: 0 0 8px transparent;
+        transition: box-shadow 0.3s ease, background-color 0.3s ease;
+        user-select: none;
     }
 
-    /* Delta arrow up */
+    /* Delta up style */
+    .kpi-card .delta.up {
+        background-color: #00cc7a;
+        color: #0f2f1f;
+        box-shadow: 0 0 8px #00cc7aaa;
+    }
     .kpi-card .delta.up::before {
         content: "⬆";
         margin-right: 0.3rem;
     }
 
-    /* Delta arrow down, red color */
+    /* Delta down style */
     .kpi-card .delta.down {
         background-color: #ff4c4c;
         color: #3a0000;
         box-shadow: 0 0 8px #ff4c4caa;
     }
-
     .kpi-card .delta.down::before {
         content: "⬇";
         margin-right: 0.3rem;
     }
-
-    /* Debt-to-equity card on new line */
-    .debt-to-equity-container {
-        max-width: 250px;
-        margin-top: 1rem;
-    }
 </style>
 """, unsafe_allow_html=True)
 
-# Title and subtitle
+
+# Main content: Title and subtitle
 st.markdown("""
 <div class="main-title">
     <h1>Financial Dashboard</h1>
@@ -412,10 +417,13 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Success banner
-st.markdown('<div class="stAlert">✅ Dashboard generated from extracted financial data. All metrics calculated from 26 notes with Schedule III compliance.</div>', unsafe_allow_html=True)
+# Success message banner
+st.markdown(
+    '<div class="stAlert">✅ Dashboard generated from extracted financial data. All metrics calculated from 26 notes with Schedule III compliance.</div>',
+    unsafe_allow_html=True
+)
 
-# KPI Cards
+# KPI cards container with metrics in professional order
 st.markdown("""
 <div class="kpi-container">
     <div class="kpi-card">
@@ -433,10 +441,10 @@ st.markdown("""
         <div class="value">₹3,895,000.00</div>
         <div class="delta up">5.1%</div>
     </div>
-</div>
-<div class="debt-to-equity-container kpi-card">
-    <div class="title">Debt-to-Equity</div>
-    <div class="value">0.34</div>
-    <div class="delta down">-12.1%</div>
+    <div class="kpi-card">
+        <div class="title">Debt-to-Equity</div>
+        <div class="value">0.34</div>
+        <div class="delta down">-12.1%</div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
