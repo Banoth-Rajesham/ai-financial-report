@@ -282,160 +282,128 @@ else:
 # --- CSS STYLING ---
 st.markdown("""
 <style>
-    /* Main background */
+    /* Base App Styling */
     .stApp {
-        background-color: #e6e9ef; /* Slightly darker for contrast */
-        color: #212529; /* Default text color */
+        background-color: #1e1e2f;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', sans-serif;
     }
 
-    /* Main container */
+    /* Container Padding */
     .block-container {
-        padding: 1rem 2rem 2rem;
-        color: #212529;
+        padding: 2rem;
     }
 
-    /* Title styling */
-    .main-title {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-        padding-bottom: 20px;
-    }
-    .title-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background-color: #e6f7ff;
-        border-radius: 10px;
-        padding: 10px;
-        border: 1px solid #91d5ff;
-    }
-    .title-icon svg {
-        color: #096dd9;
-    }
-    .main-title h3 {
-        color: #1a1a1a;
-        font-weight: 600;
-        font-size: 1.75rem;
-        margin-bottom: 0;
-    }
-    .main-title p {
-        color: #495057;
-        font-size: 1rem;
-        margin-bottom: 0;
-    }
-
-    /* Success Box */
-    .stAlert {
-        background-color: #f6ffed;
-        border: 1px solid #b7eb8f;
-        border-radius: 0.5rem;
-        color: #1a1a1a;
-    }
-
-    /* KPI Card Styling */
-    .st-emotion-cache-17c3p0c {
-        background-color: #f8f9fb;
+    /* NEUMORPHIC CARD STYLE */
+    .st-emotion-cache-17c3p0c, .stPlotlyChart, .stDataFrame, .ratio-table, [data-testid="stExpander"] {
+        background-color: #2b2b3c;
         border-radius: 15px;
-        padding: 24px !important;
-        border: 1px solid rgba(0, 0, 0, 0.08);
-        box-shadow: 5px 5px 10px #d6dbe2, -5px -5px 10px #ffffff;
-        color: #212529;
+        padding: 1.5rem;
+        border: none;
+        box-shadow: 8px 8px 16px #14141e, -8px -8px 16px #38384a;
+        color: #e0e0e0 !important;
     }
 
+    /* Metric Styling */
     .st-emotion-cache-17c3p0c .stMetricLabel p {
-        color: #495057 !important;
+        color: #a0a0a0 !important;
         font-weight: 500;
     }
 
     .st-emotion-cache-17c3p0c .stMetricValue {
-        color: #000000 !important;
+        color: #ffffff !important;
         font-size: 2rem;
         font-weight: 600;
     }
 
     [data-testid="stMetricDelta"] {
         font-weight: 600;
-        color: #28a745 !important;
+        color: #00ff9f !important;
     }
 
-    /* Charts and visuals container */
-    .st-emotion-cache-1h9us24, .stPlotlyChart, .ratio-table, [data-testid="stExpander"] {
-        background-color: #f8f9fb;
-        border-radius: 15px;
-        padding: 1.5rem;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        box-shadow: 4px 4px 8px #d6dbe2, -4px -4px 8px #ffffff;
-        color: #212529;
+    /* Title Styling */
+    .main-title h3 {
+        color: #e0e0e0;
+        font-weight: 700;
+        font-size: 2rem;
     }
 
+    .main-title p {
+        color: #b0b0b0;
+        font-size: 1rem;
+    }
+
+    .title-icon {
+        background-color: #1e1e2f;
+        border-radius: 10px;
+        border: 1px solid #3f3f5f;
+        padding: 10px;
+        color: #00ff9f;
+    }
+
+    /* Chart Container */
     .stPlotlyChart {
-        padding: 0.5rem;
+        padding: 1rem;
+        border-radius: 15px;
+        background-color: #2b2b3c;
+        box-shadow: 6px 6px 12px #161624, -6px -6px 12px #3a3a50;
     }
 
-    /* Expander Styling */
-    [data-testid="stExpander"] {
-        border: none;
-        box-shadow: inset 3px 3px 6px #d6dbe2, inset -3px -3px 6px #ffffff;
+    /* Sidebar */
+    section[data-testid="stSidebar"] {
+        background-color: #13131f;
+        color: #ffffff;
     }
 
-    [data-testid="stExpander"] summary {
-        font-size: 1.1rem;
+    .css-1d391kg input {
+        background-color: #1f1f2f;
+        color: #ffffff;
+        border: 1px solid #333;
+    }
+
+    .css-1d391kg label {
+        color: #d0d0d0;
+    }
+
+    .css-1d391kg .stButton>button {
+        background-color: #00ff9f;
+        color: #1e1e2f;
         font-weight: 600;
-        color: #333333;
+        border-radius: 10px;
+        padding: 0.5rem 1.25rem;
+        border: none;
+        box-shadow: 0px 0px 15px #00ff9f33;
+        transition: all 0.3s ease-in-out;
     }
 
-    /* Ratio Table Styling */
-    .ratio-table {
-        height: 100%;
+    .css-1d391kg .stButton>button:hover {
+        background-color: #00cc7a;
+        box-shadow: 0px 0px 20px #00ff9f55;
+        transform: scale(1.03);
     }
 
+    /* Expander */
+    [data-testid="stExpander"] summary {
+        color: #ffffff;
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    /* Ratio Table */
     .ratio-row {
         display: flex;
         justify-content: space-between;
-        padding: 1.15rem 0.5rem;
-        border-bottom: 1px solid #e9ecef;
-        color: #212529;
+        padding: 0.75rem 0;
+        border-bottom: 1px solid #444;
     }
 
     .ratio-row:last-child {
         border-bottom: none;
     }
 
-    .ratio-row span {
-        color: #495057;
-        font-size: 1rem;
-    }
-
     .ratio-value {
+        color: #00ff9f;
         font-weight: 700;
-        font-size: 1.1rem;
-        color: #0052cc !important;
-    }
-
-    /* Sidebar Styling */
-    section[data-testid="stSidebar"] {
-        background-color: #111827;
-        color: #ffffff;
-    }
-
-    .css-1d391kg p {
-        color: #ffffff;
-    }
-
-    .css-1d391kg input {
-        background-color: #374151;
-        color: #ffffff;
-    }
-
-    .css-1d391kg label {
-        color: #ffffff;
-    }
-
-    .css-1d391kg .stButton>button {
-        background-color: #ef4444;
-        color: white;
-        font-weight: 600;
     }
 
 </style>
