@@ -279,7 +279,9 @@ else:
     st.info("Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.")
 
 
-# CSS for neumorphic cards with hover glow effect
+import streamlit as st
+
+# CSS for neumorphic cards with hover glow effect, curved style on top
 st.markdown("""
 <style>
     /* Page base */
@@ -329,10 +331,10 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* Individual KPI card */
+    /* Individual KPI card with curved edges on top */
     .kpi-card {
         background: #2b2b3c;
-        border-radius: 15px;
+        border-radius: 25px 25px 8px 8px;
         padding: 1.5rem 2rem;
         box-shadow: 
             6px 6px 16px #14141e,
@@ -423,7 +425,7 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# KPI cards container with metrics in professional order
+# KPI cards container with metrics in professional order, at the top only
 st.markdown("""
 <div class="kpi-container">
     <div class="kpi-card">
@@ -448,3 +450,5 @@ st.markdown("""
     </div>
 </div>
 """, unsafe_allow_html=True)
+
+# (Add other dashboard charts and content below as needed)
