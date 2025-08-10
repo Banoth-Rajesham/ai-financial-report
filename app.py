@@ -97,7 +97,7 @@ def create_professional_pdf(metrics, ai_analysis, charts):
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
 # Fetch and encode the NEW background image
-image_url = "https://t4.ftcdn.net/jpg/04/38/93/15/240_F_438931535_DhZaUQHbGvGUxLzPNzT4inocmtABLBoO.jpg"
+image_url = "https://i.pinimg.com/1200x/90/32/1a/90321ae6a97ca6b9c3ac4d0de4a9f28c.jpg"
 bg_image_base64 = get_image_as_base64(image_url)
 
 if 'report_generated' not in st.session_state:
@@ -286,4 +286,5 @@ st.markdown(f"""
     
 </style>
 """, unsafe_allow_html=True)
+
 
