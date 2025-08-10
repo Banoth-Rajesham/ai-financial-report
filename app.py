@@ -282,17 +282,19 @@ else:
 # --- CSS STYLING ---
 st.markdown("""
 <style>
-    /* Main background and fonts */
+    /* Main background */
     .stApp {
-        background-color: #e3e7ee; /* Slightly darker than before for better visibility */
+        background-color: #e6e9ef; /* Slightly darker for contrast */
+        color: #212529; /* Default text color */
     }
 
-    /* Main dashboard container */
+    /* Main container */
     .block-container {
         padding: 1rem 2rem 2rem;
+        color: #212529;
     }
-    
-    /* Main Title Section */
+
+    /* Title styling */
     .main-title {
         display: flex;
         align-items: center;
@@ -308,7 +310,9 @@ st.markdown("""
         padding: 10px;
         border: 1px solid #91d5ff;
     }
-    .title-icon svg { color: #096dd9; }
+    .title-icon svg {
+        color: #096dd9;
+    }
     .main-title h3 {
         color: #1a1a1a;
         font-weight: 600;
@@ -316,71 +320,123 @@ st.markdown("""
         margin-bottom: 0;
     }
     .main-title p {
-        color: #6c757d;
+        color: #495057;
         font-size: 1rem;
         margin-bottom: 0;
     }
 
-    /* Green Success Box */
+    /* Success Box */
     .stAlert {
         background-color: #f6ffed;
         border: 1px solid #b7eb8f;
         border-radius: 0.5rem;
+        color: #1a1a1a;
     }
 
-    /* KPI Card Styling (Neumorphic) */
+    /* KPI Card Styling */
     .st-emotion-cache-17c3p0c {
-        background-color: #e3e7ee;
+        background-color: #f8f9fb;
         border-radius: 15px;
         padding: 24px !important;
-        border: 1px solid rgba(0, 0, 0, 0.05);
-        box-shadow: 8px 8px 16px #c0c6d4, -8px -8px 16px #ffffff;
-    }
-    .st-emotion-cache-17c3p0c .stMetricLabel p {
-        color: #6c757d;
-    }
-    .st-emotion-cache-17c3p0c .stMetricValue {
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        box-shadow: 5px 5px 10px #d6dbe2, -5px -5px 10px #ffffff;
         color: #212529;
-        font-size: 2.1rem;
-        font-weight: 600;
     }
-    [data-testid="stMetricDelta"] {
+
+    .st-emotion-cache-17c3p0c .stMetricLabel p {
+        color: #495057 !important;
+        font-weight: 500;
+    }
+
+    .st-emotion-cache-17c3p0c .stMetricValue {
+        color: #000000 !important;
+        font-size: 2rem;
         font-weight: 600;
     }
 
-    /* Chart and other container styling (Neumorphic) */
+    [data-testid="stMetricDelta"] {
+        font-weight: 600;
+        color: #28a745 !important;
+    }
+
+    /* Charts and visuals container */
     .st-emotion-cache-1h9us24, .stPlotlyChart, .ratio-table, [data-testid="stExpander"] {
-        background-color: #e3e7ee;
+        background-color: #f8f9fb;
         border-radius: 15px;
         padding: 1.5rem;
         border: 1px solid rgba(0, 0, 0, 0.05);
-        box-shadow: 8px 8px 16px #c0c6d4, -8px -8px 16px #ffffff;
+        box-shadow: 4px 4px 8px #d6dbe2, -4px -4px 8px #ffffff;
+        color: #212529;
     }
-    .stPlotlyChart { padding: 0.5rem; }
-    
+
+    .stPlotlyChart {
+        padding: 0.5rem;
+    }
+
     /* Expander Styling */
     [data-testid="stExpander"] {
         border: none;
-        box-shadow: inset 5px 5px 10px #c0c6d4, inset -5px -5px 10px #ffffff;
+        box-shadow: inset 3px 3px 6px #d6dbe2, inset -3px -3px 6px #ffffff;
     }
+
     [data-testid="stExpander"] summary {
         font-size: 1.1rem;
         font-weight: 600;
-        color: #333;
+        color: #333333;
     }
-    
+
     /* Ratio Table Styling */
-    .ratio-table { height: 100%; }
+    .ratio-table {
+        height: 100%;
+    }
+
     .ratio-row {
         display: flex;
         justify-content: space-between;
         padding: 1.15rem 0.5rem;
         border-bottom: 1px solid #e9ecef;
+        color: #212529;
     }
-    .ratio-row:last-child { border-bottom: none; }
-    .ratio-row span { color: #495057; font-size: 1rem; }
-    .ratio-value { font-weight: 700; font-size: 1.1rem; color: #0052cc !important; }
-    
+
+    .ratio-row:last-child {
+        border-bottom: none;
+    }
+
+    .ratio-row span {
+        color: #495057;
+        font-size: 1rem;
+    }
+
+    .ratio-value {
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #0052cc !important;
+    }
+
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #111827;
+        color: #ffffff;
+    }
+
+    .css-1d391kg p {
+        color: #ffffff;
+    }
+
+    .css-1d391kg input {
+        background-color: #374151;
+        color: #ffffff;
+    }
+
+    .css-1d391kg label {
+        color: #ffffff;
+    }
+
+    .css-1d391kg .stButton>button {
+        background-color: #ef4444;
+        color: white;
+        font-weight: 600;
+    }
+
 </style>
 """, unsafe_allow_html=True)
-
