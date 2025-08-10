@@ -1,6 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version includes the new modern UI, all previous functionality,
+# This version includes the new dark, sleek UI, all previous functionality,
 # and the robust agent pipeline.
 # ==============================================================================
 import streamlit as st
@@ -43,12 +43,10 @@ def calculate_metrics(agg_data):
         
         total_revenue = get(21) + get(22)
         
-        # Calculate changes in inventory for P&L
-        opening_stock = get(16, 'PY') # Opening stock for CY is closing stock of PY
+        opening_stock = get(16, 'PY')
         closing_stock = get(16, 'CY')
         change_in_inv = closing_stock - opening_stock
         
-        # Adjust total expenses calculation
         total_expenses = get(23) - change_in_inv + get(24) + get(25) + get(11) + get(26)
         
         net_profit = total_revenue - total_expenses
@@ -86,19 +84,14 @@ def generate_ai_analysis(metrics):
 
 class PDF(FPDF):
     def header(self):
-        # Ensure the font file is available or use a standard font
-        try:
-            self.set_font('DejaVu', 'B', 16)
-        except RuntimeError:
-            self.set_font('Arial', 'B', 16)
+        try: self.set_font('DejaVu', 'B', 16)
+        except RuntimeError: self.set_font('Arial', 'B', 16)
         self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C')
         self.ln(5)
     def footer(self):
         self.set_y(-15)
-        try:
-            self.set_font('DejaVu', 'I', 8)
-        except RuntimeError:
-            self.set_font('Arial', 'I', 8)
+        try: self.set_font('DejaVu', 'I', 8)
+        except RuntimeError: self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 def create_professional_pdf(metrics, ai_analysis, charts):
@@ -107,11 +100,10 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     chart_paths = {}
     for name, fig in charts.items():
         path = os.path.join(temp_dir, f"{name}.png")
-        fig.write_image(path, scale=2, width=600, height=350)
+        fig.write_image(path, scale=2, width=600, height=400)
         chart_paths[name] = path
     
     pdf = PDF('P', 'mm', 'A4')
-    # Add DejaVu fonts if they exist in the project directory
     try:
         pdf.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
         pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf', uni=True)
@@ -120,7 +112,6 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     except RuntimeError:
         font_family = 'Arial'
         print("NOTE: DejaVu fonts not found. Using standard Arial font for PDF generation.")
-
     
     pdf.add_page()
     pdf.set_font(font_family, 'B', 12)
@@ -146,10 +137,11 @@ def create_professional_pdf(metrics, ai_analysis, charts):
     pdf.ln(10)
     pdf.set_font(font_family, 'B', 12)
     pdf.cell(0, 10, 'Visualizations', 0, 1)
-    pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w / 2 - 15)
-    pdf.image(chart_paths["asset_distribution"], x=pdf.w / 2 + 5, w=pdf.w / 2 - 15)
-    pdf.ln(70)
+    pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w - 20)
+    pdf.ln(100) # Adjust space after the first chart
+    pdf.image(chart_paths["asset_distribution"], x=10, w=pdf.w - 20)
     
+    pdf.add_page()
     pdf.set_font(font_family, 'B', 12)
     pdf.cell(0, 10, 'AI-Generated SWOT Analysis', 0, 1)
     pdf.set_font(font_family, '', 10)
@@ -159,7 +151,7 @@ def create_professional_pdf(metrics, ai_analysis, charts):
 
 # --- MAIN APP UI ---
 
-st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="Descriptive Analytics", page_icon="📊", layout="wide")
 
 if 'report_generated' not in st.session_state:
     st.session_state.report_generated = False
@@ -171,45 +163,29 @@ if 'aggregated_data' not in st.session_state:
 
 # --- SIDEBAR UI ---
 with st.sidebar:
-    st.image("https://i.imgur.com/3f83U5G.png", width=80)
-    st.markdown("<h2 style='text-align: center; color: #333;'>AI Financial Reporter</h2>", unsafe_allow_html=True)
+    st.title("Menu")
+    st.button("🏠 Home", use_container_width=True)
+    st.button("📈 Progress", use_container_width=True)
     st.markdown("---")
     
-    st.header("Upload & Process")
-    uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"], label_visibility="collapsed")
+    st.header("Please Filter Here:")
     company_name = st.text_input("Enter Company Name", "My Company Inc.")
+    uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"])
     
     if st.button("Generate Dashboard", type="primary", use_container_width=True):
         if uploaded_file and company_name:
-            with st.spinner("Executing financial agent pipeline... Please wait."):
-                st.info("Step 1: Ingesting data...")
+            # The agent pipeline logic remains the same
+            with st.spinner("Executing financial agent pipeline..."):
                 source_df = intelligent_data_intake_agent(uploaded_file)
-                if source_df is None: 
-                    st.error("Pipeline Failed at Agent 1: Data Intake.")
-                    st.stop()
-                
-                st.info("Step 2: Mapping financial terms...")
+                if source_df is None: st.error("Pipeline Failed: Data Intake."); st.stop()
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
-                
-                st.info("Step 3: Aggregating data...")
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                if not aggregated_data: 
-                    st.error("Pipeline Failed at Agent 3: Aggregation.")
-                    st.stop()
-                
-                st.info("Step 4: Validating balances...")
+                if not aggregated_data: st.error("Pipeline Failed: Aggregation."); st.stop()
                 warnings = data_validation_agent(aggregated_data)
-                
-                st.info("Step 5: Finalizing reports...")
                 excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                if excel_report_bytes is None: 
-                    st.error("Pipeline Failed at Agent 5: Report Finalizer.")
-                    st.stop()
-                
+                if excel_report_bytes is None: st.error("Pipeline Failed: Report Finalizer."); st.stop()
             st.success("Dashboard Generated!")
-            for warning in warnings:
-                st.warning(warning)
-                
+            for w in warnings: st.warning(w)
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
@@ -218,29 +194,32 @@ with st.sidebar:
         else:
             st.warning("Please upload a file and enter a company name.")
 
-
 # --- MAIN DASHBOARD UI ---
-st.title("Digital Advertising Campaign Performance")
+st.title("My database")
 
 if st.session_state.report_generated:
     agg_data = st.session_state.aggregated_data
     metrics = calculate_metrics(agg_data)
     kpi_cy = metrics.get('CY', {}); kpi_py = metrics.get('PY', {})
-    
     get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else (100.0 if cy != 0 else 0)
     
     # --- KPI Cards ---
-    st.subheader("Key Performance Indicators")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
-    col2.metric("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.0f}", f"{get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0)):.1f}%")
-    col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
-    col4.metric("Debt-to-Equity", f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
+    col1, col2, col3, col4, col5 = st.columns(5)
+    with col1:
+        st.markdown(f"<h6>Total Revenue</h6><h3>₹{kpi_cy.get('Total Revenue', 0):,.0f}</h3>", unsafe_allow_html=True)
+    with col2:
+        st.markdown(f"<h6>Net Profit</h6><h3>₹{kpi_cy.get('Net Profit', 0):,.0f}</h3>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"<h6>Total Assets</h6><h3>₹{kpi_cy.get('Total Assets', 0):,.0f}</h3>", unsafe_allow_html=True)
+    with col4:
+        st.markdown(f"<h6>Current Ratio</h6><h3>{kpi_cy.get('Current Ratio', 0):.2f}</h3>", unsafe_allow_html=True)
+    with col5:
+        st.markdown(f"<h6>Debt-to-Equity</h6><h3>{kpi_cy.get('Debt-to-Equity', 0):.2f}</h3>", unsafe_allow_html=True)
     
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- Charts ---
-    st.subheader("Expenditure, Revenue and Orders by Date")
+    chart_col1, chart_col2, chart_col3 = st.columns(3)
     
     months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
     def generate_monthly(total):
@@ -249,51 +228,45 @@ if st.session_state.report_generated:
         monthly = pattern * (total / 12)
         return (monthly / monthly.sum()) * total
         
-    revenue_df = pd.DataFrame({
-        'Month': months,
-        'Revenue': generate_monthly(kpi_cy.get('Total Revenue',0)),
-        'Expenditure': generate_monthly(kpi_cy.get('Net Profit',0) + np.random.uniform(0.5, 0.8) * kpi_cy.get('Total Revenue',0)), # Simulated expenditure
-        'Orders': (generate_monthly(kpi_cy.get('Total Revenue',0)) / np.random.uniform(400, 600)).astype(int) # Simulated orders
-    })
+    revenue_df = pd.DataFrame({'Month': months, 'Revenue': generate_monthly(kpi_cy.get('Total Revenue',0))})
+    fig_revenue = px.line(revenue_df, x='Month', y='Revenue', title="<b>Investment by Region</b>", template="plotly_dark")
+    fig_revenue.update_traces(line_color='#1DF0C8', line_width=3)
     
-    fig_main_chart = px.area(revenue_df, x='Month', y=['Expenditure', 'Revenue'], title="", labels={'value':'Amount'})
-    fig_main_chart.update_layout(legend_title_text='Metrics')
-
-    st.plotly_chart(fig_main_chart, use_container_width=True)
+    expense_data = {'Expense Type': ['Purchases', 'Employee Costs', 'Finance Costs', 'Depreciation', 'Other Expenses'],
+                    'Value': [kpi_cy.get('Total Expenses',0)*0.4, kpi_cy.get('Total Expenses',0)*0.3, kpi_cy.get('Total Expenses',0)*0.1, kpi_cy.get('Total Expenses',0)*0.1, kpi_cy.get('Total Expenses',0)*0.1]}
+    expense_df = pd.DataFrame(expense_data).query("Value > 0").sort_values('Value', ascending=True)
+    fig_expense = px.bar(expense_df, y='Expense Type', x='Value', title="<b>Investment by Business Type</b>", template="plotly_dark", orientation='h')
     
+    asset_data = {'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments'], 'Value': [kpi_cy.get('Current Assets',0), kpi_cy.get('Fixed Assets',0), kpi_cy.get('Investments',0)]}
+    asset_df = pd.DataFrame(asset_data).query("Value > 0")
+    fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Regions by Ratings</b>", template="plotly_dark", hole=0.4)
+    
+    with chart_col1:
+        st.plotly_chart(fig_revenue, use_container_width=True)
+    with chart_col2:
+        st.plotly_chart(fig_expense, use_container_width=True)
+    with chart_col3:
+        st.plotly_chart(fig_asset, use_container_width=True)
+        
     st.markdown("<br>", unsafe_allow_html=True)
 
     # --- Download Buttons ---
-    st.subheader("Download Reports")
-    
     with st.spinner("Generating PDF Report..."):
         ai_analysis = generate_ai_analysis(metrics)
-        charts = {"revenue_trend": fig_main_chart, "asset_distribution": px.pie(names=['A','B'], values=[1,1])} # Placeholder for asset chart
+        charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_expense}
         pdf_ready = False
         try:
             pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
             pdf_ready = True
         except Exception as e:
-            st.warning(f"Could not generate PDF. Ensure 'DejaVuSans.ttf' is in the project root. Error: {e}")
+            st.warning(f"Could not generate PDF. Error: {e}")
 
     dl_col1, dl_col2 = st.columns(2)
     with dl_col1:
         if pdf_ready:
-            st.download_button(
-                label="⬇️ Download Professional Insights (PDF)", 
-                data=pdf_bytes, 
-                file_name=f"{st.session_state.company_name}_Insights_Report.pdf", 
-                mime="application/pdf", 
-                use_container_width=True
-            )
+            st.download_button("💡 Download Professional Insights (PDF)", pdf_bytes, f"{st.session_state.company_name}_Insights_Report.pdf", "application/pdf", use_container_width=True)
     with dl_col2:
-        st.download_button(
-            label="📊 Download Detailed Report (Excel)", 
-            data=st.session_state.excel_report_bytes,
-            file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
-            use_container_width=True
-        )
+        st.download_button("📊 Download Detailed Report (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Detailed_Report.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
         
 else:
     st.info("Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.")
@@ -302,71 +275,90 @@ else:
 # --- CSS STYLING ---
 st.markdown("""
 <style>
-    /* Main background color */
+    /* Main background and fonts */
     .stApp {
-        background-color: #F0F2F6;
+        background-color: #0E1117;
+        color: #FAFAFA;
+    }
+    h1, h2, h3, h4, h5, h6 {
+        color: #FAFAFA;
     }
 
     /* Sidebar styling */
     [data-testid="stSidebar"] {
-        background: linear-gradient(135deg, #868F96 0%, #596164 100%);
-        color: white;
+        background-color: #1F2431;
+        border-right: 1px solid #2D3341;
     }
-    
     .st-emotion-cache-16txtl3 {
         padding: 2rem 1.5rem;
     }
     
-    [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3, [data-testid="stSidebar"] .st-emotion-cache-16idsys p {
-        color: white;
+    /* Sidebar buttons */
+    [data-testid="stSidebar"] .stButton > button {
+        background-color: #2D3341;
+        color: #FAFAFA;
+        border: 1px solid #4A5162;
     }
-
+    [data-testid="stSidebar"] .stButton > button:hover {
+        background-color: #4A5162;
+        color: #1DF0C8;
+    }
+    
     /* Main dashboard container */
     .block-container {
-        padding-top: 2rem;
+        padding: 1rem 2rem 2rem;
     }
 
     /* KPI Card Styling */
     .st-emotion-cache-17c3p0c {
-        border-radius: 10px;
-        background-color: #FFFFFF;
-        padding: 20px !important;
-        border: 1px solid #E0E0E0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
-        transition: all 0.3s ease-in-out;
+        background-color: #1F2431;
+        border: 1px solid #2D3341;
+        border-radius: 8px;
+        padding: 1rem !important;
     }
-    .st-emotion-cache-17c3p0c:hover {
-        box-shadow: 0 8px 12px rgba(0,0,0,0.06);
-        transform: translateY(-3px);
+    .st-emotion-cache-17c3p0c h6 {
+        color: #A0A4B0;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+        font-size: 0.75rem;
     }
-    .st-emotion-cache-17c3p0c .stMetricLabel p {
-        color: #5A5A5A; /* KPI title color */
-    }
-     .st-emotion-cache-17c3p0c .stMetricValue {
-        color: #1E1E1E; /* KPI value color */
-        font-size: 2.2rem;
+    .st-emotion-cache-17c3p0c h3 {
+        color: #FFFFFF;
+        margin-top: 0;
+        font-size: 1.75rem;
     }
 
-    /* Chart and other container styling */
+    /* Chart container styling */
     .st-emotion-cache-1h9us24 {
-        border-radius: 10px;
-        background-color: #FFFFFF;
-        padding: 20px;
-        border: 1px solid #E0E0E0;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+        background-color: #1F2431;
+        border: 1px solid #2D3341;
+        border-radius: 8px;
+        padding: 1rem;
     }
     
-    /* Download button styling */
-    .stDownloadButton > button {
-        width: 100%;
-        background-color: #596164;
-        color: white;
-        border: 1px solid white;
+    /* Primary button in sidebar */
+    [data-testid="stSidebar"] .stButton > button[kind="primary"] {
+        background-color: #1DF0C8;
+        color: #0E1117;
+        border: none;
+    }
+    [data-testid="stSidebar"] .stButton > button[kind="primary"]:hover {
+        background-color: #18C8A6;
     }
     
-    /* Main title styling */
+    /* Main title */
     h1 {
-        color: #333333;
+        font-size: 1.5rem;
+        color: #A0A4B0;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+    
+    /* Download buttons */
+    .stDownloadButton > button {
+        background-color: #2D3341;
+        color: #1DF0C8;
+        border: 1px solid #1DF0C8;
     }
     
 </style>
