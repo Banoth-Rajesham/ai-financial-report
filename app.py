@@ -289,22 +289,25 @@ st.markdown("""
         font-family: 'Segoe UI', sans-serif;
     }
 
-    /* Container Padding */
     .block-container {
         padding: 2rem;
     }
 
-    /* NEUMORPHIC CARD STYLE */
+    /* NEUMORPHIC CARD STYLE + Always-on Glow */
     .st-emotion-cache-17c3p0c, .stPlotlyChart, .stDataFrame, .ratio-table, [data-testid="stExpander"] {
         background-color: #2b2b3c;
         border-radius: 15px;
         padding: 1.5rem;
-        border: none;
-        box-shadow: 8px 8px 16px #14141e, -8px -8px 16px #38384a;
+        border: 2px solid rgba(0, 255, 223, 0.2);
+        box-shadow: 
+            0 0 15px rgba(0, 255, 223, 0.4),
+            0 0 25px rgba(0, 195, 255, 0.3),
+            6px 6px 16px #14141e,
+            -6px -6px 16px #38384a;
         color: #e0e0e0 !important;
     }
 
-    /* Metric Styling */
+    /* Metric Cards Text Styling */
     .st-emotion-cache-17c3p0c .stMetricLabel p {
         color: #a0a0a0 !important;
         font-weight: 500;
@@ -341,7 +344,6 @@ st.markdown("""
         color: #00ff9f;
     }
 
-    /* Chart Container */
     .stPlotlyChart {
         padding: 1rem;
         border-radius: 15px;
@@ -349,7 +351,6 @@ st.markdown("""
         box-shadow: 6px 6px 12px #161624, -6px -6px 12px #3a3a50;
     }
 
-    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: #13131f;
         color: #ffffff;
@@ -382,14 +383,12 @@ st.markdown("""
         transform: scale(1.03);
     }
 
-    /* Expander */
     [data-testid="stExpander"] summary {
         color: #ffffff;
         font-size: 1.2rem;
         font-weight: 600;
     }
 
-    /* Ratio Table */
     .ratio-row {
         display: flex;
         justify-content: space-between;
@@ -404,33 +403,6 @@ st.markdown("""
     .ratio-value {
         color: #00ff9f;
         font-weight: 700;
-    }
-
-    /* --------------------------------------------- */
-    /* 🌟 NEW: GLOW + 3D ENHANCEMENT BETWEEN COLUMNS */
-    /* --------------------------------------------- */
-
-    div[data-testid="stHorizontalBlock"] > div {
-        background: #2c2f36 !important;
-        border-radius: 20px;
-        padding: 20px;
-        margin: 10px;
-
-        box-shadow:
-            8px 8px 16px #1c1d21,
-            -8px -8px 16px #3c3f45;
-
-        transition: all 0.3s ease-in-out;
-    }
-
-    @keyframes border-glow {
-        0% { box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; }
-        50% { box-shadow: 0 0 20px #0099ff, 0 0 30px #0099ff; }
-        100% { box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc; }
-    }
-
-    div[data-testid="stHorizontalBlock"] > div:hover {
-        animation: border-glow 2s infinite alternate;
     }
 
 </style>
