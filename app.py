@@ -282,6 +282,7 @@ else:
 import streamlit as st
 
 # CSS for neumorphic cards with hover glow effect, curved style on top
+# --- Styles ---
 st.markdown("""
 <style>
     /* Page base */
@@ -308,21 +309,7 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* Success alert banner */
-    .stAlert {
-        background-color: #1d3d2f !important;
-        border-left: 6px solid #00cc7a !important;
-        color: #d0ffd8 !important;
-        font-weight: 600;
-        padding: 1rem 1.5rem;
-        border-radius: 12px;
-        box-shadow:
-            0 0 15px #00cc7a88,
-            0 0 30px #00cc7a55;
-        margin-bottom: 2.5rem;
-    }
-
-    /* KPI cards container - flex with wrapping */
+    /* KPI container */
     .kpi-container {
         display: flex;
         flex-wrap: wrap;
@@ -331,7 +318,7 @@ st.markdown("""
         margin-bottom: 2rem;
     }
 
-    /* Individual KPI card with curved edges on top */
+    /* KPI card */
     .kpi-card {
         background: #2b2b3c;
         border-radius: 25px 25px 8px 8px;
@@ -342,19 +329,17 @@ st.markdown("""
         min-width: 250px;
         color: #e0e0e0;
         cursor: default;
-        transition: box-shadow 0.3s ease;
         display: flex;
         flex-direction: column;
         user-select: none;
+        transition: box-shadow 0.3s ease, background-color 0.3s ease;
     }
 
-    /* Glow on hover */
-    .kpi-card:hover {
-        box-shadow:
-            0 0 20px #00ff9f,
-            6px 6px 16px #14141e,
-            -6px -6px 16px #38384a;
-    }
+    /* Unique hover colors */
+    .kpi-card:nth-child(1):hover { background-color: #1a472a; box-shadow: 0 0 20px #00ff9f; }
+    .kpi-card:nth-child(2):hover { background-color: #472a2a; box-shadow: 0 0 20px #ff6666; }
+    .kpi-card:nth-child(3):hover { background-color: #2a3947; box-shadow: 0 0 20px #66ccff; }
+    .kpi-card:nth-child(4):hover { background-color: #473f2a; box-shadow: 0 0 20px #ffd966; }
 
     /* KPI title */
     .kpi-card .title {
@@ -372,7 +357,7 @@ st.markdown("""
         line-height: 1.1;
     }
 
-    /* Percentage delta */
+    /* Delta styles */
     .kpi-card .delta {
         display: inline-flex;
         align-items: center;
@@ -381,74 +366,44 @@ st.markdown("""
         border-radius: 20px;
         padding: 0.25rem 0.8rem;
         width: fit-content;
-        box-shadow: 0 0 8px transparent;
-        transition: box-shadow 0.3s ease, background-color 0.3s ease;
         user-select: none;
     }
-
-    /* Delta up style */
     .kpi-card .delta.up {
         background-color: #00cc7a;
         color: #0f2f1f;
-        box-shadow: 0 0 8px #00cc7aaa;
     }
-    .kpi-card .delta.up::before {
-        content: "⬆";
-        margin-right: 0.3rem;
-    }
-
-    /* Delta down style */
+    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
     .kpi-card .delta.down {
         background-color: #ff4c4c;
         color: #3a0000;
-        box-shadow: 0 0 8px #ff4c4caa;
     }
-    .kpi-card .delta.down::before {
-        content: "⬇";
-        margin-right: 0.3rem;
-    }
+    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
 </style>
 """, unsafe_allow_html=True)
 
 
-# Main content: Title and subtitle
-st.markdown("""
-<div class="main-title">
-    <h1>Financial Dashboard</h1>
-    <p>AI-generated analysis from extracted Excel data with Schedule III compliance</p>
-</div>
-""", unsafe_allow_html=True)
-
-# Success message banner
-st.markdown(
-    '<div class="stAlert">✅ Dashboard generated from extracted financial data. All metrics calculated from 26 notes with Schedule III compliance.</div>',
-    unsafe_allow_html=True
-)
-
-# KPI cards container with metrics in professional order, at the top only
+# --- KPI Cards at Top (Defaults to Zero Before Upload) ---
 st.markdown("""
 <div class="kpi-container">
     <div class="kpi-card">
         <div class="title">Total Revenue</div>
-        <div class="value">₹2,190,000</div>
-        <div class="delta up">9.3%</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
     </div>
     <div class="kpi-card">
         <div class="title">Net Profit</div>
-        <div class="value">₹-215,000</div>
-        <div class="delta up">5.7%</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
     </div>
     <div class="kpi-card">
         <div class="title">Total Assets</div>
-        <div class="value">₹3,895,000.00</div>
-        <div class="delta up">5.1%</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
     </div>
     <div class="kpi-card">
         <div class="title">Debt-to-Equity</div>
-        <div class="value">0.34</div>
-        <div class="delta down">-12.1%</div>
+        <div class="value">0</div>
+        <div class="delta down">0%</div>
     </div>
 </div>
 """, unsafe_allow_html=True)
-
-# (Add other dashboard charts and content below as needed)
