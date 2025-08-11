@@ -2,6 +2,7 @@
 # FINAL, COMPLETE, AND CORRECTED app.py
 # This version includes the new beautiful 3D/Neumorphic UI, all previous
 # functionality, the interpretation text, and is guaranteed not to crash.
+# Correction: Switched Excel engine to 'openpyxl' to resolve ModuleNotFoundError.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -26,7 +27,7 @@ import io
 #         report_finalizer_agent
 #     )
 # except ImportError as e:
-#     st.error(f"CRITICAL ERROR: Could not import a module. Please check your folder structure. Error: {e}")
+#     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Please check your folder structure. Error: {e}")
 #     st.stop()
 
 
@@ -35,7 +36,7 @@ import io
 def intelligent_data_intake_agent(uploaded_file):
     try:
         # The 'Particulars' column is needed by the original script's logic.
-        df = pd.read_excel(uploaded_file)
+        df = pd.read_excel(uploaded_file, engine='openpyxl')
         if 'Particulars' not in df.columns:
             st.warning("Input file is missing a 'Particulars' column. Using mock data.")
             # Return a dummy DataFrame that matches the expected structure.
@@ -77,7 +78,8 @@ def data_validation_agent(aggregated_data):
 def report_finalizer_agent(aggregated_data, company_name):
     # Mock: Creates a sample processed Excel file in memory.
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    # UPDATED LINE: Changed engine to 'openpyxl' to avoid the xlsxwriter dependency error.
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_list = []
         for note, data in aggregated_data.items():
             cy = data.get('total', {}).get('CY', 0)
