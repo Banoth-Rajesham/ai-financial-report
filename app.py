@@ -283,127 +283,118 @@ import streamlit as st
 
 # CSS for neumorphic cards with hover glow effect, curved style on top
 # --- Styles ---
+import streamlit as st
+import pandas as pd
+import plotly.express as px
+
+st.set_page_config(layout="wide", page_title="Financial Dashboard")
+
+# ===================== CUSTOM STYLES =====================
 st.markdown("""
-<style>
-    /* Page base */
-    .stApp {
-        background-color: #1e1e2f;
-        color: #e0e0e0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-    .block-container {
-        padding: 2rem 3rem;
-    }
-
-    /* Header */
-    .main-title h1 {
-        font-weight: 700;
-        margin-bottom: 0.1rem;
-        color: #e0e0e0;
-        font-size: 2.2rem;
-    }
-    .main-title p {
-        margin-top: 0;
-        color: #b0b0b0;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-    }
-
-    /* KPI container */
-    .kpi-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2rem;
-        justify-content: flex-start;
-        margin-bottom: 2rem;
-    }
-
-    /* KPI card */
-    .kpi-card {
-        background: #2b2b3c;
-        border-radius: 25px 25px 8px 8px;
-        padding: 1.5rem 2rem;
-        box-shadow: 
-            6px 6px 16px #14141e,
-            -6px -6px 16px #38384a;
-        min-width: 250px;
-        color: #e0e0e0;
-        cursor: default;
-        display: flex;
-        flex-direction: column;
-        user-select: none;
-        transition: box-shadow 0.3s ease, background-color 0.3s ease;
-    }
-
-    /* Unique hover colors */
-    .kpi-card:nth-child(1):hover { background-color: #1a472a; box-shadow: 0 0 20px #00ff9f; }
-    .kpi-card:nth-child(2):hover { background-color: #472a2a; box-shadow: 0 0 20px #ff6666; }
-    .kpi-card:nth-child(3):hover { background-color: #2a3947; box-shadow: 0 0 20px #66ccff; }
-    .kpi-card:nth-child(4):hover { background-color: #473f2a; box-shadow: 0 0 20px #ffd966; }
-
-    /* KPI title */
-    .kpi-card .title {
-        font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 0.3rem;
-        color: #a0a0a0;
-    }
-
-    /* KPI value */
-    .kpi-card .value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        line-height: 1.1;
-    }
-
-    /* Delta styles */
-    .kpi-card .delta {
-        display: inline-flex;
-        align-items: center;
-        font-weight: 600;
-        font-size: 0.9rem;
-        border-radius: 20px;
-        padding: 0.25rem 0.8rem;
-        width: fit-content;
-        user-select: none;
-    }
-    .kpi-card .delta.up {
-        background-color: #00cc7a;
-        color: #0f2f1f;
-    }
-    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
-    .kpi-card .delta.down {
-        background-color: #ff4c4c;
-        color: #3a0000;
-    }
-    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
-</style>
+    <style>
+        .kpi-card {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+            background-color: #1E1E1E;
+            color: white;
+            transition: background-color 0.3s ease;
+        }
+        /* Unique hover colors */
+        .kpi-card:nth-child(1):hover { background-color: #1a472a; } /* Green */
+        .kpi-card:nth-child(2):hover { background-color: #2a3947; } /* Blue */
+        .kpi-card:nth-child(3):hover { background-color: #473f2a; } /* Brown */
+        .kpi-card:nth-child(4):hover { background-color: #472a2a; } /* Red */
+        .kpi-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .kpi-label {
+            font-size: 14px;
+            color: #bbbbbb;
+        }
+    </style>
 """, unsafe_allow_html=True)
 
+# ===================== PAGE TITLE =====================
+st.title("📊 Financial Dashboard")
 
-# --- KPI Cards at Top (Defaults to Zero Before Upload) ---
-st.markdown("""
-<div class="kpi-container">
-    <div class="kpi-card">
-        <div class="title">Total Revenue</div>
-        <div class="value">₹0</div>
-        <div class="delta up">0%</div>
-    </div>
-    <div class="kpi-card">
-        <div class="title">Net Profit</div>
-        <div class="value">₹0</div>
-        <div class="delta up">0%</div>
-    </div>
-    <div class="kpi-card">
-        <div class="title">Total Assets</div>
-        <div class="value">₹0</div>
-        <div class="delta up">0%</div>
-    </div>
-    <div class="kpi-card">
-        <div class="title">Debt-to-Equity</div>
-        <div class="value">0</div>
-        <div class="delta down">0%</div>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+# ===================== INITIAL KPI VALUES =====================
+total_revenue = 0
+net_profit = 0
+total_assets = 0
+debt_to_equity = 0
+
+# ===================== FILE UPLOAD =====================
+uploaded_file = st.file_uploader("Upload your financial data (CSV)", type=["csv"])
+
+if uploaded_file:
+    df = pd.read_csv(uploaded_file)
+
+    # Example calculations (replace with your actual logic)
+    total_revenue = df["Revenue"].sum() if "Revenue" in df else 0
+    net_profit = df["Net Profit"].sum() if "Net Profit" in df else 0
+    total_assets = df["Assets"].sum() if "Assets" in df else 0
+    debt = df["Debt"].sum() if "Debt" in df else 0
+    equity = df["Equity"].sum() if "Equity" in df else 1
+    debt_to_equity = debt / equity if equity != 0 else 0
+
+# ===================== KPI CARDS AT TOP =====================
+st.markdown("<h2 style='text-align: center; color: white;'>Key Financial Metrics</h2>", unsafe_allow_html=True)
+
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-value">₹{total_revenue:,.0f}</div>
+            <div class="kpi-label">Total Revenue</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col2:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-value">₹{net_profit:,.0f}</div>
+            <div class="kpi-label">Net Profit</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col3:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-value">₹{total_assets:,.0f}</div>
+            <div class="kpi-label">Total Assets</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+with col4:
+    st.markdown(f"""
+        <div class="kpi-card">
+            <div class="kpi-value">{debt_to_equity:.2f}</div>
+            <div class="kpi-label">Debt-to-Equity</div>
+        </div>
+    """, unsafe_allow_html=True)
+
+# ===================== REST OF DASHBOARD =====================
+if uploaded_file:
+    # Revenue Trend
+    if "Month" in df and "Revenue" in df:
+        fig_revenue = px.area(df, x="Month", y="Revenue", title="Revenue Trend")
+        st.plotly_chart(fig_revenue, use_container_width=True)
+
+    # Profit Margin Trend
+    if "Month" in df and "Profit Margin" in df:
+        fig_margin = px.line(df, x="Month", y="Profit Margin", title="Profit Margin Trend")
+        st.plotly_chart(fig_margin, use_container_width=True)
+
+    # Interpretation
+    st.subheader("Interpretation of Visuals")
+    st.write("Add your AI-generated SWOT or summary interpretation here.")
+
+    # Download Buttons
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.download_button("Download Professional Report (PDF)", "Report content here", file_name="report.pdf")
+    with col_b:
+        st.download_button("Download Detailed Report (Excel)", df.to_csv(index=False), file_name="report.xlsx")
