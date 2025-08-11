@@ -159,412 +159,126 @@ with st.sidebar:
         else:
             st.warning("Please upload a file and enter a company name.")
 
-# app.py - Financial Dashboard: upload -> KPIs top -> charts -> PDF & Excel download
 import streamlit as st
 import pandas as pd
 import io
-import tempfile
-import os
-from datetime import datetime
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
 
-# plotting & pdf libs (graceful fallback)
-try:
-    import matplotlib.pyplot as plt
-    HAS_MPL = True
-except Exception:
-    HAS_MPL = False
-
-try:
-    from fpdf import FPDF
-    HAS_FPDF = True
-except Exception:
-    HAS_FPDF = False
-
-# ---------------- Page config ----------------
+# ---- PAGE CONFIG ----
 st.set_page_config(page_title="Financial Dashboard", layout="wide")
 
-# ---------------- Styles (user CSS you provided) ----------------
-st.markdown("""
-<style>
-    /* Page base */
-    .stApp {
-        background-color: #1e1e2f;
-        color: #e0e0e0;
-        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+# ---- KPI CALCULATION ----
+def calculate_kpis(df):
+    total_revenue = df['Revenue'].sum() if 'Revenue' in df.columns else 0
+    net_profit = df['Net Profit'].sum() if 'Net Profit' in df.columns else 0
+    total_assets = df['Assets'].sum() if 'Assets' in df.columns else 0
+    debt_to_equity = (
+        (df['Debt'].sum() / df['Equity'].sum()) 
+        if 'Debt' in df.columns and 'Equity' in df.columns and df['Equity'].sum() != 0 else 0
+    )
+    return total_revenue, net_profit, total_assets, debt_to_equity
+
+# ---- PDF GENERATION ----
+def generate_pdf(kpis, interpretation, swot):
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4)
+    styles = getSampleStyleSheet()
+    story = []
+
+    story.append(Paragraph("Financial Insights Report", styles['Title']))
+    story.append(Spacer(1, 20))
+
+    # KPIs
+    for k, v in kpis.items():
+        story.append(Paragraph(f"{k}: {v}", styles['Normal']))
+        story.append(Spacer(1, 10))
+
+    # Interpretation Section
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("Interpretation of Visuals", styles['Heading2']))
+    story.append(Paragraph(interpretation, styles['Normal']))
+
+    # SWOT Analysis
+    story.append(Spacer(1, 20))
+    story.append(Paragraph("SWOT Analysis", styles['Heading2']))
+    for key, val in swot.items():
+        story.append(Paragraph(f"<b>{key}:</b> {val}", styles['Normal']))
+        story.append(Spacer(1, 10))
+
+    doc.build(story)
+    buf.seek(0)
+    return buf
+
+# ---- EXCEL OUTPUT ----
+def to_excel(df):
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+        df.to_excel(writer, index=False)
+    output.seek(0)
+    return output
+
+# ---- UI ----
+st.sidebar.header("Upload & Process")
+file = st.sidebar.file_uploader("Upload Financial Data", type=["xlsx", "xls", "csv"])
+company_name = st.sidebar.text_input("Enter Company Name", "My Company Inc.")
+
+if file:
+    # Read file
+    if file.name.endswith(".csv"):
+        df = pd.read_csv(file)
+    else:
+        df = pd.read_excel(file)
+
+    # Calculate KPIs
+    total_revenue, net_profit, total_assets, debt_to_equity = calculate_kpis(df)
+
+    # KPI Cards
+    st.markdown(f"## Key Performance Indicators for {company_name}")
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Revenue", f"₹{total_revenue:,.0f}", "Up")
+    col2.metric("Net Profit", f"₹{net_profit:,.0f}", "Up")
+    col3.metric("Total Assets", f"₹{total_assets:,.0f}", "Up")
+    col4.metric("Debt-to-Equity", f"{debt_to_equity:.2f}", "Down")
+
+    # Static text for PDF sections (you can make these dynamic later)
+    interpretation_text = "The company's revenue and profit have shown consistent growth compared to last year, indicating strong operational efficiency."
+    swot_analysis = {
+        "Strengths": "Strong revenue growth, high asset base.",
+        "Weaknesses": "High debt-to-equity ratio.",
+        "Opportunities": "Expansion into new markets.",
+        "Threats": "Economic downturn, competition."
     }
-    .block-container {
-        padding: 2rem 3rem;
-    }
 
-    /* Header */
-    .main-title h1 {
-        font-weight: 700;
-        margin-bottom: 0.1rem;
-        color: #e0e0e0;
-        font-size: 2.2rem;
-    }
-    .main-title p {
-        margin-top: 0;
-        color: #b0b0b0;
-        font-size: 1.1rem;
-        margin-bottom: 2rem;
-    }
+    # Generate PDF
+    pdf_buf = generate_pdf(
+        {
+            "Total Revenue": f"₹{total_revenue:,.0f}",
+            "Net Profit": f"₹{net_profit:,.0f}",
+            "Total Assets": f"₹{total_assets:,.0f}",
+            "Debt-to-Equity": f"{debt_to_equity:.2f}"
+        },
+        interpretation_text,
+        swot_analysis
+    )
 
-    /* KPI container */
-    .kpi-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 2rem;
-        justify-content: flex-start;
-        margin-bottom: 2rem;
-    }
+    # Download PDF
+    st.download_button(
+        label="📄 Download Insights PDF",
+        data=pdf_buf,
+        file_name=f"{company_name}_Insights.pdf",
+        mime="application/pdf"
+    )
 
-    /* KPI card */
-    .kpi-card {
-        background: #2b2b3c;
-        border-radius: 25px 25px 8px 8px;
-        padding: 1.5rem 2rem;
-        box-shadow:
-            6px 6px 16px #14141e,
-            -6px -6px 16px #38384a;
-        min-width: 250px;
-        color: #e0e0e0;
-        cursor: default;
-        display: flex;
-        flex-direction: column;
-        user-select: none;
-        transition: box-shadow 0.3s ease, background-color 0.3s ease;
-    }
+    # Download Excel
+    excel_buf = to_excel(df)
+    st.download_button(
+        label="📊 Download Output Excel",
+        data=excel_buf,
+        file_name=f"{company_name}_Output.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
-    /* Unique hover colors */
-    .kpi-card:nth-child(1):hover { background-color: #1a472a; box-shadow: 0 0 20px #00ff9f; }
-    .kpi-card:nth-child(2):hover { background-color: #472a2a; box-shadow: 0 0 20px #ff6666; }
-    .kpi-card:nth-child(3):hover { background-color: #2a3947; box-shadow: 0 0 20px #66ccff; }
-    .kpi-card:nth-child(4):hover { background-color: #473f2a; box-shadow: 0 0 20px #ffd966; }
-
-    /* KPI title */
-    .kpi-card .title {
-        font-weight: 600;
-        font-size: 1rem;
-        margin-bottom: 0.3rem;
-        color: #a0a0a0;
-    }
-
-    /* KPI value */
-    .kpi-card .value {
-        font-size: 2.2rem;
-        font-weight: 700;
-        margin-bottom: 0.5rem;
-        line-height: 1.1;
-    }
-
-    /* Delta styles */
-    .kpi-card .delta {
-        display: inline-flex;
-        align-items: center;
-        font-weight: 600;
-        font-size: 0.9rem;
-        border-radius: 20px;
-        padding: 0.25rem 0.8rem;
-        width: fit-content;
-        user-select: none;
-    }
-    .kpi-card .delta.up {
-        background-color: #00cc7a;
-        color: #0f2f1f;
-    }
-    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
-    .kpi-card .delta.down {
-        background-color: #ff4c4c;
-        color: #3a0000;
-    }
-    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
-</style>
-""", unsafe_allow_html=True)
-
-# ---------------- Title & sidebar upload ----------------
-st.markdown("<div class='main-title'><h1>Financial Dashboard</h1><p>AI-generated analysis from extracted Excel/CSV data</p></div>", unsafe_allow_html=True)
-
-with st.sidebar:
-    st.header("Upload & Process")
-    uploaded_file = st.file_uploader("Upload Financial Data (CSV, XLSX)", type=["csv", "xlsx", "xls"])
-    company_name = st.text_input("Enter Company Name", "My Company Inc.")
-    generate_btn = st.button("Generate Dashboard")
-
-# ---------------- helper to find column by variants ----------------
-def find_col(df, options):
-    for opt in options:
-        for c in df.columns:
-            if c.strip().lower() == opt.lower():
-                return c
-    # try contains
-    for opt in options:
-        for c in df.columns:
-            if opt.lower() in c.strip().lower():
-                return c
-    return None
-
-# ---------------- defaults ----------------
-kpis = {
-    "Total Revenue": 0.0,
-    "Net Profit": 0.0,
-    "Total Assets": 0.0,
-    "Debt-to-Equity": 0.0
-}
-# ratio placeholders
-ratios = {
-    "Current Ratio": 0.0,
-    "Profit Margin": 0.0,
-    "ROA": 0.0,
-    "Debt-to-Equity": 0.0,
-    "Return on Equity": 0.0
-}
-# growth/ delta placeholders for delta pill (we show blank when zero)
-deltas = {
-    "Total Revenue": None,
-    "Net Profit": None,
-    "Total Assets": None,
-    "Debt-to-Equity": None
-}
-
-processed_df = None
-chart_path = None
-
-# ---------------- process when generate clicked ----------------
-if generate_btn and uploaded_file is not None:
-    try:
-        # read file
-        if uploaded_file.name.lower().endswith(".csv"):
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
-
-        processed_df = df.copy()
-
-        # find columns (common variants)
-        rev_col = find_col(df, ["revenue", "sales", "total revenue"])
-        profit_col = find_col(df, ["net profit", "profit", "netincome", "net_income"])
-        assets_col = find_col(df, ["total assets", "assets"])
-        debt_col = find_col(df, ["debt", "total debt", "borrowings"])
-        equity_col = find_col(df, ["equity", "shareholders' funds", "shareholders funds"])
-        curr_assets_col = find_col(df, ["current assets"])
-        curr_liab_col = find_col(df, ["current liabilities", "current liab", "current_liabilities"])
-        investments_col = find_col(df, ["investment", "investments"])
-        fixed_assets_col = find_col(df, ["fixed assets", "fixed_asset"])
-
-        # safe sums
-        def sum_col(col):
-            if col and col in df.columns:
-                return pd.to_numeric(df[col], errors='coerce').sum(skipna=True)
-            return 0.0
-
-        total_revenue = sum_col(rev_col)
-        net_profit = sum_col(profit_col)
-        total_assets = sum_col(assets_col)
-        total_debt = sum_col(debt_col)
-        total_equity = sum_col(equity_col)
-        current_assets = sum_col(curr_assets_col)
-        current_liabilities = sum_col(curr_liab_col)
-        investments = sum_col(investments_col)
-        fixed_assets = sum_col(fixed_assets_col)
-
-        # KPIs
-        kpis["Total Revenue"] = float(total_revenue)
-        kpis["Net Profit"] = float(net_profit)
-        kpis["Total Assets"] = float(total_assets)
-        kpis["Debt-to-Equity"] = float(total_debt / total_equity) if total_equity else 0.0
-
-        # Ratios
-        ratios["Current Ratio"] = float(current_assets / current_liabilities) if current_liabilities else 0.0
-        ratios["Profit Margin"] = float((net_profit / total_revenue) * 100) if total_revenue else 0.0
-        ratios["ROA"] = float((net_profit / total_assets) * 100) if total_assets else 0.0
-        ratios["Debt-to-Equity"] = kpis["Debt-to-Equity"]
-        ratios["Return on Equity"] = float((net_profit / total_equity) * 100) if total_equity else 0.0
-
-        # Dummy deltas: if you have prior year columns, compute real deltas.
-        # For now we set None -> shows no delta; set value to show.
-        deltas = {k: None for k in deltas.keys()}
-
-        # create a revenue trend chart image if matplotlib available
-        if HAS_MPL and rev_col and "Month" in df.columns:
-            try:
-                fig, ax = plt.subplots(figsize=(8,3))
-                # aggregate by Month (if Month strings)
-                try:
-                    order = df["Month"].astype(str)
-                    agg = df.groupby("Month")[rev_col].sum().reindex(order.unique())
-                    agg.plot(kind="area", ax=ax, alpha=0.6)
-                except Exception:
-                    df.groupby("Month")[rev_col].sum().plot(kind="area", ax=ax, alpha=0.6)
-                ax.set_title("Revenue Trend (Monthly)")
-                ax.set_xlabel("Month")
-                ax.set_ylabel("Revenue")
-                plt.tight_layout()
-                tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                fig.savefig(tmp.name, dpi=150, bbox_inches="tight")
-                chart_path = tmp.name
-                plt.close(fig)
-            except Exception:
-                chart_path = None
-
-    except Exception as e:
-        st.error("Failed to parse uploaded file. Please check file format and column names.")
-        st.exception(e)
-
-# ---------------- KPI Cards (top) ----------------
-# show either zeros (default) or calculated kpis
-st.markdown("<div class='kpi-container'>", unsafe_allow_html=True)
-
-# card 1
-tr = kpis["Total Revenue"]
-tr_delta = deltas["Total Revenue"]
-st.markdown(f"""
-    <div class="kpi-card">
-        <div class="title">Total Revenue</div>
-        <div class="value">₹{tr:,.0f}</div>
-        <div class="delta {'up' if (tr_delta is not None and tr_delta>=0) else 'down' if tr_delta is not None else ''}">{'' if tr_delta is None else f'{tr_delta:+.1f}%'} </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# card 2
-npv = kpis["Net Profit"]
-np_delta = deltas["Net Profit"]
-st.markdown(f"""
-    <div class="kpi-card">
-        <div class="title">Net Profit</div>
-        <div class="value">₹{npv:,.0f}</div>
-        <div class="delta {'up' if (np_delta is not None and np_delta>=0) else 'down' if np_delta is not None else ''}">{'' if np_delta is None else f'{np_delta:+.1f}%'} </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# card 3
-ta = kpis["Total Assets"]
-ta_delta = deltas["Total Assets"]
-st.markdown(f"""
-    <div class="kpi-card">
-        <div class="title">Total Assets</div>
-        <div class="value">₹{ta:,.2f}</div>
-        <div class="delta {'up' if (ta_delta is not None and ta_delta>=0) else 'down' if ta_delta is not None else ''}">{'' if ta_delta is None else f'{ta_delta:+.1f}%'} </div>
-    </div>
-""", unsafe_allow_html=True)
-
-# card 4
-dte_val = kpis["Debt-to-Equity"]
-dte_delta = deltas["Debt-to-Equity"]
-st.markdown(f"""
-    <div class="kpi-card">
-        <div class="title">Debt-to-Equity</div>
-        <div class="value">{dte_val:.2f}</div>
-        <div class="delta {'up' if (dte_delta is not None and dte_delta>=0) else 'down' if dte_delta is not None else ''}">{'' if dte_delta is None else f'{dte_delta:+.1f}%'} </div>
-    </div>
-""", unsafe_allow_html=True)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-# ---------------- Main content: charts, interpretation, downloads ----------------
-if processed_df is None:
-    st.info("Upload a CSV/XLSX file using the sidebar and click 'Generate Dashboard' to process the data.")
 else:
-    st.subheader("Sample Visuals using charts and Ratios")
-    # show revenue trend if available
-    if chart_path:
-        st.image(chart_path, use_column_width=True)
-    else:
-        # fallback chart - small table or simple plot if plotting not available
-        try:
-            if HAS_MPL and rev_col:
-                fig, ax = plt.subplots(figsize=(8,3))
-                processed_df.groupby("Month")[rev_col].sum().plot(kind="line", ax=ax, marker='o')
-                ax.set_title("Revenue Trend")
-                ax.set_ylabel("Revenue")
-                ax.set_xlabel("Month")
-                st.pyplot(fig)
-            else:
-                st.write("Revenue trend chart not available (missing matplotlib or 'Month' column).")
-        except Exception:
-            st.write("Revenue trend chart not available.")
-
-    # Asset distribution pie if possible
-    st.subheader("Asset Distribution (From Extracted Data)")
-    parts = {}
-    if fixed_assets_col:
-        parts["Fixed Assets"] = sum_col(fixed_assets_col)
-    if investments_col:
-        parts["Investments"] = sum_col(investments_col)
-    parts["Current Assets"] = current_assets
-    other = total_assets - (parts.get("Fixed Assets", 0) + parts.get("Investments", 0) + parts.get("Current Assets", 0))
-    if other > 0:
-        parts["Other Assets"] = other
-
-    if parts:
-        # simple textual percentages
-        total_parts = sum(parts.values()) or 1
-        for k, v in parts.items():
-            pct = v / total_parts * 100
-            st.write(f"- **{k}**: {pct:.1f}%")
-    else:
-        st.write("No asset breakdown columns found to show distribution.")
-
-    # Ratios & interpretation
-    st.subheader("Key Financial Ratios (Calculated from Data)")
-    st.write(pd.DataFrame(list(ratios.items()), columns=["Ratio", "Value"]))
-
-    st.subheader("Interpretation of Visuals")
-    # Top KPI Summary (as requested)
-    st.markdown(f"""
-    | Metric | Value | Interpretation |
-    | :--- | :--- | :--- |
-    | **Total Revenue** | ₹{kpis['Total Revenue']:,.0f} | Indicates revenue performance. |
-    | **Net Profit** | ₹{kpis['Net Profit']:,.0f} | Profitability — check margins. |
-    | **Total Assets** | ₹{kpis['Total Assets']:,.0f} | Asset base overview. |
-    | **Debt-to-Equity** | {kpis['Debt-to-Equity']:.2f} | Capital structure and leverage. |
-    """)
-
-    # More detailed explanation & SWOT
-    st.markdown("**Company benefits from ratios (short):**")
-    st.markdown(f"- Strong liquidity: Current Ratio = {ratios['Current Ratio']:.2f} (if >1.5 generally good).")
-    st.markdown(f"- Profitability: Profit Margin = {ratios['Profit Margin']:.2f}% indicates how much profit generated per ₹100 revenue.")
-    st.markdown(f"- ROA = {ratios['ROA']:.2f}% shows effectiveness of asset utilization.")
-    st.markdown("**SWOT (auto-generated)**")
-    st.markdown(f"**Strengths:** Solid liquidity & profitability relative to assets.\n\n**Weaknesses:** Review asset utilization if ROA low.\n\n**Opportunities:** Invest excess cash into high-return projects.\n\n**Threats:** Seasonal dips or rising borrowing costs.")
-
-    # ---------------- Downloads ----------------
-    st.markdown("---")
-    st.subheader("Downloads")
-
-    # Excel output (processed_df)
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-        processed_df.to_excel(writer, index=False, sheet_name="ProcessedData")
-        # also write KPIs and ratios as sheets
-        pd.DataFrame([kpis]).T.rename(columns={0:"Value"}).to_excel(writer, sheet_name="KPIs")
-        pd.DataFrame(list(ratios.items()), columns=["Ratio","Value"]).to_excel(writer, sheet_name="Ratios")
-    excel_buffer.seek(0)
-    st.download_button("📊 Download Detailed Report (Excel)", excel_buffer, file_name=f"{company_name}_Detailed_Report.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-
-    # PDF generation (FPDF) - if fpdf missing, fallback to text-box + let user print
-    if HAS_FPDF:
-        pdf_buffer = io.BytesIO()
-        pdf = FPDF()
-        pdf.set_auto_page_break(auto=True, margin=15)
-        pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, "Financial Insights Report", ln=1, align="C")
-        pdf.ln(4)
-        pdf.set_font("Arial", "", 12)
-        pdf.cell(0, 8, f"Company: {company_name}", ln=1)
-        pdf.cell(0, 8, f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=1)
-        pdf.ln(6)
-
-        # KPIs block
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Top KPIs", ln=1)
-        pdf.set_font("Arial", "", 11)
-        for k, v in kpis.items():
-            pdf.cell(0, 7, f"- {k}: {('₹{:,.2f}'.format(v) if '₹' not in str(v) else v)}", ln=1)
-
-        pdf.ln(4)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, "Key Financial Ratios", ln=1)
-        pdf.set_font("Arial", "", 11)
-        for r, val in ratios.items():
+    st.info("Please upload an Excel or CSV file to see the dashboard.")
