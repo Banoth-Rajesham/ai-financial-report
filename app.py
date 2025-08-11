@@ -2,7 +2,8 @@
 # FINAL, COMPLETE, AND CORRECTED app.py
 # This version includes the new beautiful 3D/Neumorphic UI, all previous
 # functionality, the interpretation text, and is guaranteed not to crash.
-# Correction: Fixed StreamlitAPIException by converting PDF output to bytes().
+# Correction: Updated report_finalizer_agent to create a multi-sheet Excel report
+# with Balance Sheet, P&L, and Notes 1-26.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -35,11 +36,9 @@ import io
 # In a real implementation, you would remove these and use your actual agent imports.
 def intelligent_data_intake_agent(uploaded_file):
     try:
-        # The 'Particulars' column is needed by the original script's logic.
         df = pd.read_excel(uploaded_file, engine='openpyxl')
         if 'Particulars' not in df.columns:
-            st.warning("Input file is missing a 'Particulars' column. Using mock data.")
-            # Return a dummy DataFrame that matches the expected structure.
+            st.warning("Input file is missing a 'Particulars' column. Using mock data for demonstration.")
             return pd.DataFrame({'Particulars': ['Revenue', 'Net Profit']})
         return df
     except Exception:
@@ -47,45 +46,133 @@ def intelligent_data_intake_agent(uploaded_file):
 
 def ai_mapping_agent(particulars_list, notes_structure):
     # Mock: In a real agent, this would use AI to map financial terms.
-    return notes_structure # Returns the predefined structure.
+    return notes_structure
 
 def hierarchical_aggregator_agent(source_df, refined_mapping):
-    # Mock: This simulates the data aggregation process and creates dummy data
-    # that is structured correctly for the KPI calculation and dashboard display.
+    # Mock: Simulates data aggregation. This structure is key for the reports.
     return {
         '21': {'total': {'CY': 5500000, 'PY': 5200000}}, '22': {'total': {'CY': 150000, 'PY': 120000}},
         '23': {'total': {'CY': 2100000, 'PY': 2000000}}, '24': {'total': {'CY': 850000, 'PY': 800000}},
         '25': {'total': {'CY': 350000, 'PY': 320000}}, '26': {'total': {'CY': 700000, 'PY': 650000}},
         '11': {
-            'total': {'CY': 7500000, 'PY': 7200000},
-            'sub_items': {'Depreciation for the year': {'CY': 450000, 'PY': 400000}}
+            'total': {'CY': 7500000, 'PY': 7200000}, 'sub_items': {'Depreciation for the year': {'CY': 450000, 'PY': 400000}}
         },
-        '12': {'total': {'CY': 1200000, 'PY': 1100000}}, '13': {'total': {'CY': 0, 'PY': 0}},
-        '14': {'total': {'CY': 0, 'PY': 0}}, '15': {'total': {'CY': 2500000, 'PY': 2300000}},
-        '16': {'total': {'CY': 1800000, 'PY': 1750000}}, '17': {'total': {'CY': 3000000, 'PY': 2800000}},
-        '18': {'total': {'CY': 200000, 'PY': 180000}}, '19': {'total': {'CY': 150000, 'PY': 120000}},
-        '20': {'total': {'CY': 100000, 'PY': 90000}},
+        '12': {'total': {'CY': 1200000, 'PY': 1100000}}, '13': {'total': {'CY': 0, 'PY': 0}}, '14': {'total': {'CY': 0, 'PY': 0}},
+        '15': {'total': {'CY': 2500000, 'PY': 2300000}}, '16': {'total': {'CY': 1800000, 'PY': 1750000}},
+        '17': {'total': {'CY': 3000000, 'PY': 2800000}}, '18': {'total': {'CY': 200000, 'PY': 180000}},
+        '19': {'total': {'CY': 150000, 'PY': 120000}}, '20': {'total': {'CY': 100000, 'PY': 90000}},
         '1': {'total': {'CY': 6000000, 'PY': 5800000}}, '2': {'total': {'CY': 4500000, 'PY': 4200000}},
-        '3': {'total': {'CY': 2500000, 'PY': 2600000}}, '4': {'total': {'CY': 0, 'PY': 0}},
-        '7': {'total': {'CY': 1500000, 'PY': 1400000}}, '8': {'total': {'CY': 2200000, 'PY': 2100000}},
-        '9': {'total': {'CY': 800000, 'PY': 750000}}, '10': {'total': {'CY': 500000, 'PY': 450000}},
+        '3': {'total': {'CY': 2500000, 'PY': 2600000}}, '4': {'total': {'CY': 0, 'PY': 0}}, '5': {'total': {'CY': 0, 'PY': 0}},
+        '6': {'total': {'CY': 0, 'PY': 0}}, '7': {'total': {'CY': 1500000, 'PY': 1400000}},
+        '8': {'total': {'CY': 2200000, 'PY': 2100000}}, '9': {'total': {'CY': 800000, 'PY': 750000}},
+        '10': {'total': {'CY': 500000, 'PY': 450000}}
     }
 
 def data_validation_agent(aggregated_data):
-    # Mock: A real agent would perform balance sheet and other financial checks.
+    # Mock: A real agent would perform financial validation checks.
     return ["Note: This dashboard is running on mock demonstration data."]
 
 def report_finalizer_agent(aggregated_data, company_name):
-    # Mock: Creates a sample processed Excel file in memory.
+    """
+    Creates a comprehensive, multi-sheet Excel report with Balance Sheet,
+    Profit & Loss, and individual notes from 1 to 26.
+    """
     output = io.BytesIO()
-    # Using 'openpyxl' engine as it is more standard and robust.
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df_list = []
-        for note, data in aggregated_data.items():
-            cy = data.get('total', {}).get('CY', 0)
-            py = data.get('total', {}).get('PY', 0)
-            df_list.append({'Note': note, 'Description': f'Note {note} Data', 'Current Year': cy, 'Previous Year': py})
-        pd.DataFrame(df_list).to_excel(writer, sheet_name='Processed_Data', index=False)
+        # --- Define Structure and Mappings ---
+        note_descriptions = {
+            '1': 'Share Capital', '2': 'Reserves and Surplus', '3': 'Long-term borrowings',
+            '4': 'Deferred tax liabilities (Net)', '5': 'Other Long-term liabilities', '6': 'Long-term provisions',
+            '7': 'Short-term borrowings', '8': 'Trade payables', '9': 'Other current liabilities',
+            '10': 'Short-term provisions', '11': 'Fixed assets (Tangible & Intangible)', '12': 'Non-current investments',
+            '13': 'Deferred tax assets (Net)', '14': 'Long-term loans and advances', '15': 'Other non-current assets',
+            '16': 'Current investments', '17': 'Inventories', '18': 'Trade receivables',
+            '19': 'Cash and cash equivalents', '20': 'Short-term loans and advances',
+            '21': 'Revenue from operations', '22': 'Other Income', '23': 'Cost of materials consumed',
+            '24': 'Employee benefits expense', '25': 'Finance costs', '26': 'Other expenses'
+        }
+        
+        # Define which notes go into which statement
+        bs_equity_liabilities_notes = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10']
+        bs_assets_notes = ['11', '12', '13', '14', '15', '16', '17', '18', '19', '20']
+        pl_revenue_notes = ['21', '22']
+        pl_expense_notes = ['23', '24', '25', '26']
+
+        get_val = lambda note, year: aggregated_data.get(note, {}).get('total', {}).get(year, 0)
+
+        # --- 1. Create Balance Sheet ---
+        bs_rows = []
+        # Equity and Liabilities
+        bs_rows.append({'Particulars': 'EQUITY AND LIABILITIES', 'Note': '', 'Current Year': '', 'Previous Year': ''})
+        total_eq_liab_cy, total_eq_liab_py = 0, 0
+        for note in bs_equity_liabilities_notes:
+            cy_val, py_val = get_val(note, 'CY'), get_val(note, 'PY')
+            if cy_val != 0 or py_val != 0:
+                bs_rows.append({'Particulars': note_descriptions.get(note, ''), 'Note': note, 'Current Year': cy_val, 'Previous Year': py_val})
+                total_eq_liab_cy += cy_val
+                total_eq_liab_py += py_val
+        bs_rows.append({'Particulars': 'TOTAL EQUITY AND LIABILITIES', 'Note': '', 'Current Year': total_eq_liab_cy, 'Previous Year': total_eq_liab_py})
+        bs_rows.append({}) # Blank row for spacing
+        # Assets
+        bs_rows.append({'Particulars': 'ASSETS', 'Note': '', 'Current Year': '', 'Previous Year': ''})
+        total_assets_cy, total_assets_py = 0, 0
+        for note in bs_assets_notes:
+            cy_val, py_val = get_val(note, 'CY'), get_val(note, 'PY')
+            if cy_val != 0 or py_val != 0:
+                bs_rows.append({'Particulars': note_descriptions.get(note, ''), 'Note': note, 'Current Year': cy_val, 'Previous Year': py_val})
+                total_assets_cy += cy_val
+                total_assets_py += py_val
+        bs_rows.append({'Particulars': 'TOTAL ASSETS', 'Note': '', 'Current Year': total_assets_cy, 'Previous Year': total_assets_py})
+        
+        df_bs = pd.DataFrame(bs_rows)
+        df_bs.to_excel(writer, sheet_name='Balance Sheet', index=False)
+
+        # --- 2. Create Profit and Loss Sheet ---
+        pl_rows = []
+        # Revenue
+        total_rev_cy, total_rev_py = 0, 0
+        for note in pl_revenue_notes:
+            cy_val, py_val = get_val(note, 'CY'), get_val(note, 'PY')
+            pl_rows.append({'Particulars': note_descriptions.get(note, ''), 'Note': note, 'Current Year': cy_val, 'Previous Year': py_val})
+            total_rev_cy += cy_val
+            total_rev_py += py_val
+        pl_rows.append({'Particulars': 'Total Revenue', 'Note': '', 'Current Year': total_rev_cy, 'Previous Year': total_rev_py})
+        pl_rows.append({}) # Blank row
+        # Expenses
+        total_exp_cy, total_exp_py = 0, 0
+        for note in pl_expense_notes:
+            cy_val, py_val = get_val(note, 'CY'), get_val(note, 'PY')
+            pl_rows.append({'Particulars': note_descriptions.get(note, ''), 'Note': note, 'Current Year': cy_val, 'Previous Year': py_val})
+            total_exp_cy += cy_val
+            total_exp_py += py_val
+        pl_rows.append({'Particulars': 'Total Expenses', 'Note': '', 'Current Year': total_exp_cy, 'Previous Year': total_exp_py})
+        pl_rows.append({}) # Blank row
+        # Profit
+        pl_rows.append({'Particulars': 'Profit for the year', 'Note': '', 'Current Year': total_rev_cy - total_exp_cy, 'Previous Year': total_rev_py - total_exp_py})
+
+        df_pl = pd.DataFrame(pl_rows)
+        df_pl.to_excel(writer, sheet_name='Profit and Loss', index=False)
+
+        # --- 3. Create Individual Note Sheets (1 to 26) ---
+        for i in range(1, 27):
+            note_key = str(i)
+            note_rows = []
+            if note_key in aggregated_data:
+                note_info = aggregated_data[note_key]
+                # Add sub-items if they exist
+                if 'sub_items' in note_info and note_info['sub_items']:
+                    for sub_item, values in note_info['sub_items'].items():
+                        note_rows.append({'Particulars': sub_item, 'Current Year': values.get('CY', 0), 'Previous Year': values.get('PY', 0)})
+                # Add the total row for the note
+                total_values = note_info.get('total', {})
+                note_rows.append({'Particulars': 'TOTAL', 'Current Year': total_values.get('CY', 0), 'Previous Year': total_values.get('PY', 0)})
+            else:
+                # Create a placeholder for notes without data
+                note_rows.append({'Particulars': 'No data available for this note.', 'Current Year': '', 'Previous Year': ''})
+
+            df_note = pd.DataFrame(note_rows)
+            df_note.to_excel(writer, sheet_name=f'Note {i}', index=False)
+
     return output.getvalue()
 
 # --- HELPER FUNCTIONS ---
@@ -164,8 +251,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
-    # The multi_cell function handles word wrapping for the analysis text.
-    pdf.multi_cell(0, 6, ai_analysis.replace('**', '')) # Remove markdown for PDF
+    pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
     pdf.ln(10)
 
     # Charts Section
@@ -177,19 +263,16 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
         for title, chart_bytes in charts.items():
             pdf.set_font('Arial', 'B', 14)
             pdf.cell(0, 10, title, 0, 1, 'C')
-            # The chart is embedded as an image from the bytes buffer.
             pdf.image(chart_bytes, x=15, w=180, type='PNG')
             pdf.ln(5)
             
-    # UPDATED LINE: Explicitly convert the output to `bytes` to ensure
-    # compatibility with st.download_button.
     return bytes(pdf.output())
 
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
-# Initialize session state variables to manage app state
+# Initialize session state variables
 if 'report_generated' not in st.session_state:
     st.session_state.report_generated = False
 if 'excel_report_bytes' not in st.session_state:
@@ -240,7 +323,7 @@ with st.sidebar:
                     st.stop()
 
                 st.info("Step 2/5: Mapping financial terms...")
-                refined_mapping = ai_mapping_agent(source_df.columns.tolist(), {}) # NOTES_STRUCTURE would go here
+                refined_mapping = ai_mapping_agent(source_df.columns.tolist(), {})
                 
                 st.info("Step 3/5: Aggregating and propagating values...")
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
@@ -261,7 +344,6 @@ with st.sidebar:
             for w in warnings:
                 st.warning(w)
                 
-            # Store results in session state to persist them across reruns
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
@@ -276,15 +358,13 @@ if not st.session_state.report_generated:
     st.markdown("<div class='main-title'><h1>Financial Analysis Dashboard</h1></div>", unsafe_allow_html=True)
     st.markdown("<div class='main-title'><p>Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.</p></div>", unsafe_allow_html=True)
 else:
-    # --- Show KPI Cards at the Top ---
     kpis = st.session_state.kpis
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
 
-    # Calculate year-over-year percentage changes for deltas
     rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py['Total Revenue'] else 0
     profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py['Net Profit'] and kpi_py['Net Profit'] > 0 else 0
     assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py['Total Assets'] else 0
-    dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity'] # Show absolute change for ratios
+    dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
 
     st.markdown(f"""
     <div class="kpi-container">
@@ -311,10 +391,8 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    # --- AI Analysis and Charts ---
     ai_analysis = generate_ai_analysis(kpis)
     
-    # Prepare data and chart for visualization
     chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'})
     chart_data = chart_data.melt(id_vars='Metric', var_name='Year', value_name='Amount')
     fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], 
@@ -330,15 +408,12 @@ else:
         st.subheader("🤖 AI-Generated Insights")
         st.markdown(ai_analysis)
 
-    # --- Download Buttons ---
     st.subheader("⬇️ Download Center")
     
-    # Generate chart bytes in memory for embedding in the PDF
     chart_bytes = io.BytesIO()
     fig.write_image(chart_bytes, format="png", scale=2, engine="kaleido")
     charts_for_pdf = {"Performance Overview": chart_bytes}
 
-    # Generate the full PDF report in memory
     pdf_bytes = create_professional_pdf(
         kpis=st.session_state.kpis,
         ai_analysis=ai_analysis,
