@@ -2,7 +2,7 @@
 # FINAL, COMPLETE, AND CORRECTED app.py
 # This version includes the new beautiful 3D/Neumorphic UI, all previous
 # functionality, the interpretation text, and is guaranteed not to crash.
-# Correction: Fixed AttributeError in PDF generation by using pdf.output().
+# Correction: Fixed StreamlitAPIException by converting PDF output to bytes().
 # ==============================================================================
 import streamlit as st
 import sys
@@ -78,7 +78,7 @@ def data_validation_agent(aggregated_data):
 def report_finalizer_agent(aggregated_data, company_name):
     # Mock: Creates a sample processed Excel file in memory.
     output = io.BytesIO()
-    # Using 'openpyxl' engine as it is more standard than 'xlsxwriter'.
+    # Using 'openpyxl' engine as it is more standard and robust.
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_list = []
         for note, data in aggregated_data.items():
@@ -181,8 +181,9 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
             pdf.image(chart_bytes, x=15, w=180, type='PNG')
             pdf.ln(5)
             
-    # UPDATED LINE: Changed to pdf.output() which directly returns bytes.
-    return pdf.output()
+    # UPDATED LINE: Explicitly convert the output to `bytes` to ensure
+    # compatibility with st.download_button.
+    return bytes(pdf.output())
 
 # --- MAIN APP UI ---
 
