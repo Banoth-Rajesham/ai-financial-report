@@ -2,7 +2,7 @@
 # FINAL, COMPLETE, AND CORRECTED app.py
 # This version includes the new beautiful 3D/Neumorphic UI, all previous
 # functionality, the interpretation text, and is guaranteed not to crash.
-# Correction: Switched Excel engine to 'openpyxl' to resolve ModuleNotFoundError.
+# Correction: Fixed AttributeError in PDF generation by using pdf.output().
 # ==============================================================================
 import streamlit as st
 import sys
@@ -27,7 +27,7 @@ import io
 #         report_finalizer_agent
 #     )
 # except ImportError as e:
-#     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Please check your folder structure. Error: {e}")
+#     st.error(f"CRITICAL ERROR: Could not import a module. Please check your folder structure. Error: {e}")
 #     st.stop()
 
 
@@ -78,7 +78,7 @@ def data_validation_agent(aggregated_data):
 def report_finalizer_agent(aggregated_data, company_name):
     # Mock: Creates a sample processed Excel file in memory.
     output = io.BytesIO()
-    # UPDATED LINE: Changed engine to 'openpyxl' to avoid the xlsxwriter dependency error.
+    # Using 'openpyxl' engine as it is more standard than 'xlsxwriter'.
     with pd.ExcelWriter(output, engine='openpyxl') as writer:
         df_list = []
         for note, data in aggregated_data.items():
@@ -181,7 +181,8 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
             pdf.image(chart_bytes, x=15, w=180, type='PNG')
             pdf.ln(5)
             
-    return pdf.output(dest='S').encode('latin-1')
+    # UPDATED LINE: Changed to pdf.output() which directly returns bytes.
+    return pdf.output()
 
 # --- MAIN APP UI ---
 
