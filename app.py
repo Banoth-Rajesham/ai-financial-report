@@ -159,119 +159,128 @@ with st.sidebar:
         else:
             st.warning("Please upload a file and enter a company name.")
 
-import streamlit as st
-import pandas as pd
-import io
-import base64
-from datetime import datetime
-import plotly.express as px
-import plotly.graph_objects as go
-
-# Optional PDF reading
-try:
-    import tabula
-except ImportError:
-    tabula = None
-
-# ====== PAGE CONFIG ======
-st.set_page_config(page_title="Financial Dashboard", layout="wide")
-
-# ====== CUSTOM KPI CSS ======
+# --- Styles ---
 st.markdown("""
 <style>
-.kpi-card {
-    border-radius: 15px;
-    padding: 20px;
-    text-align: center;
-    color: white;
-    font-weight: bold;
-    transition: 0.3s;
-}
-.kpi-card:hover { transform: scale(1.05); }
-.kpi-green { background-color: #2ecc71; }
-.kpi-blue { background-color: #3498db; }
-.kpi-orange { background-color: #e67e22; }
-.kpi-red { background-color: #e74c3c; }
+    /* Page base */
+    .stApp {
+        background-color: #1e1e2f;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .block-container {
+        padding: 2rem 3rem;
+    }
+
+    /* Header */
+    .main-title h1 {
+        font-weight: 700;
+        margin-bottom: 0.1rem;
+        color: #e0e0e0;
+        font-size: 2.2rem;
+    }
+    .main-title p {
+        margin-top: 0;
+        color: #b0b0b0;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
+
+    /* KPI container */
+    .kpi-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        justify-content: flex-start;
+        margin-bottom: 2rem;
+    }
+
+    /* KPI card */
+    .kpi-card {
+        background: #2b2b3c;
+        border-radius: 25px 25px 8px 8px;
+        padding: 1.5rem 2rem;
+        box-shadow: 
+            6px 6px 16px #14141e,
+            -6px -6px 16px #38384a;
+        min-width: 250px;
+        color: #e0e0e0;
+        cursor: default;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+        transition: box-shadow 0.3s ease, background-color 0.3s ease;
+    }
+
+    /* Unique hover colors */
+    .kpi-card:nth-child(1):hover { background-color: #1a472a; box-shadow: 0 0 20px #00ff9f; }
+    .kpi-card:nth-child(2):hover { background-color: #472a2a; box-shadow: 0 0 20px #ff6666; }
+    .kpi-card:nth-child(3):hover { background-color: #2a3947; box-shadow: 0 0 20px #66ccff; }
+    .kpi-card:nth-child(4):hover { background-color: #473f2a; box-shadow: 0 0 20px #ffd966; }
+
+    /* KPI title */
+    .kpi-card .title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+        color: #a0a0a0;
+    }
+
+    /* KPI value */
+    .kpi-card .value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        line-height: 1.1;
+    }
+
+    /* Delta styles */
+    .kpi-card .delta {
+        display: inline-flex;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 20px;
+        padding: 0.25rem 0.8rem;
+        width: fit-content;
+        user-select: none;
+    }
+    .kpi-card .delta.up {
+        background-color: #00cc7a;
+        color: #0f2f1f;
+    }
+    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
+    .kpi-card .delta.down {
+        background-color: #ff4c4c;
+        color: #3a0000;
+    }
+    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
 </style>
 """, unsafe_allow_html=True)
 
-# ====== KPI FUNCTION ======
-def kpi_card(label, value, css_class):
-    st.markdown(f"""
-    <div class="kpi-card {css_class}">
-        <h3>{label}</h3>
-        <h2>{value}</h2>
+
+# --- KPI Cards at Top (Defaults to Zero Before Upload) ---
+st.markdown("""
+<div class="kpi-container">
+    <div class="kpi-card">
+        <div class="title">Total Revenue</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
     </div>
-    """, unsafe_allow_html=True)
-
-# ====== KPI TOP ======
-col1, col2, col3, col4 = st.columns(4)
-with col1: kpi_card("Total Revenue", "₹0", "kpi-green")
-with col2: kpi_card("Net Profit", "₹0", "kpi-blue")
-with col3: kpi_card("Total Assets", "₹0", "kpi-orange")
-with col4: kpi_card("Debt to Equity", "0", "kpi-red")
-
-st.markdown("---")
-
-# ====== FILE UPLOAD ======
-uploaded_file = st.file_uploader("Upload Financial Data (CSV, Excel, PDF)", type=["csv", "xlsx", "xls", "pdf"])
-
-if uploaded_file is not None:
-    file_ext = uploaded_file.name.split(".")[-1].lower()
-
-    if file_ext in ["csv", "xlsx", "xls"]:
-        if file_ext == "csv":
-            df = pd.read_csv(uploaded_file)
-        else:
-            df = pd.read_excel(uploaded_file)
-
-    elif file_ext == "pdf" and tabula:
-        dfs = tabula.read_pdf(uploaded_file, pages='all', multiple_tables=True)
-        df = pd.concat(dfs, ignore_index=True)
-    else:
-        st.error("PDF reading not supported without tabula-py installed.")
-        st.stop()
-
-    # ====== BASIC KPI CALCULATIONS ======
-    try:
-        total_revenue = df["Revenue"].sum()
-        net_profit = df["Net Profit"].sum()
-        total_assets = df["Assets"].sum()
-        debt_to_equity = (df["Debt"].sum() / df["Equity"].sum()) if df["Equity"].sum() != 0 else 0
-    except KeyError:
-        st.error("Uploaded file must have columns: Revenue, Net Profit, Assets, Debt, Equity")
-        st.stop()
-
-    # ====== UPDATE KPI CARDS ======
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: kpi_card("Total Revenue", f"₹{total_revenue:,.0f}", "kpi-green")
-    with col2: kpi_card("Net Profit", f"₹{net_profit:,.0f}", "kpi-blue")
-    with col3: kpi_card("Total Assets", f"₹{total_assets:,.0f}", "kpi-orange")
-    with col4: kpi_card("Debt to Equity", f"{debt_to_equity:.2f}", "kpi-red")
-
-    # ====== PLOTS ======
-    st.subheader("Revenue Trend")
-    if "Month" in df.columns:
-        fig = px.line(df, x="Month", y="Revenue", markers=True, title="Revenue Over Time")
-        st.plotly_chart(fig, use_container_width=True)
-
-    # ====== DOWNLOAD OPTIONS ======
-    st.markdown("### Download Reports")
-
-    # Excel Download
-    towrite = io.BytesIO()
-    df.to_excel(towrite, index=False, sheet_name="Financial Data")
-    towrite.seek(0)
-    b64_xlsx = base64.b64encode(towrite.read()).decode()
-    st.markdown(f'<a href="data:application/octet-stream;base64,{b64_xlsx}" download="financial_report.xlsx">📥 Download Excel</a>', unsafe_allow_html=True)
-
-    # PDF Download (just table as HTML converted)
-    try:
-        import pdfkit
-        html_table = df.to_html(index=False)
-        pdf_data = pdfkit.from_string(html_table, False)
-        b64_pdf = base64.b64encode(pdf_data).decode()
-        st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="financial_report.pdf">📥 Download PDF</a>', unsafe_allow_html=True)
-    except:
-        st.warning("PDF export requires pdfkit and wkhtmltopdf installed.")
-
+    <div class="kpi-card">
+        <div class="title">Net Profit</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="title">Total Assets</div>
+        <div class="value">₹0</div>
+        <div class="delta up">0%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="title">Debt-to-Equity</div>
+        <div class="value">0</div>
+        <div class="delta down">0%</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
