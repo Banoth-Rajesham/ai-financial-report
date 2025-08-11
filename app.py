@@ -281,62 +281,52 @@ else:
 
 import streamlit as st
 import pandas as pd
-import io
-import base64
-from datetime import datetime
-import plotly.express as px
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import inch
+import tempfile
+import os
 
-# Optional PDF reading
-try:
-    import tabula
-except ImportError:
-    tabula = None
+st.set_page_config(layout="wide", page_title="Financial Insights Dashboard")
 
-# ====== PAGE CONFIG ======
-st.set_page_config(page_title="Financial Dashboard", layout="wide")
-
-# ====== CUSTOM KPI CSS ======
+# ---- KPI Card CSS ----
 st.markdown("""
-<style>
-.kpi-card {
-    border-radius: 15px;
-    padding: 20px;
-    text-align: center;
-    color: white;
-    font-weight: bold;
-    transition: 0.3s;
-}
-.kpi-card:hover { transform: scale(1.05); }
-.kpi-green { background-color: #2ecc71; }
-.kpi-blue { background-color: #3498db; }
-.kpi-orange { background-color: #e67e22; }
-.kpi-red { background-color: #e74c3c; }
-</style>
+    <style>
+    .kpi-card {
+        border-radius: 12px;
+        padding: 20px;
+        color: white;
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
+    .kpi-green { background-color: #2e7d32; }
+    .kpi-green:hover { background-color: #388e3c; }
+    .kpi-blue { background-color: #1565c0; }
+    .kpi-blue:hover { background-color: #1976d2; }
+    .kpi-orange { background-color: #ef6c00; }
+    .kpi-orange:hover { background-color: #f57c00; }
+    .kpi-red { background-color: #b71c1c; }
+    .kpi-red:hover { background-color: #c62828; }
+    </style>
 """, unsafe_allow_html=True)
 
-# ====== KPI FUNCTION ======
-def kpi_card(label, value, css_class):
-    st.markdown(f"""
-    <div class="kpi-card {css_class}">
-        <h3>{label}</h3>
-        <h2>{value}</h2>
-    </div>
-    """, unsafe_allow_html=True)
+# ---- File Upload ----
+st.title("📊 Financial Insights Dashboard")
+uploaded_file = st.file_uploader("Upload your Financial Data (CSV, Excel, or PDF)", type=["csv", "xlsx", "xls", "pdf"])
 
-# ====== KPI TOP ======
-col1, col2, col3, col4 = st.columns(4)
-with col1: kpi_card("Total Revenue", "₹0", "kpi-green")
-with col2: kpi_card("Net Profit", "₹0", "kpi-blue")
-with col3: kpi_card("Total Assets", "₹0", "kpi-orange")
-with col4: kpi_card("Debt to Equity", "0", "kpi-red")
+# ---- Initialize KPIs ----
+total_revenue = 0
+net_profit = 0
+total_assets = 0
+de_ratio = 0
 
-st.markdown("---")
+df = None
 
-# ====== FILE UPLOAD ======
-uploaded_file = st.file_uploader("Upload Financial Data (CSV, Excel, PDF)", type=["csv", "xlsx", "xls", "pdf"])
-
-if uploaded_file is not None:
+if uploaded_file:
     file_ext = uploaded_file.name.split(".")[-1].lower()
 
     if file_ext in ["csv", "xlsx", "xls"]:
@@ -345,53 +335,89 @@ if uploaded_file is not None:
         else:
             df = pd.read_excel(uploaded_file)
 
-    elif file_ext == "pdf" and tabula:
-        dfs = tabula.read_pdf(uploaded_file, pages='all', multiple_tables=True)
-        df = pd.concat(dfs, ignore_index=True)
-    else:
-        st.error("PDF reading not supported without tabula-py installed.")
-        st.stop()
+        # Example KPI calculations (update as per your actual column names)
+        total_revenue = df["Revenue"].sum() if "Revenue" in df else 0
+        net_profit = df["Net Profit"].sum() if "Net Profit" in df else 0
+        total_assets = df["Assets"].sum() if "Assets" in df else 0
+        if "Debt" in df and "Equity" in df:
+            de_ratio = df["Debt"].sum() / df["Equity"].sum() if df["Equity"].sum() != 0 else 0
 
-    # ====== BASIC KPI CALCULATIONS ======
-    try:
-        total_revenue = df["Revenue"].sum()
-        net_profit = df["Net Profit"].sum()
-        total_assets = df["Assets"].sum()
-        debt_to_equity = (df["Debt"].sum() / df["Equity"].sum()) if df["Equity"].sum() != 0 else 0
-    except KeyError:
-        st.error("Uploaded file must have columns: Revenue, Net Profit, Assets, Debt, Equity")
-        st.stop()
+    elif file_ext == "pdf":
+        st.warning("📄 PDF parsing for insights is not yet implemented. Please upload CSV or Excel for full insights.")
 
-    # ====== UPDATE KPI CARDS ======
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: kpi_card("Total Revenue", f"₹{total_revenue:,.0f}", "kpi-green")
-    with col2: kpi_card("Net Profit", f"₹{net_profit:,.0f}", "kpi-blue")
-    with col3: kpi_card("Total Assets", f"₹{total_assets:,.0f}", "kpi-orange")
-    with col4: kpi_card("Debt to Equity", f"{debt_to_equity:.2f}", "kpi-red")
+# ---- KPI Cards at Top ----
+col1, col2, col3, col4 = st.columns(4)
+col1.markdown(f"<div class='kpi-card kpi-green'>Total Revenue<br>₹{total_revenue:,.0f}</div>", unsafe_allow_html=True)
+col2.markdown(f"<div class='kpi-card kpi-blue'>Net Profit<br>₹{net_profit:,.0f}</div>", unsafe_allow_html=True)
+col3.markdown(f"<div class='kpi-card kpi-orange'>Total Assets<br>₹{total_assets:,.0f}</div>", unsafe_allow_html=True)
+col4.markdown(f"<div class='kpi-card kpi-red'>Debt to Equity<br>{de_ratio:.2f}</div>", unsafe_allow_html=True)
 
-    # ====== PLOTS ======
-    st.subheader("Revenue Trend")
-    if "Month" in df.columns:
-        fig = px.line(df, x="Month", y="Revenue", markers=True, title="Revenue Over Time")
-        st.plotly_chart(fig, use_container_width=True)
+# ---- Show Charts & Insights ----
+if df is not None:
+    st.subheader("📈 Revenue Trend")
+    if "Month" in df and "Revenue" in df:
+        fig, ax = plt.subplots()
+        ax.plot(df["Month"], df["Revenue"], marker='o')
+        ax.set_title("Revenue Over Time")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Revenue")
+        st.pyplot(fig)
 
-    # ====== DOWNLOAD OPTIONS ======
-    st.markdown("### Download Reports")
+    # Display Data
+    st.subheader("📋 Uploaded Data")
+    st.dataframe(df)
 
-    # Excel Download
-    towrite = io.BytesIO()
-    df.to_excel(towrite, index=False, sheet_name="Financial Data")
-    towrite.seek(0)
-    b64_xlsx = base64.b64encode(towrite.read()).decode()
-    st.markdown(f'<a href="data:application/octet-stream;base64,{b64_xlsx}" download="financial_report.xlsx">📥 Download Excel</a>', unsafe_allow_html=True)
+    # ---- Download Excel ----
+    excel_buffer = BytesIO()
+    df.to_excel(excel_buffer, index=False)
+    excel_buffer.seek(0)
+    st.download_button("⬇️ Download Detailed Report (Excel)", excel_buffer, file_name="Detailed_Report.xlsx")
 
-    # PDF Download (just table as HTML converted)
-    try:
-        import pdfkit
-        html_table = df.to_html(index=False)
-        pdf_data = pdfkit.from_string(html_table, False)
-        b64_pdf = base64.b64encode(pdf_data).decode()
-        st.markdown(f'<a href="data:application/pdf;base64,{b64_pdf}" download="financial_report.pdf">📥 Download PDF</a>', unsafe_allow_html=True)
-    except:
-        st.warning("PDF export requires pdfkit and wkhtmltopdf installed.")
+    # ---- Generate PDF ----
+    def create_pdf(kpis, chart_path):
+        buffer = BytesIO()
+        c = canvas.Canvas(buffer, pagesize=A4)
+        width, height = A4
 
+        # Title
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(200, height - 50, "Financial Insights Report")
+
+        # KPIs
+        y_pos = height - 100
+        for label, value in kpis.items():
+            c.setFont("Helvetica", 12)
+            c.drawString(50, y_pos, f"{label}: {value}")
+            y_pos -= 20
+
+        # Chart
+        if chart_path and os.path.exists(chart_path):
+            c.drawImage(chart_path, 50, y_pos - 200, width=500, height=200)
+
+        c.showPage()
+        c.save()
+        buffer.seek(0)
+        return buffer
+
+    # Save chart image for PDF
+    chart_path = None
+    if "Month" in df and "Revenue" in df:
+        fig, ax = plt.subplots()
+        ax.plot(df["Month"], df["Revenue"], marker='o')
+        ax.set_title("Revenue Over Time")
+        ax.set_xlabel("Month")
+        ax.set_ylabel("Revenue")
+        tmp_chart = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+        fig.savefig(tmp_chart.name)
+        chart_path = tmp_chart.name
+
+    # Create PDF
+    pdf_kpis = {
+        "Total Revenue": f"₹{total_revenue:,.0f}",
+        "Net Profit": f"₹{net_profit:,.0f}",
+        "Total Assets": f"₹{total_assets:,.0f}",
+        "Debt to Equity": f"{de_ratio:.2f}"
+    }
+    pdf_buffer = create_pdf(pdf_kpis, chart_path)
+
+    st.download_button("⬇️ Download Professional Insights (PDF)", pdf_buffer, file_name="Financial_Insights.pdf", mime="application/pdf")
