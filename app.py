@@ -159,126 +159,177 @@ with st.sidebar:
         else:
             st.warning("Please upload a file and enter a company name.")
 
-import streamlit as st
-import pandas as pd
-import io
-from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
-
-# ---- PAGE CONFIG ----
-st.set_page_config(page_title="Financial Dashboard", layout="wide")
-
-# ---- KPI CALCULATION ----
-def calculate_kpis(df):
-    total_revenue = df['Revenue'].sum() if 'Revenue' in df.columns else 0
-    net_profit = df['Net Profit'].sum() if 'Net Profit' in df.columns else 0
-    total_assets = df['Assets'].sum() if 'Assets' in df.columns else 0
-    debt_to_equity = (
-        (df['Debt'].sum() / df['Equity'].sum()) 
-        if 'Debt' in df.columns and 'Equity' in df.columns and df['Equity'].sum() != 0 else 0
-    )
-    return total_revenue, net_profit, total_assets, debt_to_equity
-
-# ---- PDF GENERATION ----
-def generate_pdf(kpis, interpretation, swot):
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4)
-    styles = getSampleStyleSheet()
-    story = []
-
-    story.append(Paragraph("Financial Insights Report", styles['Title']))
-    story.append(Spacer(1, 20))
-
-    # KPIs
-    for k, v in kpis.items():
-        story.append(Paragraph(f"{k}: {v}", styles['Normal']))
-        story.append(Spacer(1, 10))
-
-    # Interpretation Section
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("Interpretation of Visuals", styles['Heading2']))
-    story.append(Paragraph(interpretation, styles['Normal']))
-
-    # SWOT Analysis
-    story.append(Spacer(1, 20))
-    story.append(Paragraph("SWOT Analysis", styles['Heading2']))
-    for key, val in swot.items():
-        story.append(Paragraph(f"<b>{key}:</b> {val}", styles['Normal']))
-        story.append(Spacer(1, 10))
-
-    doc.build(story)
-    buf.seek(0)
-    return buf
-
-# ---- EXCEL OUTPUT ----
-def to_excel(df):
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
-    return output
-
-# ---- UI ----
-st.sidebar.header("Upload & Process")
-file = st.sidebar.file_uploader("Upload Financial Data", type=["xlsx", "xls", "csv"])
-company_name = st.sidebar.text_input("Enter Company Name", "My Company Inc.")
-
-if file:
-    # Read file
-    if file.name.endswith(".csv"):
-        df = pd.read_csv(file)
-    else:
-        df = pd.read_excel(file)
-
-    # Calculate KPIs
-    total_revenue, net_profit, total_assets, debt_to_equity = calculate_kpis(df)
-
-    # KPI Cards
-    st.markdown(f"## Key Performance Indicators for {company_name}")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Revenue", f"₹{total_revenue:,.0f}", "Up")
-    col2.metric("Net Profit", f"₹{net_profit:,.0f}", "Up")
-    col3.metric("Total Assets", f"₹{total_assets:,.0f}", "Up")
-    col4.metric("Debt-to-Equity", f"{debt_to_equity:.2f}", "Down")
-
-    # Static text for PDF sections (you can make these dynamic later)
-    interpretation_text = "The company's revenue and profit have shown consistent growth compared to last year, indicating strong operational efficiency."
-    swot_analysis = {
-        "Strengths": "Strong revenue growth, high asset base.",
-        "Weaknesses": "High debt-to-equity ratio.",
-        "Opportunities": "Expansion into new markets.",
-        "Threats": "Economic downturn, competition."
+# --- Styles ---
+st.markdown("""
+<style>
+    /* Page base */
+    .stApp {
+        background-color: #1e1e2f;
+        color: #e0e0e0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    .block-container {
+        padding: 2rem 3rem;
     }
 
-    # Generate PDF
-    pdf_buf = generate_pdf(
-        {
-            "Total Revenue": f"₹{total_revenue:,.0f}",
-            "Net Profit": f"₹{net_profit:,.0f}",
-            "Total Assets": f"₹{total_assets:,.0f}",
-            "Debt-to-Equity": f"{debt_to_equity:.2f}"
-        },
-        interpretation_text,
-        swot_analysis
-    )
+    /* Header */
+    .main-title h1 {
+        font-weight: 700;
+        margin-bottom: 0.1rem;
+        color: #e0e0e0;
+        font-size: 2.2rem;
+    }
+    .main-title p {
+        margin-top: 0;
+        color: #b0b0b0;
+        font-size: 1.1rem;
+        margin-bottom: 2rem;
+    }
 
-    # Download PDF
-    st.download_button(
-        label="📄 Download Insights PDF",
-        data=pdf_buf,
-        file_name=f"{company_name}_Insights.pdf",
-        mime="application/pdf"
-    )
+    /* KPI container */
+    .kpi-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2rem;
+        justify-content: flex-start;
+        margin-bottom: 2rem;
+    }
 
-    # Download Excel
-    excel_buf = to_excel(df)
-    st.download_button(
-        label="📊 Download Output Excel",
-        data=excel_buf,
-        file_name=f"{company_name}_Output.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+    /* KPI card */
+    .kpi-card {
+        background: #2b2b3c;
+        border-radius: 25px 25px 8px 8px;
+        padding: 1.5rem 2rem;
+        box-shadow: 
+            6px 6px 16px #14141e,
+            -6px -6px 16px #38384a;
+        min-width: 250px;
+        color: #e0e0e0;
+        cursor: default;
+        display: flex;
+        flex-direction: column;
+        user-select: none;
+        transition: box-shadow 0.3s ease, background-color 0.3s ease;
+    }
 
-else:
-    st.info("Please upload an Excel or CSV file to see the dashboard.")
+    /* Unique hover colors */
+    .kpi-card:nth-child(1):hover { background-color: #1a472a; box-shadow: 0 0 20px #00ff9f; }
+    .kpi-card:nth-child(2):hover { background-color: #472a2a; box-shadow: 0 0 20px #ff6666; }
+    .kpi-card:nth-child(3):hover { background-color: #2a3947; box-shadow: 0 0 20px #66ccff; }
+    .kpi-card:nth-child(4):hover { background-color: #473f2a; box-shadow: 0 0 20px #ffd966; }
+
+    /* KPI title */
+    .kpi-card .title {
+        font-weight: 600;
+        font-size: 1rem;
+        margin-bottom: 0.3rem;
+        color: #a0a0a0;
+    }
+
+    /* KPI value */
+    .kpi-card .value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+        line-height: 1.1;
+    }
+
+    /* Delta styles */
+    .kpi-card .delta {
+        display: inline-flex;
+        align-items: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+        border-radius: 20px;
+        padding: 0.25rem 0.8rem;
+        width: fit-content;
+        user-select: none;
+    }
+    .kpi-card .delta.up {
+        background-color: #00cc7a;
+        color: #0f2f1f;
+    }
+    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
+    .kpi-card .delta.down {
+        background-color: #ff4c4c;
+        color: #3a0000;
+    }
+    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
+</style>
+""", unsafe_allow_html=True)
+
+# --- File Upload ---
+uploaded_file = st.file_uploader("Upload your CSV or Excel", type=["csv", "xlsx"])
+
+# --- Default KPI values ---
+total_revenue = 0
+net_profit = 0
+total_assets = 0
+debt_to_equity = 0
+rev_growth = 0
+profit_growth = 0
+assets_growth = 0
+dte_change = 0
+
+# --- Process file if uploaded ---
+if uploaded_file is not None:
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
+
+    # Example: adjust column names as per your dataset
+    total_revenue = df["Revenue"].sum()
+    net_profit = df["Net Profit"].sum()
+    total_assets = df["Total Assets"].sum()
+    debt_to_equity = df["Debt"].sum() / max(df["Equity"].sum(), 1)
+
+    # Example growth % (dummy logic)
+    rev_growth = 5.2
+    profit_growth = -2.4
+    assets_growth = 1.1
+    dte_change = -0.5
+
+# --- KPI Cards ---
+st.markdown(f"""
+<div class="kpi-container">
+    <div class="kpi-card">
+        <div class="title">Total Revenue</div>
+        <div class="value">₹{total_revenue:,.0f}</div>
+        <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth}%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="title">Net Profit</div>
+        <div class="value">₹{net_profit:,.0f}</div>
+        <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth}%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="title">Total Assets</div>
+        <div class="value">₹{total_assets:,.0f}</div>
+        <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth}%</div>
+    </div>
+    <div class="kpi-card">
+        <div class="title">Debt-to-Equity</div>
+        <div class="value">{debt_to_equity:.2f}</div>
+        <div class="delta {'up' if dte_change >= 0 else 'down'}">{dte_change}%</div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+# --- PDF Download ---
+if uploaded_file is not None:
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Financial Report", ln=True)
+    pdf.set_font("Arial", "", 12)
+    pdf.cell(0, 10, f"Total Revenue: ₹{total_revenue:,.0f}", ln=True)
+    pdf.cell(0, 10, f"Net Profit: ₹{net_profit:,.0f}", ln=True)
+    pdf.cell(0, 10, f"Total Assets: ₹{total_assets:,.0f}", ln=True)
+    pdf.cell(0, 10, f"Debt-to-Equity: {debt_to_equity:.2f}", ln=True)
+
+    pdf_output = "financial_report.pdf"
+    pdf.output(pdf_output)
+
+    with open(pdf_output, "rb") as f:
+        st.download_button("Download PDF Report", f, file_name="Financial_Report.pdf")
