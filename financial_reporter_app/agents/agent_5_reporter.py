@@ -5,8 +5,8 @@ import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# THIS IS THE PERMANENT FIX: Use a relative import to go up one level to find config.py
-from ..config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+# THIS IS THE PERMANENT FIX: Use the full, absolute path now that app.py sets the root path
+from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
     """Applies beautiful, professional styling to the Balance Sheet and P&L."""
