@@ -1,7 +1,7 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version fixes the FPDFException in the "Generate PDF from Excel" section
-# by dynamically setting table column widths.
+# This version includes a permanent fix for the ValueError in the "Generate PDF
+# from Excel" section, making the data cleaning process robust.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -46,9 +46,6 @@ class PDF(FPDF):
     def header(self): self.set_font('Arial', 'B', 16); self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C'); self.ln(5)
     def footer(self): self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-# ==============================================================================
-# THIS IS THE ONLY FUNCTION THAT HAS BEEN MODIFIED
-# ==============================================================================
 def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data):
     pdf = PDF()
     pdf.add_page()
@@ -58,46 +55,25 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
     pdf.ln(10); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L'); pdf.set_font('Arial', '', 12); pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
     if charts:
         pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L'); pdf.ln(5)
-        for title, chart_bytes in charts.items():
-            pdf.set_font('Arial', 'B', 14); pdf.cell(0, 10, title, 0, 1, 'C'); pdf.image(chart_bytes, x=15, w=180, type='PNG'); pdf.ln(10)
-
-    # --- Pages for Balance Sheet, Profit & Loss, and Notes ---
+        for title, chart_bytes in charts.items(): pdf.set_font('Arial', 'B', 14); pdf.cell(0, 10, title, 0, 1, 'C'); pdf.image(chart_bytes, x=15, w=180, type='PNG'); pdf.ln(10)
     for sheet_name, df in sheets_data.items():
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, f'Sheet: {sheet_name}', 0, 1, 'L')
-        pdf.ln(5)
-
-        # --- DYNAMIC COLUMN WIDTHS FIX ---
+        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, f'Sheet: {sheet_name}', 0, 1, 'L'); pdf.ln(5)
         num_cols = len(df.columns)
         if num_cols == 0: continue
-
-        # Define specific layouts for known sheet structures
-        if "Note" in sheet_name and num_cols == 3:
-             col_widths = (100, 40, 40)
-        elif ("Balance Sheet" in sheet_name or "Profit and Loss" in sheet_name) and num_cols == 5:
-             col_widths = (10, 80, 20, 40, 40)
-        else: # Generic fallback for any other sheet structure
-             page_width = pdf.w - 2 * pdf.l_margin
-             col_widths = tuple([page_width / num_cols] * num_cols)
-        # --- END FIX ---
-
+        if "Note" in sheet_name and num_cols == 3: col_widths = (100, 40, 40)
+        elif ("Balance Sheet" in sheet_name or "Profit and Loss" in sheet_name) and num_cols == 5: col_widths = (10, 80, 20, 40, 40)
+        else: page_width = pdf.w - 2 * pdf.l_margin; col_widths = tuple([page_width / num_cols] * num_cols)
         data_to_render = [df.columns.tolist()] + df.values.tolist()
-        pdf.set_font('Arial', '', 8) # Use a smaller font for tables
-        
+        pdf.set_font('Arial', '', 8)
         with pdf.table(text_align='L', col_widths=col_widths) as table:
             for i, row_data in enumerate(data_to_render):
                 row = table.row()
                 for datum in row_data:
-                    if i == 0: # Make header row bold
+                    if i == 0:
                         with pdf.font_mode("B"): row.cell(str(datum))
                     else: row.cell(str(datum))
-
     return bytes(pdf.output())
 
-# ==============================================================================
-# THE REST OF THE FILE IS UNCHANGED
-# ==============================================================================
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
@@ -144,10 +120,15 @@ else:
 
 st.divider()
 
+# ==============================================================================
+# CORRECTED SECTION FOR GENERATING PDF FROM A PROCESSED EXCEL FILE
+# ==============================================================================
 st.header("Generate PDF Report from Formatted Excel File")
 st.markdown("Upload the formatted Excel report you generated above to create a comprehensive, multi-page PDF.")
+
 excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx"], key="excel_uploader")
 company_name_pdf = st.text_input("Re-enter Company Name for PDF Report", st.session_state.company_name, key="pdf_company_name")
+
 if st.button("Generate Comprehensive PDF Report", type="secondary", use_container_width=True, key="generate_pdf_button"):
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel and generating comprehensive PDF..."):
@@ -155,23 +136,44 @@ if st.button("Generate Comprehensive PDF Report", type="secondary", use_containe
                 all_sheets = pd.read_excel(excel_file, sheet_name=None)
                 sheets_for_pdf = {name: df.dropna(how='all').fillna('') for name, df in all_sheets.items() if not df.dropna(how='all').fillna('').empty}
                 
-                def clean_and_convert(value):
-                    if isinstance(value, str): return float(value.replace(',', ''))
-                    return value if pd.notna(value) else 0
+                # --- PERMANENT FIX STARTS HERE ---
+                def clean_and_convert_to_numeric(value):
+                    """
+                    Permanently and safely converts a value to a numeric type.
+                    Handles numbers, strings with commas, empty strings, and other non-numeric data.
+                    """
+                    if isinstance(value, (int, float)):
+                        return float(value)
+                    if isinstance(value, str):
+                        cleaned_str = value.replace(',', '').strip()
+                        if not cleaned_str:  # Handles empty strings
+                            return 0.0
+                        try:
+                            return float(cleaned_str)
+                        except ValueError:  # Handles strings like "-" or other text
+                            return 0.0
+                    return 0.0 # Handles None, etc.
 
-                def find_val(keyword, df):
-                    row = df[df.iloc[:, 1].astype(str).str.contains(keyword, na=False, case=False)]
-                    if not row.empty: return clean_and_convert(row.iloc[0, 3]), clean_and_convert(row.iloc[0, 4])
-                    return 0, 0
+                def find_value_from_df(keyword, df):
+                    """Finds a value in a DataFrame and returns cleaned CY and PY numbers."""
+                    # Search in the second column ('Particulars') for the keyword
+                    row = df[df.iloc[:, 1].astype(str).str.contains(keyword, na=False, case=False, regex=False)]
+                    if not row.empty:
+                        # Values are in the 4th (CY) and 5th (PY) columns
+                        cy_val = clean_and_convert_to_numeric(row.iloc[0, 3])
+                        py_val = clean_and_convert_to_numeric(row.iloc[0, 4])
+                        return cy_val, py_val
+                    return 0.0, 0.0
+                # --- PERMANENT FIX ENDS HERE ---
                 
                 agg_data, bs_df, pl_df = {}, sheets_for_pdf.get("Balance Sheet"), sheets_for_pdf.get("Profit and Loss")
                 if bs_df is not None:
-                    cy_eq, py_eq = find_val("Share Capital", bs_df); agg_data['1'] = {'total': {'CY': cy_eq, 'PY': py_eq}}
-                    cy_debt, py_debt = find_val("Long-term borrowings", bs_df); agg_data['3'] = {'total': {'CY': cy_debt, 'PY': py_debt}}
-                    cy_assets, py_assets = find_val("TOTAL ASSETS", bs_df); agg_data['11'] = {'total': {'CY': cy_assets, 'PY': py_assets}}
+                    cy_eq, py_eq = find_value_from_df("Share Capital", bs_df); agg_data['1'] = {'total': {'CY': cy_eq, 'PY': py_eq}}
+                    cy_debt, py_debt = find_value_from_df("Long-term borrowings", bs_df); agg_data['3'] = {'total': {'CY': cy_debt, 'PY': py_debt}}
+                    cy_assets, py_assets = find_value_from_df("TOTAL ASSETS", bs_df); agg_data['11'] = {'total': {'CY': cy_assets, 'PY': py_assets}}
                 if pl_df is not None:
-                    cy_rev, py_rev = find_val("Total Revenue", pl_df); agg_data['21'] = {'total': {'CY': cy_rev, 'PY': py_rev}}
-                    cy_profit, py_profit = find_val("Profit/\(Loss\) for the period", pl_df); agg_data['23'] = {'total': {'CY': cy_profit, 'PY': py_profit}}
+                    cy_rev, py_rev = find_value_from_df("Total Revenue", pl_df); agg_data['21'] = {'total': {'CY': cy_rev, 'PY': py_rev}}
+                    cy_profit, py_profit = find_value_from_df("Profit/\\(Loss\\) for the period", pl_df); agg_data['23'] = {'total': {'CY': cy_profit, 'PY': py_profit}}
                 
                 for note in ['2','7','16','22','24','25','26']: agg_data.setdefault(note, {'total': {'CY': 0, 'PY': 0}})
                 agg_data.setdefault('11', {}).setdefault('sub_items', {}).setdefault('Depreciation for the year', {'CY': 0, 'PY': 0})
