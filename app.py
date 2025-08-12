@@ -84,16 +84,16 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
         pdf.ln(5)
 
         # Convert DataFrame to a list of lists for FPDF table
-        data_to_render = [df.columns.tolist()] + df.values.tolist()
+        # Explicitly convert all columns to string to avoid concatenation errors
+        df_str = df.astype(str)
+        data_to_render = [df_str.columns.tolist()] + df_str.values.tolist()
         pdf.set_font('Arial', '', 10)
-        # Set column widths dynamically
-        col_widths = [pdf.w / (len(df.columns) + 1) for _ in df.columns]
         
         with pdf.table(text_align='C') as table:
             for row_data in data_to_render:
                 row = table.row()
                 for datum in row_data:
-                    row.cell(str(datum))
+                    row.cell(datum)
 
     return bytes(pdf.output())
 
@@ -237,7 +237,7 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                             header_index_to_use = header_row_index[0]
                             df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
                             
-                            # Filter out any rows that are entirely blank, and fill any NaN values with 0
+                            # Filter out any rows that are entirely blank, and fill any NaN values with ''
                             df_correctly_read = df_correctly_read.dropna(subset=['Particulars']).fillna('')
                             
                             # Add to dictionary for PDF rendering
