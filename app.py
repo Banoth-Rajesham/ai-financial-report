@@ -1,7 +1,5 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This is the definitive version with a clean, single workflow that produces
-# the visual PDF dashboard and the formatted Excel report without errors.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -128,6 +126,7 @@ else:
     chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
     fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
+    
     col1, col2 = st.columns((5, 4)); col1.subheader("📊 Financial Visualization"); col1.plotly_chart(fig, use_container_width=True); col2.subheader("🤖 AI-Generated Insights"); col2.markdown(ai_analysis)
     
     st.subheader("⬇️ Download Center")
