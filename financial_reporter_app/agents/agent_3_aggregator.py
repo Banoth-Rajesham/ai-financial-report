@@ -33,7 +33,6 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
         return keyword_map
     
     keyword_to_path = flatten_keywords(notes_structure)
-    path_to_keyword = {v: k for k, v in keyword_to_path.items()} # Reverse map for propagation
 
     # Initialize the final data structure
     aggregated_data = {note: {'total': {'CY': 0, 'PY': 0}, 'sub_items': {}, 'title': data.get('title', '')} for note, data in notes_structure.items()}
@@ -74,16 +73,18 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
         note_total_cy, note_total_py = sum_totals(note_data['sub_items'])
         aggregated_data[note_num]['total'] = {'CY': note_total_cy, 'PY': note_total_py}
 
-        # ** Data Propagation Logic **
-        # If the note total is zero, but we have a direct match for the note's main alias, propagate it.
-        main_alias = path_to_keyword.get((note_num,), None) # e.g., get the keyword for ('1',) which is 'share capital'
-        if note_total_cy == 0 and main_alias:
-            matched_row = source_df[source_df['Particulars_clean'] == main_alias]
+        # ** CORRECTED Data Propagation Logic **
+        # Use the note's title as the main alias to search for a summary value
+        note_title = note_data['title'].lower()
+        if note_total_cy == 0:
+            # Check if the note's title exists as a direct line item in the source data.
+            # This is a common pattern for summary values without detailed breakdowns.
+            matched_row = source_df[source_df['Particulars_clean'] == note_title]
             if not matched_row.empty:
                 propagated_cy = matched_row['Amount_CY'].sum()
                 propagated_py = matched_row['Amount_PY'].sum()
-                
-                # Find the first line item in the structure to assign this propagated value
+
+                # Assign the propagated value to the first line item found in the note's structure
                 def assign_propagated(sub_items):
                     for key, value in sub_items.items():
                         if isinstance(value, dict) and 'CY' in value: # Found a line item
@@ -92,7 +93,7 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
                         if isinstance(value, dict) and assign_propagated(value): # Recurse
                             return True
                     return False
-                
+
                 if assign_propagated(note_data['sub_items']):
                     print(f"  -> Propagated summary value for Note {note_num}.")
                     # Recalculate totals after propagation
