@@ -1,52 +1,68 @@
 # ==============================================================================
-# agents/agent_1_intake.py
-# AGENT 1: Data intake and initial cleaning.
+# PASTE THIS ENTIRE, CORRECTED BLOCK INTO: agent_1_intake.py
 # ==============================================================================
 import pandas as pd
-from io import BytesIO
+import streamlit as st
 
 def intelligent_data_intake_agent(uploaded_file):
     """
-    AGENT 1: Reads and cleans an uploaded financial data Excel file.
-    It intelligently detects the correct header row.
+    AGENT 1: Ingests the uploaded Excel file with robust header detection
+    and column renaming to prevent KeyErrors.
     """
-    print("\n--- Agent 1 (Data Intake): Starting data ingestion... ---")
+    print("\n--- Agent 1 (Data Intake): Ingesting file... ---")
+    if uploaded_file is None:
+        return None
+
     try:
-        # Read the file into a BytesIO buffer to handle different file types
-        excel_data = BytesIO(uploaded_file.read())
+        # First, read the file without a header to inspect it
+        df_no_header = pd.read_excel(uploaded_file, header=None)
+
+        # Find the row that contains 'Particulars' (case-insensitive)
+        header_row_index = -1
+        for i, row in df_no_header.iterrows():
+            # Check if any cell in the row contains the string 'particulars'
+            if any('particulars' in str(cell).lower() for cell in row.values):
+                header_row_index = i
+                break
+
+        if header_row_index == -1:
+            st.error("Data Intake Error: Could not find a header row containing the word 'Particulars' in the uploaded file.")
+            return None
+
+        # Now, read the Excel file again, using the correct row as the header
+        df = pd.read_excel(uploaded_file, header=header_row_index)
+
+        # --- THIS IS THE PERMANENT FIX FOR THE KEYERROR ---
+        # Clean up column names by stripping whitespace and converting to lower case
+        df.columns = df.columns.str.strip().str.lower()
         
-        # Read the first 10 rows to find the header
-        temp_df = pd.read_excel(excel_data, header=None, nrows=10)
+        # Find the actual column names by looking for keywords
+        cols = df.columns
+        particulars_col = [c for c in cols if 'particulars' in c][0]
+        note_col = [c for c in cols if 'note' in c][0]
         
-        # Find the row containing 'Particulars' (case-insensitive) to use as the header
-        header_row_index = temp_df[temp_df.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)].index
+        # Find amount columns, which might be unnamed or have dates
+        amount_cols = [c for c in cols if 'unnamed' in str(c) or 'as at' in str(c) or 'amount' in str(c)]
         
-        if not header_row_index.empty:
-            header_index_to_use = header_row_index[0]
-            # Read the full file again with the correct header
-            source_df = pd.read_excel(excel_data, header=header_index_to_use)
-            
-            # Standardize column names
-            source_df.rename(columns={
-                'Particulars': 'Particulars',
-                'As at March 31, 2025': 'Amount_CY',
-                'As at March 31, 2024': 'Amount_PY',
-                'Amount': 'Amount_CY' # Handle cases where only a single column is present
-            }, inplace=True)
-            
-            # Drop rows where 'Particulars' is null or a blank space
-            source_df = source_df.dropna(subset=['Particulars'])
-            
-            # Ensure Amount columns are numeric, filling non-numeric values with 0
-            for col in ['Amount_CY', 'Amount_PY']:
-                if col in source_df.columns:
-                    source_df[col] = pd.to_numeric(source_df[col], errors='coerce').fillna(0)
-            
-            print("✅ Data Intake SUCCESS: File read and cleaned.")
-            return source_df
-        else:
-            print("❌ Data Intake FAILED: Could not find 'Particulars' header.")
-            return pd.DataFrame()
+        if len(amount_cols) < 2:
+            st.error("Data Intake Error: Could not identify at least two amount columns for Current and Previous Year.")
+            return None
+
+        cy_col = amount_cols[0]
+        py_col = amount_cols[1]
+        
+        # Select and rename the columns to a consistent standard
+        df_renamed = df[[particulars_col, note_col, cy_col, py_col]].copy()
+        df_renamed.columns = ['Particulars', 'Note', 'Amount_CY', 'Amount_PY']
+        
+        # Drop rows where 'Particulars' is completely empty, which often represent spacer rows
+        df_cleaned = df_renamed.dropna(subset=['Particulars'])
+        
+        print("✅ Data Intake SUCCESS: File ingested, header found, and columns standardized.")
+        return df_cleaned
+
     except Exception as e:
-        print(f"❌ Data Intake FAILED: An unexpected error occurred: {e}")
-        return pd.DataFrame()
+        st.error(f"Data Intake FAILED: An unexpected error occurred. Please ensure the Excel file contains columns for 'Particulars', 'Note', and two amount columns. Error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
