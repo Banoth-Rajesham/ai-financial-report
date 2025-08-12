@@ -1,5 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
+# This version permanently fixes the TypeError by calling the agent correctly.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -8,9 +9,10 @@ import plotly.express as px
 from fpdf import FPDF
 import os
 import io
+import copy
 
 # --- THIS IS THE PERMANENT FIX for the path issue ---
-# Add the project's root directory (where this app.py file is located) to the Python path.
+# Add the project's root directory to Python's path.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # --- END OF FIX ---
 
@@ -28,7 +30,7 @@ except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Please ensure all __init__.py files are in place. Error: {e}")
     st.stop()
 
-# --- HELPER & VISUALIZATION FUNCTIONS ---
+# --- HELPER & VISUALIZATION FUNCTIONS (UNCHANGED) ---
 def calculate_kpis(agg_data):
     kpis = {}
     for year in ['CY', 'PY']:
@@ -83,6 +85,7 @@ def create_visual_pdf_report(kpis, ai_analysis, charts, company_name, sheets_dat
     if "Profit and Loss" in sheets_data: draw_table("Profit and Loss", sheets_data["Profit and Loss"])
     return bytes(pdf.output())
 
+# --- MAIN STREAMLIT APP ---
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
@@ -90,7 +93,7 @@ if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 if 'agg_data' not in st.session_state: st.session_state.agg_data = {}
 
-st.markdown("""<style>/* Your CSS Here */</style>""", unsafe_allow_html=True)
+st.markdown("""<style> /* Your CSS Here */ </style>""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Upload & Process"); uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"]); company_name = st.text_input("Enter Company Name", st.session_state.company_name)
@@ -98,7 +101,15 @@ with st.sidebar:
         if uploaded_file and company_name:
             with st.spinner("Executing financial agent pipeline..."):
                 st.info("Step 1/5: Ingesting data..."); source_df = intelligent_data_intake_agent(uploaded_file)
-                st.info("Step 2/5: Mapping terms..."); refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                
+                # ========================================================== #
+                # == THIS IS THE CORRECTED BLOCK                          == #
+                # ========================================================== #
+                st.info("Step 2/5: Mapping terms...")
+                # The agent needs the 'Notes to Accounts' part of the template
+                refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), MASTER_TEMPLATE['Notes to Accounts'])
+                # ========================================================== #
+                
                 st.info("Step 3/5: Aggregating values..."); aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 st.info("Step 4/5: Validating balances..."); warnings = data_validation_agent(aggregated_data)
                 st.info("Step 5/5: Generating report..."); excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
