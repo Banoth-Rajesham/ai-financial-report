@@ -9,7 +9,6 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from ..config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
-    # This function is correct and unchanged
     title_font = Font(bold=True, size=16); subtitle_font = Font(bold=True, size=12)
     header_font = Font(bold=True); bold_font = Font(bold=True)
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
@@ -27,7 +26,6 @@ def apply_main_sheet_styling(ws, template, company_name):
             if ws[f'{col_letter}{row_num}'].value is not None: ws[f'{col_letter}{row_num}'].number_format = currency_format
 
 def apply_note_sheet_styling(ws):
-    # This function is correct and unchanged
     header_font = Font(bold=True, color="FFFFFF"); title_font = Font(bold=True, size=14); total_font = Font(bold=True)
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
     ws.column_dimensions['A'].width = 65; ws.column_dimensions['B'].width = 20; ws.column_dimensions['C'].width = 20
@@ -41,7 +39,6 @@ def apply_note_sheet_styling(ws):
 
 def report_finalizer_agent(aggregated_data, company_name):
     """AGENT 5: Constructs a detailed, styled, multi-sheet Excel report."""
-    # This function is correct and unchanged
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
@@ -51,21 +48,20 @@ def report_finalizer_agent(aggregated_data, company_name):
                 return aggregated_data.get(str(note_id), {}).get('total', {}).get(year, 0)
 
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
-                rows = []; totals = {}
+                rows = []
                 for r_template in template:
                     row = {' ': r_template[0], 'Particulars': r_template[1], 'Note': r_template[2] if isinstance(r_template[2], str) else "", 'CY': None, 'PY': None}
                     if r_template[3] in ["item", "item_no_alpha"]:
-                        note, cy, py = r_template[2], get_val(r_template[2], 'CY'), get_val(r_template[2], 'PY')
-                        row['CY'], row['PY'] = cy, py
+                        row['CY'], row['PY'] = get_val(r_template[2], 'CY'), get_val(r_template[2], 'PY')
                     rows.append(row)
                 df = pd.DataFrame(rows).rename(columns={'CY': 'As at March 31, 2025', 'PY': 'As at March 31, 2024'})
                 for i, r_template in enumerate(template):
                     if r_template[3] == 'total':
-                        notes_to_sum = r_template[2]; cy_sum, py_sum = 0,0
+                        notes_to_sum = r_template[2]
                         if isinstance(notes_to_sum, list):
                             cy_sum = df[df['Note'].isin(notes_to_sum)]['As at March 31, 2025'].sum()
                             py_sum = df[df['Note'].isin(notes_to_sum)]['As at March 31, 2024'].sum()
-                        totals[r_template[1]] = (cy_sum, py_sum); df.iloc[i, 3], df.iloc[i, 4] = cy_sum, py_sum
+                            df.iloc[i, 3], df.iloc[i, 4] = cy_sum, py_sum
                 df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3); apply_main_sheet_styling(writer.sheets[sheet_name], template, company_name)
 
             for note_num in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
