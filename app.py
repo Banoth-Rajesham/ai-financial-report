@@ -8,18 +8,15 @@ import plotly.express as px
 from fpdf import FPDF
 import os
 import io
-import copy
 
 # --- THIS IS THE PERMANENT FIX for the path issue ---
-# Add the project's root directory to Python's path. This allows finding sub-folders.
+# Add the project's root directory (where this app.py file is located) to the Python path.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # --- END OF FIX ---
 
 # --- Now, all imports will work correctly from the root ---
 try:
-    # Correctly import from the config.py file in the root directory
     from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
-    # Correctly import agents from the package
     from financial_reporter_app.agents import (
         intelligent_data_intake_agent,
         ai_mapping_agent,
@@ -31,7 +28,7 @@ except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Please ensure all __init__.py files are in place. Error: {e}")
     st.stop()
 
-# --- HELPER & VISUALIZATION FUNCTIONS (UNCHANGED) ---
+# --- HELPER & VISUALIZATION FUNCTIONS ---
 def calculate_kpis(agg_data):
     kpis = {}
     for year in ['CY', 'PY']:
@@ -86,7 +83,6 @@ def create_visual_pdf_report(kpis, ai_analysis, charts, company_name, sheets_dat
     if "Profit and Loss" in sheets_data: draw_table("Profit and Loss", sheets_data["Profit and Loss"])
     return bytes(pdf.output())
 
-# --- MAIN STREAMLIT APP ---
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
@@ -94,7 +90,7 @@ if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 if 'agg_data' not in st.session_state: st.session_state.agg_data = {}
 
-st.markdown("""<style> /* Your CSS Here */ </style>""", unsafe_allow_html=True)
+st.markdown("""<style>/* Your CSS Here */</style>""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Upload & Process"); uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"]); company_name = st.text_input("Enter Company Name", st.session_state.company_name)
@@ -134,4 +130,3 @@ else:
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button("📊 Download Visual PDF Report", pdf_bytes, f"{st.session_state.company_name}_Dashboard_Report.pdf", "application/pdf", use_container_width=True)
     d_col2.download_button("💹 Download Formatted Excel Data", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-
