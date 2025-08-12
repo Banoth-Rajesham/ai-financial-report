@@ -63,10 +63,44 @@ if 'company_name' not in st.session_state: st.session_state.company_name = "My C
 
 # ==============================================================================
 # UPDATED CSS STYLES FOR KPI CARDS
-# The single line below is the only change to the original code.
-# It adds a smooth transition and a glowing box-shadow on hover.
+# This block defines the styling, including the hover effects for each card.
 # ==============================================================================
-st.markdown("<style>.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}.block-container{padding:2rem 3rem}.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}.kpi-card{background:#2b2b3c;border-radius:25px 25px 8px 8px;padding:1.5rem 2rem;box-shadow:6px 6px 16px #14141e,-6px -6px 16px #38384a;min-width:250px;color:#e0e0e0;flex:1;transition: box-shadow 0.3s ease-in-out;}.kpi-card:hover {box-shadow: 0 0 20px #00cc7a, 0 0 30px #00cc7a, 0 0 40px #00cc7a;}.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}.kpi-card .delta.up::before{content:\"⬆\";margin-right:.3rem}.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}.kpi-card .delta.down::before{content:\"⬇\";margin-right:.3rem}</style>", unsafe_allow_html=True)
+st.markdown("""
+<style>
+.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}
+.block-container{padding:2rem 3rem}
+.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}
+.kpi-card{
+    background:#2b2b3c;
+    border-radius:25px 25px 8px 8px;
+    padding:1.5rem 2rem;
+    box-shadow:6px 6px 16px #14141e,-6px -6px 16px #38384a;
+    min-width:250px;
+    color:#e0e0e0;
+    flex:1;
+    transition: box-shadow 0.3s ease-in-out;
+}
+.revenue-card:hover {
+    box-shadow: 0 0 20px #ffca28, 0 0 30px #ffca28, 0 0 40px #ffca28; /* Yellow */
+}
+.profit-card:hover {
+    box-shadow: 0 0 20px #00cc7a, 0 0 30px #00cc7a, 0 0 40px #00cc7a; /* Green */
+}
+.assets-card:hover {
+    box-shadow: 0 0 20px #29b6f6, 0 0 30px #29b6f6, 0 0 40px #29b6f6; /* Blue */
+}
+.debt-card:hover {
+    box-shadow: 0 0 20px #f44336, 0 0 30px #f44336, 0 0 40px #f44336; /* Red */
+}
+.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}
+.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}
+.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}
+.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}
+.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}
+.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}
+.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}
+</style>
+""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Upload & Process"); uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"]); company_name = st.text_input("Enter Company Name", st.session_state.company_name)
@@ -91,7 +125,36 @@ else:
     profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit'] * 100) if kpi_py.get('Net Profit', 0) > 0 else 0
     assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets'] * 100) if kpi_py['Total Assets'] else 0
     dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
-    st.markdown(f"""<div class="kpi-container"><div class="kpi-card"><div class="title">Total Revenue (CY)</div><div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div><div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Net Profit (CY)</div><div class="value">₹{kpi_cy['Net Profit']:,.0f}</div><div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Total Assets (CY)</div><div class="value">₹{kpi_cy['Total Assets']:,.0f}</div><div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Debt-to-Equity (CY)</div><div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div><div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div></div></div>""", unsafe_allow_html=True)
+
+    # ==============================================================================
+    # UPDATED HTML FOR KPI CARDS
+    # Each card now has a unique class to be targeted by the CSS hover effects.
+    # ==============================================================================
+    st.markdown(f"""
+    <div class="kpi-container">
+        <div class="kpi-card revenue-card">
+            <div class="title">Total Revenue (CY)</div>
+            <div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div>
+            <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card profit-card">
+            <div class="title">Net Profit (CY)</div>
+            <div class="value">₹{kpi_cy['Net Profit']:,.0f}</div>
+            <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card assets-card">
+            <div class="title">Total Assets (CY)</div>
+            <div class="value">₹{kpi_cy['Total Assets']:,.0f}</div>
+            <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card debt-card">
+            <div class="title">Debt-to-Equity (CY)</div>
+            <div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div>
+            <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
     ai_analysis = generate_ai_analysis(kpis)
     chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
     fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
