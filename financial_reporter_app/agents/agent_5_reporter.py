@@ -5,10 +5,8 @@ import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# THIS IS THE PERMANENT FIX: Use the full, absolute path now that my_appy.py sets the root path
-from config.MASTER_TEMPLATE import MASTER_TEMPLATE
-from config.NOTES_STRUCTURE_AND_MAPPING import NOTES_STRUCTURE_AND_MAPPING
-
+# THIS IS THE PERMANENT FIX: Use the full, absolute path now that app.py sets the root path
+from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
     """Applies beautiful, professional styling to the Balance Sheet and P&L."""
@@ -50,13 +48,11 @@ def report_finalizer_agent(aggregated_data, company_name):
                 if note_id == "16_change": return (aggregated_data.get('16', {}).get('total', {}).get('CY', 0) or 0) - (aggregated_data.get('16', {}).get('total', {}).get('PY', 0) or 0) if year == 'CY' else 0
                 if note_id == "11_dep": return aggregated_data.get('11', {}).get('sub_items', {}).get('Depreciation for the year', {}).get(year, 0)
                 return aggregated_data.get(str(note_id), {}).get('total', {}).get(year, 0)
-
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
                 rows = []
                 for r_template in template:
                     row = {' ': r_template[0], 'Particulars': r_template[1], 'Note': r_template[2] if isinstance(r_template[2], str) else "", 'CY': None, 'PY': None}
-                    if r_template[3] in ["item", "item_no_alpha"]:
-                        row['CY'], row['PY'] = get_val(r_template[2], 'CY'), get_val(r_template[2], 'PY')
+                    if r_template[3] in ["item", "item_no_alpha"]: row['CY'], row['PY'] = get_val(r_template[2], 'CY'), get_val(r_template[2], 'PY')
                     rows.append(row)
                 df = pd.DataFrame(rows).rename(columns={'CY': 'As at March 31, 2025', 'PY': 'As at March 31, 2024'})
                 for i, r_template in enumerate(template):
@@ -67,7 +63,6 @@ def report_finalizer_agent(aggregated_data, company_name):
                             py_sum = df[df['Note'].isin(notes_to_sum)]['As at March 31, 2024'].sum()
                             df.iloc[i, 3], df.iloc[i, 4] = cy_sum, py_sum
                 df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3); apply_main_sheet_styling(writer.sheets[sheet_name], template, company_name)
-
             for note_num in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
                 note_info, note_data = NOTES_STRUCTURE_AND_MAPPING[note_num], aggregated_data.get(note_num)
                 if note_data and note_data.get('sub_items'):
