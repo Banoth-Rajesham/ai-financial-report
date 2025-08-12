@@ -348,3 +348,4 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                 traceback.print_exc()
     else:
         st.warning("Please upload a formatted Excel report and enter the company name.")
+
