@@ -671,4 +671,222 @@ if 'report_generated' not in st.session_state:
 if 'excel_report_bytes' not in st.session_state:
     st.session_state.excel_report_bytes = None
 if 'aggregated_data' not in st.session_state:
-    st.session_state.aggregate
+    st.session_state.aggregated_data = None
+
+# === SIDEBAR FOR FILE UPLOAD ===
+with st.sidebar:
+    st.header("🎯 Upload & Process")
+    uploaded_file = st.file_uploader("Upload financial data (Excel)", type=["xlsx", "xls"])
+    company_name = st.text_input("Enter Company Name", "My Company Inc.")
+    
+    if st.button("🚀 Generate 3D Dashboard", type="primary", use_container_width=True):
+        if uploaded_file:
+            with st.spinner("🔄 Executing financial agent pipeline..."):
+                # Execute the existing pipeline
+                source_df = intelligent_data_intake_agent(uploaded_file)
+                if source_df is None: 
+                    st.error("Pipeline Failed: Data Intake")
+                    st.stop()
+                
+                refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                
+                aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
+                if not aggregated_data: 
+                    st.error("Pipeline Failed: Aggregation")
+                    st.stop()
+                
+                excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
+                if excel_report_bytes is None: 
+                    st.error("Pipeline Failed: Report Finalizer")
+                    st.stop()
+                
+            # Store in session state
+            st.session_state.report_generated = True
+            st.session_state.aggregated_data = aggregated_data
+            st.session_state.company_name = company_name
+            st.session_state.excel_report_bytes = excel_report_bytes
+            st.rerun()
+        else:
+            st.warning("⚠️ Please upload a file.")
+
+# === MAIN DASHBOARD DISPLAY ===
+if st.session_state.report_generated:
+    agg_data = st.session_state.aggregated_data
+    metrics = calculate_metrics(agg_data)
+    kpi_cy = metrics.get('CY', {})
+    kpi_py = metrics.get('PY', {})
+    
+    # Calculate percentage changes
+    get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else 0
+    
+    # Success message with 3D styling
+    st.markdown(
+        '<div class="success-3d">✨ 3D Dashboard generated from extracted financial data! ✨</div>', 
+        unsafe_allow_html=True
+    )
+    
+    # === 3D KPI CARDS SECTION ===
+    st.markdown("## 💎 Key Performance Indicators")
+    
+    col1, col2, col3, col4 = st.columns(4)
+    
+    # KPI 1: Total Revenue
+    with col1:
+        revenue_change = get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0))
+        revenue_kpi = create_3d_kpi_card(
+            "Total Revenue", 
+            f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", 
+            revenue_change, 
+            "💰", 
+            "revenue"
+        )
+        st.markdown(revenue_kpi, unsafe_allow_html=True)
+    
+    # KPI 2: Net Profit
+    with col2:
+        profit_change = get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0))
+        profit_kpi = create_3d_kpi_card(
+            "Net Profit", 
+            f"₹{kpi_cy.get('Net Profit', 0):,.0f}", 
+            profit_change, 
+            "📊", 
+            "profit"
+        )
+        st.markdown(profit_kpi, unsafe_allow_html=True)
+    
+    # KPI 3: Total Assets
+    with col3:
+        assets_change = get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0))
+        assets_kpi = create_3d_kpi_card(
+            "Total Assets", 
+            f"₹{kpi_cy.get('Total Assets', 0):,.0f}", 
+            assets_change, 
+            "🏦", 
+            "assets"
+        )
+        st.markdown(assets_kpi, unsafe_allow_html=True)
+    
+    # KPI 4: Debt-to-Equity
+    with col4:
+        debt_change = get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0))
+        debt_kpi = create_3d_kpi_card(
+            "Debt-to-Equity", 
+            f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", 
+            debt_change, 
+            "⚖️", 
+            "debt"
+        )
+        st.markdown(debt_kpi, unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # === 3D CHARTS SECTION ===
+    st.markdown("## 📈 3D Financial Visualizations")
+    
+    # Prepare data for 3D charts
+    months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+    
+    # Generate monthly revenue data
+    revenue_data = {
+        'current_year': generate_monthly_data(kpi_cy.get('Total Revenue', 0)),
+        'previous_year': generate_monthly_data(kpi_py.get('Total Revenue', 0))
+    }
+    
+    # Asset distribution data
+    asset_data = {
+        'Current Assets': kpi_cy.get('Current Assets', 0),
+        'Fixed Assets': kpi_cy.get('Fixed Assets', 0),
+        'Investments': kpi_cy.get('Investments', 0)
+    }
+    
+    # Create two columns for charts
+    chart_col1, chart_col2 = st.columns(2)
+    
+    with chart_col1:
+        st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
+        fig_3d_revenue = create_3d_revenue_trend(revenue_data)
+        st.plotly_chart(fig_3d_revenue, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with chart_col2:
+        st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
+        fig_3d_assets = create_3d_asset_distribution(asset_data)
+        st.plotly_chart(fig_3d_assets, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Performance radar chart (full width)
+    st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
+    fig_3d_performance = create_3d_performance_metrics(metrics)
+    st.plotly_chart(fig_3d_performance, use_container_width=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.markdown("---")
+    
+    # === REPORT GENERATION AND DOWNLOAD ===
+    st.markdown("## 📊 Download Reports")
+    
+    with st.spinner("🎨 Generating enhanced reports..."):
+        ai_analysis = generate_ai_analysis(metrics)
+        
+        # Prepare charts for PDF (using simpler versions for PDF compatibility)
+        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+        revenue_df = pd.DataFrame({
+            'Month': months * 2, 
+            'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 
+            'Revenue': np.concatenate([
+                generate_monthly_data(kpi_py.get('Total Revenue', 0)), 
+                generate_monthly_data(kpi_cy.get('Total Revenue', 0))
+            ])
+        })
+        fig_revenue_pdf = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>", template="seaborn")
+        
+        asset_df = pd.DataFrame({
+            'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments'], 
+            'Value': [kpi_cy.get('Current Assets', 0), kpi_cy.get('Fixed Assets', 0), kpi_cy.get('Investments', 0)]
+        }).query("Value > 0")
+        fig_asset_pdf = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>", hole=0.3)
+        
+        charts = {"revenue_trend": fig_revenue_pdf, "asset_distribution": fig_asset_pdf}
+        pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
+
+    # Download buttons
+    dl_col1, dl_col2 = st.columns(2)
+    
+    with dl_col1:
+        st.download_button(
+            label="💡 Download Professional Insights (PDF)", 
+            data=pdf_bytes, 
+            file_name=f"{st.session_state.company_name}_3D_Insights_Report.pdf", 
+            mime="application/pdf", 
+            use_container_width=True
+        )
+    
+    with dl_col2:
+        st.download_button(
+            label="📊 Download Detailed Report (Excel)", 
+            data=st.session_state.excel_report_bytes,
+            file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx", 
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+            use_container_width=True
+        )
+
+else:
+    # Welcome screen when no data is uploaded
+    st.markdown("""
+    <div style="text-align: center; padding: 50px;">
+        <h2 style="color: #667eea;">🎯 Welcome to the 3D Financial Dashboard</h2>
+        <p style="font-size: 18px; color: #6b7280; margin: 20px 0;">
+            Upload your financial data and experience stunning 3D visualizations!
+        </p>
+        <div style="background: rgba(255,255,255,0.9); padding: 30px; border-radius: 20px; margin: 20px auto; max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
+            <h3 style="color: #667eea;">✨ Features:</h3>
+            <ul style="text-align: left; color: #6b7280;">
+                <li>🚀 Beautiful 3D KPI cards with hover effects</li>
+                <li>📊 Interactive 3D charts and visualizations</li>
+                <li>💎 Modern glassmorphism design</li>
+                <li>📈 Real-time financial analysis</li>
+                <li>🎨 Professional PDF and Excel reports</li>
+            </ul>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
