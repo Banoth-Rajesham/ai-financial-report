@@ -1,7 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version handles a single, potentially modified Excel file from the first
-# part of the application to generate a PDF report.
+# This version correctly handles an Excel file with multiple sheets and extra header rows.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -175,99 +174,85 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel file and generating report..."):
             try:
-                # Read all sheets into a dictionary of DataFrames
-                all_sheets = pd.read_excel(excel_file, sheet_name=None)
+                # Read specific sheets from the Excel file, skipping the header rows
+                balance_sheet_df = pd.read_excel(excel_file, sheet_name='Balance Sheet', skiprows=3, header=0, names=['Unnamed', 'Particulars', 'Note', 'CY', 'PY'])
+                pnl_df = pd.read_excel(excel_file, sheet_name='Profit and Loss', skiprows=3, header=0, names=['Unnamed', 'Particulars', 'Note', 'CY', 'PY'])
+                notes_df = pd.read_excel(excel_file, sheet_name='Note 11', skiprows=1, header=0, names=['Particulars', 'CY', 'PY'])
+
+                # Combine the relevant dataframes to search for keywords
+                # Note: We prioritize the Balance Sheet and PnL for top-level figures
+                source_df = pd.concat([balance_sheet_df, pnl_df, notes_df], ignore_index=True)
+                source_df = source_df.dropna(how='all').fillna(0)
                 
-                # Find the sheet that contains the 'Particulars' column
-                source_df = None
-                for sheet_name, df in all_sheets.items():
-                    if 'Particulars' in df.columns:
-                        source_df = df
-                        break
+                # Now, find the columns with CY and PY data based on column names.
+                # This is more robust than a hard-coded column name.
+                cy_col = [col for col in source_df.columns if 'CY' in str(col)][0]
+                py_col = [col for col in source_df.columns if 'PY' in str(col)][0]
 
-                if source_df is not None:
-                    # Filter out any rows that are entirely blank, and fill any NaN values with 0
-                    source_df = source_df.dropna(how='all').fillna(0)
-                    
-                    # Create a dictionary to hold our aggregated data based on keywords
-                    agg_data_from_excel = {}
+                # Create a dictionary to hold our aggregated data based on keywords
+                agg_data_from_excel = {}
 
-                    def find_value(keyword, df_to_search=source_df):
-                        row = df_to_search[df_to_search['Particulars'].str.contains(keyword, na=False, case=False)]
-                        if not row.empty:
-                            # Use iloc to get the value, in case the index is non-standard
-                            cy_col = [col for col in df_to_search.columns if '2025' in str(col)]
-                            py_col = [col for col in df_to_search.columns if '2024' in str(col)]
-                            
-                            if cy_col and py_col:
-                                cy_val = row[cy_col[0]].iloc[0]
-                                py_val = row[py_col[0]].iloc[0]
-                                return cy_val, py_val
-                        return 0, 0
-                    
-                    def find_sub_item_value(main_keyword, sub_keyword, df_to_search=source_df):
-                         # Find the main row first
-                        main_row_index = df_to_search[df_to_search['Particulars'].str.contains(main_keyword, na=False, case=False)].index
-                        if not main_row_index.empty:
-                            # Search for the sub_keyword immediately after the main row
-                            for i in range(main_row_index[0] + 1, len(df_to_search)):
-                                if sub_keyword in str(df_to_search.iloc[i]['Particulars']):
-                                    cy_col = [col for col in df_to_search.columns if '2025' in str(col)]
-                                    py_col = [col for col in df_to_search.columns if '2024' in str(col)]
-                                    
-                                    if cy_col and py_col:
-                                        cy_val = df_to_search.iloc[i][cy_col[0]]
-                                        py_val = df_to_search.iloc[i][py_col[0]]
-                                        return cy_val, py_val
-                        return 0, 0
-                    
-                    # Map keywords from the new Excel file to the old `aggregated_data` structure
-                    cy_equity, py_equity = find_value("Total Equity")
-                    cy_debt, py_debt = find_value("Total Debt")
-                    cy_assets, py_assets = find_value("Total Assets")
-                    cy_revenue, py_revenue = find_value("Total Revenue")
-                    cy_profit, py_profit = find_value("Net Profit")
-                    
-                    # Construct the aggregated data dictionary from the found values
-                    agg_data_from_excel = {
-                        '1': {'total': {'CY': cy_equity, 'PY': py_equity}},
-                        '2': {'total': {'CY': 0, 'PY': 0}}, # This is a placeholder as `Total Equity` is a single line
-                        '3': {'total': {'CY': cy_debt, 'PY': py_debt}},
-                        '7': {'total': {'CY': 0, 'PY': 0}}, # This is a placeholder as `Total Debt` is a single line
-                        '11': {'total': {'CY': cy_assets, 'PY': py_assets}},
-                        '16': {'total': {'CY': 0, 'PY': 0}}, # Placeholder as this is not in the summary
-                        '21': {'total': {'CY': cy_revenue, 'PY': py_revenue}},
-                        '22': {'total': {'CY': 0, 'PY': 0}}, # Placeholder as total revenue is one line
-                        '23': {'total': {'CY': cy_profit, 'PY': py_profit}},
-                        '24': {'total': {'CY': 0, 'PY': 0}},
-                        '25': {'total': {'CY': 0, 'PY': 0}},
-                        '26': {'total': {'CY': 0, 'PY': 0}},
-                    }
-                    
-                    # We need to manually calculate the depreciation to get an accurate profit
-                    # Let's try to get it from a specific note sheet if available.
-                    # This is an assumption based on the original structure.
-                    depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation")
-                    if depreciation_cy and depreciation_py:
-                        agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
+                def find_value(keyword, df_to_search=source_df):
+                    row = df_to_search[df_to_search['Particulars'].str.contains(keyword, na=False, case=False)]
+                    if not row.empty:
+                        return row.iloc[0][cy_col], row.iloc[0][py_col]
+                    return 0, 0
+                
+                def find_sub_item_value(main_keyword, sub_keyword, df_to_search=source_df):
+                    main_row_index = df_to_search[df_to_search['Particulars'].str.contains(main_keyword, na=False, case=False)].index
+                    if not main_row_index.empty:
+                        for i in range(main_row_index[0] + 1, len(df_to_search)):
+                            if sub_keyword in str(df_to_search.iloc[i]['Particulars']):
+                                return df_to_search.iloc[i][cy_col], df_to_search.iloc[i][py_col]
+                    return 0, 0
+                
+                # Map keywords from the new Excel file to the old `aggregated_data` structure
+                cy_equity, py_equity = find_value("Shareholder's funds")
+                cy_total_debt = find_value("Total Debt")
+                cy_long_term_borr, py_long_term_borr = find_value("Long-term borrowings")
+                cy_short_term_borr, py_short_term_borr = find_value("Short-term borrowings")
+                cy_assets, py_assets = find_value("Total Assets")
+                cy_revenue, py_revenue = find_value("Total Revenue")
+                cy_other_income, py_other_income = find_value("Other Income")
+                cy_profit, py_profit = find_value("Profit for the period")
 
-                    # Recalculate KPIs, analysis, and generate charts and PDF
-                    re_kpis = calculate_kpis(agg_data_from_excel)
-                    re_ai_analysis = generate_ai_analysis(re_kpis)
-                    
-                    re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
-                    re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
-                    re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
-                    re_chart_bytes = io.BytesIO()
-                    re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
-                    re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
-                    
-                    re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf)
-                    
-                    st.success("PDF Report Generated!")
-                    st.download_button("📄 Download PDF Report", re_pdf_bytes, f"{company_name_pdf}_Excel_Report.pdf", "application/pdf", use_container_width=True)
-                else:
-                    st.error("The uploaded Excel file does not contain a sheet with a 'Particulars' column. Please check your file format.")
+                # The `calculate_kpis` function relies on a specific structure.
+                # We need to build this structure from the data we just extracted.
+                agg_data_from_excel = {
+                    '1': {'total': {'CY': cy_equity, 'PY': py_equity}},
+                    '2': {'total': {'CY': 0, 'PY': 0}},
+                    '3': {'total': {'CY': cy_long_term_borr, 'PY': py_long_term_borr}},
+                    '7': {'total': {'CY': cy_short_term_borr, 'PY': py_short_term_borr}},
+                    '11': {'total': {'CY': cy_assets, 'PY': py_assets}},
+                    '16': {'total': {'CY': 0, 'PY': 0}},
+                    '21': {'total': {'CY': cy_revenue, 'PY': py_revenue}},
+                    '22': {'total': {'CY': cy_other_income, 'PY': py_other_income}},
+                    '23': {'total': {'CY': cy_profit, 'PY': py_profit}},
+                    '24': {'total': {'CY': 0, 'PY': 0}},
+                    '25': {'total': {'CY': 0, 'PY': 0}},
+                    '26': {'total': {'CY': 0, 'PY': 0}},
+                }
+                
+                # We need depreciation for accurate profit calculation, which is in Note 11
+                depreciation_cy, depreciation_py = find_value("Depreciation for the year", notes_df)
+                if depreciation_cy and depreciation_py:
+                    agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
+
+                # Recalculate KPIs, analysis, and generate charts and PDF
+                re_kpis = calculate_kpis(agg_data_from_excel)
+                re_ai_analysis = generate_ai_analysis(re_kpis)
+                
+                re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
+                re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
+                re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
+                re_chart_bytes = io.BytesIO()
+                re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
+                re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
+                
+                re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf)
+                
+                st.success("PDF Report Generated!")
+                st.download_button("📄 Download PDF Report", re_pdf_bytes, f"{company_name_pdf}_Excel_Report.pdf", "application/pdf", use_container_width=True)
             except Exception as e:
                 st.error(f"An error occurred while processing the Excel file: {e}. Please ensure the file is an Excel workbook and contains the necessary financial data.")
     else:
