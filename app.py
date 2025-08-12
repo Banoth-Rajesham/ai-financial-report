@@ -12,7 +12,7 @@ import numpy as np
 import os
 import io
 
-# This line tells the app to also look inside the sub-folder for helper files.
+# This line tells the app where to find your 'agents' and 'config' files.
 sys.path.append('financial_reporter_app')
 
 try:
@@ -30,10 +30,13 @@ except ImportError as e:
 
 # --- HELPER FUNCTIONS ---
 
+# ========================================================== #
+# == THIS IS THE FIX: The missing function is now restored. == #
+# ========================================================== #
 def calculate_metrics(agg_data):
     """
     This function calculates the key metrics for the dashboard.
-    It was missing in the previous version, causing the error.
+    It is needed for the dashboard display.
     """
     metrics = {}
     for year in ['CY', 'PY']:
@@ -183,7 +186,7 @@ if st.session_state.report_generated:
     col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
     col2.metric("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.0f}", f"{get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0)):.1f}%")
     col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
-    col4.metric("Debt-to-Equity", f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
+    col4.metric("Debt-to-Equity", f"₹{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
     
     months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
     def generate_monthly(total):
