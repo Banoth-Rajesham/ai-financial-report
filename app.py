@@ -84,16 +84,15 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
         pdf.ln(5)
 
         # Convert DataFrame to a list of lists for FPDF table
-        # Explicitly convert all columns to string to avoid concatenation errors
-        df_str = df.astype(str)
-        data_to_render = [df_str.columns.tolist()] + df_str.values.tolist()
+        data_to_render = [df.columns.tolist()] + df.values.tolist()
         pdf.set_font('Arial', '', 10)
         
         with pdf.table(text_align='C') as table:
             for row_data in data_to_render:
                 row = table.row()
                 for datum in row_data:
-                    row.cell(datum)
+                    # PERMANENT FIX: Explicitly convert each cell to a string
+                    row.cell(str(datum))
 
     return bytes(pdf.output())
 
