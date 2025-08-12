@@ -133,7 +133,7 @@ else:
 
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button("📊 Download Visual PDF Report", pdf_bytes, f"{st.session_state.company_name}_Dashboard_Report.pdf", "application/pdf", use_container_width=True)
-    d_col2.download_button("💹 Download Formatted Excel Data", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)```
+    d_col2.download_button("💹 Download Formatted Excel Data", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
 
 ---
 
@@ -225,3 +225,4 @@ def report_finalizer_agent(aggregated_data, company_name):
         return output.getvalue()
     except Exception as e:
         print(f"❌ Report Finalizer FAILED: {e}"); import traceback; traceback.print_exc(); return None
+
