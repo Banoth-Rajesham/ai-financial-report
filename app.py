@@ -16,7 +16,10 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # --- Now, all imports will work correctly from the root ---
 try:
+    # CORRECTED IMPORT: Import config directly from the root folder
     from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+    
+    # CORRECTED IMPORT: Import agents from their package
     from financial_reporter_app.agents import (
         intelligent_data_intake_agent,
         ai_mapping_agent,
@@ -28,7 +31,7 @@ except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Please ensure all __init__.py files are in place. Error: {e}")
     st.stop()
 
-# --- HELPER & VISUALIZATION FUNCTIONS ---
+# --- HELPER & VISUALIZATION FUNCTIONS (UNCHANGED) ---
 def calculate_kpis(agg_data):
     kpis = {}
     for year in ['CY', 'PY']:
@@ -83,7 +86,6 @@ def create_visual_pdf_report(kpis, ai_analysis, charts, company_name, sheets_dat
     if "Profit and Loss" in sheets_data: draw_table("Profit and Loss", sheets_data["Profit and Loss"])
     return bytes(pdf.output())
 
-# --- MAIN STREAMLIT APP ---
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
