@@ -1,6 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version generates a detailed, multi-page PDF report with visualizations and insights.
+# This version fixes the TypeError in the "Generate PDF from Excel" section.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -47,53 +47,23 @@ class PDF(FPDF):
 
 def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data):
     pdf = PDF()
-
-    # --- Page 1: Summary & Insights ---
     pdf.add_page()
-    pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
-    pdf.ln(10)
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, '1. Key Performance Indicators (Current Year)', 0, 1, 'L')
-    pdf.set_font('Arial', '', 12)
-    for key, value in kpis['CY'].items():
-        pdf.cell(0, 8, f"- {key}: {'INR {:,.0f}'.format(value) if any(x in key for x in ['Revenue', 'Profit', 'Assets']) else '{:.2f}'.format(value)}", 0, 1)
-    pdf.ln(10)
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L')
-    pdf.set_font('Arial', '', 12)
-    pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
-
-    # --- Page 2: Visualizations ---
+    pdf.set_font('Arial', 'B', 20); pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C'); pdf.ln(10)
+    pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '1. Key Performance Indicators (Current Year)', 0, 1, 'L'); pdf.set_font('Arial', '', 12)
+    for key, value in kpis['CY'].items(): pdf.cell(0, 8, f"- {key}: {'INR {:,.0f}'.format(value) if any(x in key for x in ['Revenue', 'Profit', 'Assets']) else '{:.2f}'.format(value)}", 0, 1)
+    pdf.ln(10); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L'); pdf.set_font('Arial', '', 12); pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
     if charts:
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L')
-        pdf.ln(5)
+        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L'); pdf.ln(5)
         for title, chart_bytes in charts.items():
-            pdf.set_font('Arial', 'B', 14)
-            pdf.cell(0, 10, title, 0, 1, 'C')
-            pdf.image(chart_bytes, x=15, w=180, type='PNG')
-            pdf.ln(10)
-
-    # --- Pages for Balance Sheet, Profit & Loss, and Notes ---
+            pdf.set_font('Arial', 'B', 14); pdf.cell(0, 10, title, 0, 1, 'C'); pdf.image(chart_bytes, x=15, w=180, type='PNG'); pdf.ln(10)
     for sheet_name, df in sheets_data.items():
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, f'4. {sheet_name}', 0, 1, 'L')
-        pdf.ln(5)
-
-        # Convert DataFrame to a list of lists for FPDF table
+        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, f'Sheet: {sheet_name}', 0, 1, 'L'); pdf.ln(5)
         data_to_render = [df.columns.tolist()] + df.values.tolist()
         pdf.set_font('Arial', '', 10)
-        
-        with pdf.table(text_align='C') as table:
+        with pdf.table(text_align='L', col_widths=(60, 30, 30)) as table:
             for row_data in data_to_render:
                 row = table.row()
-                for datum in row_data:
-                    # PERMANENT FIX: Explicitly convert each cell to a string
-                    row.cell(str(datum))
-
+                for datum in row_data: row.cell(str(datum))
     return bytes(pdf.output())
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
@@ -102,42 +72,7 @@ if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_b
 if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
-st.markdown("""
-<style>
-.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}
-.block-container{padding:2rem 3rem}
-.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}
-.kpi-card{
-    background:#2b2b3c;
-    border-radius:25px 25px 8px 8px;
-    padding:1.5rem 2rem;
-    box-shadow:6px 6px 16px #14141e,-6px -6px 16px #38384a;
-    min-width:250px;
-    color:#e0e0e0;
-    flex:1;
-    transition: box-shadow 0.3s ease-in-out;
-}
-.revenue-card:hover {
-    box-shadow: 0 0 20px #ffca28, 0 0 30px #ffca28, 0 0 40px #ffca28; /* Yellow */
-}
-.profit-card:hover {
-    box-shadow: 0 0 20px #00cc7a, 0 0 30px #00cc7a, 0 0 40px #00cc7a; /* Green */
-}
-.assets-card:hover {
-    box-shadow: 0 0 20px #29b6f6, 0 0 30px #29b6f6, 0 0 40px #29b6f6; /* Blue */
-}
-.debt-card:hover {
-    box-shadow: 0 0 20px #f44336, 0 0 30px #f44336, 0 0 40px #f44336; /* Red */
-}
-.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}
-.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}
-.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}
-.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}
-.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}
-.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}
-.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}
-</style>
-""", unsafe_allow_html=True)
+st.markdown("""<style>.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}.block-container{padding:2rem 3rem}.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}.kpi-card{background:#2b2b3c;border-radius:25px 25px 8px 8px;padding:1.5rem 2rem;box-shadow:6px 6px 16px #141e1e,-6px -6px 16px #38384a;min-width:250px;color:#e0e0e0;flex:1;transition:box-shadow .3s ease-in-out}.revenue-card:hover{box-shadow:0 0 20px #ffca28,0 0 30px #ffca28,0 0 40px #ffca28}.profit-card:hover{box-shadow:0 0 20px #00cc7a,0 0 30px #00cc7a,0 0 40px #00cc7a}.assets-card:hover{box-shadow:0 0 20px #29b6f6,0 0 30px #29b6f6,0 0 40px #29b6f6}.debt-card:hover{box-shadow:0 0 20px #f44336,0 0 30px #f44336,0 0 40px #f44336}.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}</style>""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Upload & Process"); uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"]); company_name = st.text_input("Enter Company Name", st.session_state.company_name)
@@ -162,32 +97,7 @@ else:
     profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit'] * 100) if kpi_py.get('Net Profit', 0) > 0 else 0
     assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets'] * 100) if kpi_py['Total Assets'] else 0
     dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
-
-    st.markdown(f"""
-    <div class="kpi-container">
-        <div class="kpi-card revenue-card">
-            <div class="title">Total Revenue (CY)</div>
-            <div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div>
-            <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card profit-card">
-            <div class="title">Net Profit (CY)</div>
-            <div class="value">₹{kpi_cy['Net Profit']:,.0f}</div>
-            <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card assets-card">
-            <div class="title">Total Assets (CY)</div>
-            <div class="value">₹{kpi_cy['Total Assets']:,.0f}</div>
-            <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card debt-card">
-            <div class="title">Debt-to-Equity (CY)</div>
-            <div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div>
-            <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown(f"""<div class="kpi-container"><div class="kpi-card revenue-card"><div class="title">Total Revenue (CY)</div><div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div><div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div></div><div class="kpi-card profit-card"><div class="title">Net Profit (CY)</div><div class="value">₹{kpi_cy['Net Profit']:,.0f}</div><div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div></div><div class="kpi-card assets-card"><div class="title">Total Assets (CY)</div><div class="value">₹{kpi_cy['Total Assets']:,.0f}</div><div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div></div><div class="kpi-card debt-card"><div class="title">Debt-to-Equity (CY)</div><div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div><div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div></div></div>""", unsafe_allow_html=True)
     ai_analysis = generate_ai_analysis(kpis)
     chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
     fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
@@ -195,7 +105,6 @@ else:
     col1, col2 = st.columns((5, 4)); col1.subheader("📊 Financial Visualization"); col1.plotly_chart(fig, use_container_width=True); col2.subheader("🤖 AI-Generated Insights"); col2.markdown(ai_analysis)
     st.subheader("⬇️ Download Center")
     chart_bytes = io.BytesIO(); fig.write_image(chart_bytes, format="png", scale=2, engine="kaleido"); charts_for_pdf = {"Performance Overview": chart_bytes}
-    # Note: This old PDF generation is still here for the main flow
     pdf_bytes = create_professional_pdf(st.session_state.kpis, ai_analysis, charts_for_pdf, st.session_state.company_name, {})
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button("📄 Download PDF with Professional Insights", pdf_bytes, f"{st.session_state.company_name}_Financial_Report.pdf", "application/pdf", use_container_width=True)
@@ -204,120 +113,80 @@ else:
 st.divider()
 
 # ==============================================================================
-# UPDATED SECTION FOR GENERATING PDF FROM A PROCESSED EXCEL FILE
-# This now includes the full Balance Sheet, P&L, and Notes.
+# CORRECTED SECTION FOR GENERATING PDF FROM A PROCESSED EXCEL FILE
 # ==============================================================================
-st.header("Generate PDF Report from a Previously Downloaded Excel File")
-st.markdown("Use this section to upload the single formatted Excel report you've already generated to create a professional PDF. This section is more flexible and can handle modified files.")
+st.header("Generate PDF Report from Formatted Excel File")
+st.markdown("Upload the formatted Excel report you generated above to create a comprehensive, multi-page PDF.")
 
-excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx", "xls"], key="excel_uploader")
-company_name_pdf = st.text_input("Enter Company Name for Report", st.session_state.company_name, key="pdf_company_name")
+excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx"], key="excel_uploader")
+company_name_pdf = st.text_input("Re-enter Company Name for PDF Report", st.session_state.company_name, key="pdf_company_name")
 
-if st.button("Generate PDF Report", type="secondary", use_container_width=True, key="generate_pdf_button"):
+if st.button("Generate Comprehensive PDF Report", type="secondary", use_container_width=True, key="generate_pdf_button"):
     if excel_file and company_name_pdf:
-        with st.spinner("Processing Excel file and generating report..."):
+        with st.spinner("Processing Excel and generating comprehensive PDF..."):
             try:
-                # Read all sheets into a dictionary of DataFrames, reading the first 10 rows without a header
-                all_sheets_raw = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
-                
-                combined_df = pd.DataFrame()
+                all_sheets = pd.read_excel(excel_file, sheet_name=None)
                 sheets_for_pdf = {}
+                for sheet_name, df in all_sheets.items():
+                    df_cleaned = df.dropna(how='all').fillna('')
+                    if not df_cleaned.empty: sheets_for_pdf[sheet_name] = df_cleaned
+
+                # --- FIX STARTS HERE: Function to safely convert values to numbers ---
+                def clean_and_convert_to_numeric(value):
+                    """Converts a value to a numeric type, handling strings with commas."""
+                    if isinstance(value, (int, float)): return value
+                    if isinstance(value, str):
+                        try: return float(value.replace(',', ''))
+                        except (ValueError, AttributeError): return 0
+                    return 0
+
+                def find_value_from_df(keyword, df):
+                    """Finds a value in a DataFrame and returns cleaned CY and PY numbers."""
+                    row = df[df.iloc[:, 0].astype(str).str.contains(keyword, na=False, case=False)]
+                    if not row.empty:
+                        cy_val = clean_and_convert_to_numeric(row.iloc[0, 2])
+                        py_val = clean_and_convert_to_numeric(row.iloc[0, 3])
+                        return cy_val, py_val
+                    return 0, 0
+
+                # Re-calculate KPIs from the uploaded Excel data
+                agg_data_from_excel = {}
+                if "Balance Sheet" in sheets_for_pdf:
+                    bs_df = sheets_for_pdf["Balance Sheet"]
+                    cy_eq, py_eq = find_value_from_df("Share Capital", bs_df)
+                    cy_debt, py_debt = find_value_from_df("Long-term borrowings", bs_df)
+                    cy_assets, py_assets = find_value_from_df("TOTAL ASSETS", bs_df)
+                    agg_data_from_excel.update({ '1': {'total': {'CY': cy_eq, 'PY': py_eq}}, '3': {'total': {'CY': cy_debt, 'PY': py_debt}}, '11': {'total': {'CY': cy_assets, 'PY': py_assets}}})
+
+                if "Profit and Loss" in sheets_for_pdf:
+                    pl_df = sheets_for_pdf["Profit and Loss"]
+                    cy_rev, py_rev = find_value_from_df("Total Revenue", pl_df)
+                    cy_profit, py_profit = find_value_from_df("Profit/\(Loss\) for the period", pl_df)
+                    agg_data_from_excel.update({'21': {'total': {'CY': cy_rev, 'PY': py_rev}}, '23': {'total': {'CY': cy_profit, 'PY': py_profit}}})
                 
-                # List of sheets to include in the PDF
-                sheet_names_to_include = ['Balance Sheet', 'Profit and Loss'] + [f'Note {i}' for i in range(1, 28)]
+                # --- FIX ENDS HERE ---
                 
-                for sheet_name in sheet_names_to_include:
-                    if sheet_name in all_sheets_raw:
-                        df_raw = all_sheets_raw[sheet_name]
-                        header_row_candidates = df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
-                        header_row_index = header_row_candidates[header_row_candidates].index
-                        
-                        if not header_row_index.empty:
-                            header_index_to_use = header_row_index[0]
-                            df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
-                            
-                            # Filter out any rows that are entirely blank, and fill any NaN values with ''
-                            df_correctly_read = df_correctly_read.dropna(subset=['Particulars']).fillna('')
-                            
-                            # Add to dictionary for PDF rendering
-                            sheets_for_pdf[sheet_name] = df_correctly_read
-                            combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
+                # Use a default structure if some values aren't found, to prevent crashes
+                required_notes = ['2', '7', '16', '22', '24', '25', '26']
+                for note in required_notes:
+                    if note not in agg_data_from_excel: agg_data_from_excel[note] = {'total': {'CY': 0, 'PY': 0}}
+                if '11' not in agg_data_from_excel: agg_data_from_excel['11'] = {'total': {'CY': 0, 'PY': 0}}
+                agg_data_from_excel.setdefault('11', {}).setdefault('sub_items', {}).setdefault('Depreciation for the year', {'CY': 0, 'PY': 0})
+                
+                re_kpis = calculate_kpis(agg_data_from_excel)
+                re_ai_analysis = generate_ai_analysis(re_kpis)
+                re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
+                re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group')
+                re_chart_bytes = io.BytesIO(); re_fig.write_image(re_chart_bytes, format="png", scale=2); re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
+                
+                re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf, sheets_for_pdf)
+                
+                st.success("Comprehensive PDF Report Generated!")
+                st.download_button("📄 Download Comprehensive PDF Report", re_pdf_bytes, f"{company_name_pdf}_Comprehensive_Report.pdf", "application/pdf", use_container_width=True)
 
-                # Final check to ensure we have the 'Particulars' column for KPI calculation
-                if 'Particulars' not in combined_df.columns:
-                    st.error("The uploaded Excel file does not contain a 'Particulars' column in any of the sheets. Please check your file format.")
-                else:
-                    agg_data_from_excel = {}
-
-                    def find_value(keyword, df_to_search=combined_df):
-                        row = df_to_search[df_to_search['Particulars'].astype(str).str.contains(keyword, na=False, case=False, regex=False)]
-                        if not row.empty:
-                            cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
-                            py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
-                            if cy_col_candidates and py_col_candidates:
-                                cy_val = row[cy_col_candidates[0]].iloc[0]
-                                py_val = row[py_col_candidates[0]].iloc[0]
-                                return cy_val, py_val
-                        return 0, 0
-                    
-                    def find_sub_item_value(main_keyword, sub_keyword, df_to_search=combined_df):
-                        main_row_index = df_to_search[df_to_search['Particulars'].astype(str).str.contains(main_keyword, na=False, case=False, regex=False)].index
-                        if not main_row_index.empty:
-                            for i in range(main_row_index[0] + 1, len(df_to_search)):
-                                if sub_keyword in str(df_to_search.iloc[i]['Particulars']):
-                                    cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
-                                    py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
-                                    if cy_col_candidates and py_col_candidates:
-                                        cy_val = df_to_search.iloc[i][cy_col_candidates[0]]
-                                        py_val = df_to_search.iloc[i][py_col_candidates[0]]
-                                        return cy_val, py_val
-                        return 0, 0
-                    
-                    # Map keywords for KPI calculation
-                    cy_equity, py_equity = find_value("Shareholder's funds")
-                    cy_debt, py_debt = find_value("Total Debt")
-                    cy_assets, py_assets = find_value("Total Assets")
-                    cy_revenue, py_revenue = find_value("Total Revenue")
-                    cy_profit, py_profit = find_value("Profit for the period")
-                    
-                    agg_data_from_excel = {
-                        '1': {'total': {'CY': cy_equity, 'PY': py_equity}},
-                        '2': {'total': {'CY': 0, 'PY': 0}},
-                        '3': {'total': {'CY': cy_debt, 'PY': py_debt}},
-                        '7': {'total': {'CY': 0, 'PY': 0}},
-                        '11': {'total': {'CY': cy_assets, 'PY': py_assets}},
-                        '16': {'total': {'CY': 0, 'PY': 0}},
-                        '21': {'total': {'CY': cy_revenue, 'PY': py_revenue}},
-                        '22': {'total': {'CY': 0, 'PY': 0}},
-                        '23': {'total': {'CY': cy_profit, 'PY': py_profit}},
-                        '24': {'total': {'CY': 0, 'PY': 0}},
-                        '25': {'total': {'CY': 0, 'PY': 0}},
-                        '26': {'total': {'CY': 0, 'PY': 0}},
-                    }
-                    
-                    if 'Note 11' in sheets_for_pdf:
-                        notes_df = sheets_for_pdf['Note 11']
-                        depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
-                        if depreciation_cy and depreciation_py:
-                            agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
-
-                    re_kpis = calculate_kpis(agg_data_from_excel)
-                    re_ai_analysis = generate_ai_analysis(re_kpis)
-                    
-                    # Generate charts for the PDF
-                    re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
-                    re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
-                    re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
-                    re_chart_bytes = io.BytesIO()
-                    re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
-                    re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
-                    
-                    # --- Generate the comprehensive PDF with all dataframes ---
-                    re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf, sheets_for_pdf)
-                    
-                    st.success("PDF Report Generated!")
-                    st.download_button("📄 Download Comprehensive PDF Report", re_pdf_bytes, f"{company_name_pdf}_Comprehensive_Financial_Report.pdf", "application/pdf", use_container_width=True)
             except Exception as e:
-                st.error(f"An error occurred while processing the Excel file: {e}. Please ensure the file is an Excel workbook and contains the necessary financial data.")
+                st.error(f"An error occurred while processing the Excel file: {e}. Please ensure it is the formatted report generated by this app.")
+                import traceback
+                traceback.print_exc()
     else:
-        st.warning("Please upload a formatted Excel report and enter the company name.")
+        st.warning("Please upload the formatted Excel report and enter the company name to generate the PDF.")
