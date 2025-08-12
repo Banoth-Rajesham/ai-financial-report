@@ -86,8 +86,33 @@ else:
     profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit'] * 100) if kpi_py.get('Net Profit', 0) > 0 else 0
     assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets'] * 100) if kpi_py['Total Assets'] else 0
     dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
-    st.markdown(f"""<div class="kpi-container"><div class="kpi-card"><div class="title">Total Revenue (CY)</div><div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div><div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Net Profit (CY)</div><div class="value">₹{kpi_cy['Net Profit']:,.0f}</div><div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Total Assets (CY)</div><div class="value">₹{kpi_cy['Total Assets']:,.0f}</div><div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div></div><div class="kpi-card"><div class="title">Debt-to-Equity (CY)</div><div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div><div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div></div></div>""", unsafe_allow_html=True)
-    ai_analysis = generate_ai_analysis(kpis)
+st.markdown("""
+<style>
+.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}
+.block-container{padding:2rem 3rem}
+.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}
+.kpi-card{
+    background:#2b2b3c;
+    border-radius:25px 25px 8px 8px;
+    padding:1.5rem 2rem;
+    box-shadow:6px 6px 16px #14141e,-6px -6px 16px #38384a;
+    min-width:250px;
+    color:#e0e0e0;
+    flex:1;
+    transition: box-shadow 0.3s ease-in-out;
+}
+.kpi-card:hover {
+    box-shadow: 0 0 20px #00cc7a, 0 0 30px #00cc7a, 0 0 40px #00cc7a;
+}
+.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}
+.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}
+.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}
+.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}
+.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}
+.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}
+.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}
+</style>
+""", unsafe_allow_html=True)    ai_analysis = generate_ai_analysis(kpis)
     chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
     fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
     fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
@@ -98,3 +123,4 @@ else:
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button("📄 Download PDF with Professional Insights", pdf_bytes, f"{st.session_state.company_name}_Financial_Report.pdf", "application/pdf", use_container_width=True)
     d_col2.download_button("💹 Download Formatted Excel Report", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+
