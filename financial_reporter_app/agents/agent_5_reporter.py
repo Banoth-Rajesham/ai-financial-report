@@ -6,7 +6,7 @@ import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
 # THIS IS THE PERMANENT FIX: Use a relative import to go up one level to find config.py
-from ..config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+from config.py import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
     title_font = Font(bold=True, size=16); subtitle_font = Font(bold=True, size=12)
@@ -80,3 +80,4 @@ def report_finalizer_agent(aggregated_data, company_name):
         return output.getvalue()
     except Exception as e:
         print(f"❌ Report Finalizer FAILED: {e}"); import traceback; traceback.print_exc(); return None
+
