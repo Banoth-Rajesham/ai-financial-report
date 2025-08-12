@@ -5,7 +5,7 @@ import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# THIS IS THE PERMANENT FIX: Use the full, unambiguous path from the project's perspective.
+# THIS IS THE PERMANENT FIX: Use the full, unambiguous path from the project's root.
 from financial_reporter_app.config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
