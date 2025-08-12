@@ -1,12 +1,10 @@
 # ==============================================================================
 # PASTE THIS ENTIRE, CORRECTED BLOCK INTO: agent_5_reporter.py
-# This version inlines the config data to resolve import errors.
 # ==============================================================================
 import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# Inlined the contents of config.py here to resolve the import error
 NOTES_STRUCTURE_AND_MAPPING = {
     '1': {
         'title': 'Share Capital',
@@ -134,7 +132,6 @@ MASTER_TEMPLATE = {
     ],
     "Notes to Accounts": NOTES_STRUCTURE_AND_MAPPING
 }
-
 
 def apply_main_sheet_styling(ws, template, company_name):
     title_font = Font(bold=True, size=16); subtitle_font = Font(bold=True, size=12)
