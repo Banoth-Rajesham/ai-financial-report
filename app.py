@@ -25,7 +25,7 @@ body {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 .block-container:hover {
-    transform: translateY(-5px);
+    transform: translateY(-8px) scale(1.02);
     box-shadow: 12px 12px 20px #0d0d0d, -12px -12px 20px #1a1a1a;
 }
 .stButton>button {
@@ -40,7 +40,7 @@ body {
 }
 .stButton>button:hover {
     box-shadow: 0 0 15px #00ffcc, 0 0 25px #39ff14;
-    transform: translateY(-4px) scale(1.05);
+    transform: translateY(-6px) scale(1.08);
 }
 .stTextInput>div>div>input, .stSelectbox>div>div>select {
     background: #121212;
@@ -49,6 +49,10 @@ body {
     border: none;
     padding: 0.5rem;
     box-shadow: inset 4px 4px 6px #0d0d0d, inset -4px -4px 6px #1a1a1a;
+    transition: all 0.3s ease;
+}
+.stTextInput>div>div>input:hover, .stSelectbox>div>div>select:hover {
+    box-shadow: inset 3px 3px 5px #0d0d0d, inset -3px -3px 5px #1a1a1a, 0 0 10px #00ffcc;
 }
 h1, h2, h3, h4, h5 {
     color: #E0E0E0;
@@ -58,29 +62,16 @@ h1, h2, h3, h4, h5 {
 
 st.markdown(NEUMORPHIC_CSS, unsafe_allow_html=True)
 
-def generate_monthly_data():
-    np.random.seed(0)
-    months = pd.date_range(start="2024-01-01", periods=12, freq='M')
-    revenue = np.random.randint(20000, 50000, 12)
-    expenses = np.random.randint(10000, 30000, 12)
-    profit = revenue - expenses
-    return pd.DataFrame({"Month": months, "Revenue": revenue, "Expenses": expenses, "Profit": profit})
+st.title("💹 3D Financial Dashboard - Dark Neumorphic")
+
+uploaded_file = st.file_uploader("Upload Excel file", type=["xlsx"])
 
 def create_dark_chart(df):
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Month'], y=df['Revenue'], mode='lines+markers',
-                             name='Revenue', line=dict(color='#00ffcc', width=3)))
-    fig.add_trace(go.Scatter(x=df['Month'], y=df['Expenses'], mode='lines+markers',
-                             name='Expenses', line=dict(color='#39ff14', width=3)))
-    fig.add_trace(go.Scatter(x=df['Month'], y=df['Profit'], mode='lines+markers',
-                             name='Profit', line=dict(color='#ADFF2F', width=3)))
-    fig.update_layout(
-        template='plotly_dark',
-        paper_bgcolor='#121212',
-        plot_bgcolor='#121212',
-        font=dict(color='#E0E0E0'),
-        hovermode='x unified'
-    )
+    fig.add_trace(go.Scatter(x=df['Month'], y=df['Revenue'], mode='lines+markers', name='Revenue', line=dict(color='#00ffcc', width=3)))
+    fig.add_trace(go.Scatter(x=df['Month'], y=df['Expenses'], mode='lines+markers', name='Expenses', line=dict(color='#39ff14', width=3)))
+    fig.add_trace(go.Scatter(x=df['Month'], y=df['Profit'], mode='lines+markers', name='Profit', line=dict(color='#ADFF2F', width=3)))
+    fig.update_layout(template='plotly_dark', paper_bgcolor='#121212', plot_bgcolor='#121212', font=dict(color='#E0E0E0'), hovermode='x unified')
     return fig
 
 def export_pdf(df):
@@ -94,23 +85,25 @@ def export_pdf(df):
     pdf.output(pdf_output)
     return pdf_output.getvalue()
 
-st.title("💹 3D Financial Dashboard - Dark Neumorphic")
+if uploaded_file:
+    df = pd.read_excel(uploaded_file)
+    if 'Month' in df.columns:
+        df['Month'] = pd.to_datetime(df['Month'])
+    fig = create_dark_chart(df)
+    st.plotly_chart(fig, use_container_width=True)
+    st.dataframe(df)
 
-df = generate_monthly_data()
-fig = create_dark_chart(df)
-st.plotly_chart(fig, use_container_width=True)
-st.dataframe(df)
-
-col1, col2 = st.columns(2)
-with col1:
-    if st.button("📄 Export to PDF"):
-        pdf_data = export_pdf(df)
-        b64 = base64.b64encode(pdf_data).decode()
-        href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf">Download PDF</a>'
-        st.markdown(href, unsafe_allow_html=True)
-with col2:
-    if st.button("📊 Export to CSV"):
-        csv_data = df.to_csv(index=False).encode('utf-8')
-        b64 = base64.b64encode(csv_data).decode()
-        href = f'<a href="data:file/csv;base64,{b64}" download="financial_report.csv">Download CSV</a>'
-        st.markdown(href, unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📄 Export to PDF"):
+            pdf_data = export_pdf(df)
+            b64 = base64.b64encode(pdf_data).decode()
+            href = f'<a href="data:application/pdf;base64,{b64}" download="financial_report.pdf">Download PDF</a>'
+            st.markdown(href, unsafe_allow_html=True)
+    with col2:
+        if st.button("📊 Export to Excel"):
+            xlsx_data = BytesIO()
+            df.to_excel(xlsx_data, index=False)
+            b64 = base64.b64encode(xlsx_data.getvalue()).decode()
+            href = f'<a href="data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,{b64}" download="financial_report.xlsx">Download Excel</a>'
+            st.markdown(href, unsafe_allow_html=True)
