@@ -1,570 +1,183 @@
-# app.py
-# ENHANCED 3D FINANCIAL DASHBOARD - FIXED VERSION
+# PASTE THIS ENTIRE, COMPLETE, AND FINAL CODE BLOCK INTO: agent_5_reporter.py
 
-import streamlit as st
-import sys
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from fpdf import FPDF
-import requests
-import json
-import time
-import numpy as np
-import os
 import io
-import math
-import traceback
+from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
+from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
-# This line tells the app where to find your 'agents' and 'config' files.
-sys.path.append('financial_reporter_app')
+# ================================================================================= #
+# == NEW STYLING ENGINE: This part understands how to make the report beautiful == #
+# ================================================================================= #
 
-try:
-    from config import NOTES_STRUCTURE_AND_MAPPING
-    from agents import (
-        intelligent_data_intake_agent,
-        ai_mapping_agent,
-        hierarchical_aggregator_agent,
-        report_finalizer_agent
-    )
-except Exception as e:
-    st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
-    st.stop()
+def apply_main_sheet_styling(ws, template):
+    """Applies the beautiful, professional styling to the Balance Sheet and P&L."""
+    
+    # --- Define Fills (Colors) ---
+    header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid") # Grey
+    revenue_fill = PatternFill(start_color="EBF1DE", end_color="EBF1DE", fill_type="solid") # Green
+    expenses_fill = PatternFill(start_color="F2DCDB", end_color="F2DCDB", fill_type="solid") # Red
+    net_income_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid") # Blue
 
-# === CUSTOM CSS FOR 3D EFFECTS AND MODERN STYLING ===
-def load_custom_css():
-    st.markdown("""
-    <style>
-    /* Import Google Fonts */
-    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-    /* ... (unchanged CSS content omitted here for brevity in this snippet) ... */
-    /* Keep all your original CSS here exactly as in your earlier file */
-    </style>
-    """, unsafe_allow_html=True)
+    # --- Define Fonts ---
+    bold_font = Font(bold=True)
+    header_font = Font(bold=True)
 
-# === 3D KPI CARD COMPONENT ===
-def create_3d_kpi_card(title, value, change, icon, column_key):
-    trend_class = "positive-3d" if change >= 0 else "negative-3d"
-    trend_arrow = "📈" if change >= 0 else "📉"
-    # Avoid NaN / infinite formatting
-    try:
-        formatted_change = f"{change:+.1f}%"
-    except Exception:
-        formatted_change = "N/A"
-    kpi_html = f"""
-    <div class="kpi-3d-container">
-        <div class="kpi-3d-card">
-            <div class="kpi-icon-3d">{icon}</div>
-            <div class="kpi-label">{title}</div>
-            <div class="kpi-value-3d">{value}</div>
-            <div class="kpi-change-3d {trend_class}">
-                <span>{trend_arrow}</span>
-                <span>{formatted_change}</span>
-            </div>
-        </div>
-    </div>
+    # --- Define Number Format ---
+    currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+
+    # --- Set Column Widths ---
+    ws.column_dimensions['A'].width = 5
+    ws.column_dimensions['B'].width = 65
+    ws.column_dimensions['C'].width = 8
+    ws.column_dimensions['D'].width = 20
+    ws.column_dimensions['E'].width = 20
+    
+    # --- Style the Header Row (which is row 4) ---
+    for cell in ws[4]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center')
+
+    # --- Iterate through template to apply row-specific styles ---
+    for i, row_template in enumerate(template):
+        row_num = i + 4 # Data starts at row 4
+        row_type = row_template[3]
+        
+        if row_type in ['header', 'sub_header']:
+            ws[f'B{row_num}'].font = bold_font
+        
+        elif row_type == 'total':
+            fill_color = None
+            particulars = ws[f'B{row_num}'].value
+            if "Revenue" in particulars: fill_color = revenue_fill
+            elif "Expenses" in particulars: fill_color = expenses_fill
+            elif "Profit" in particulars or "TOTAL" in particulars: fill_color = net_income_fill
+
+            for cell in ws[row_num]:
+                cell.font = bold_font
+                if fill_color: cell.fill = fill_color
+
+        # Apply number formatting to all numerical columns
+        for col_letter in ['D', 'E']:
+            ws[f'{col_letter}{row_num}'].number_format = currency_format
+
+def apply_note_sheet_styling(ws):
+    """Applies professional styling to a Note sheet."""
+    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF")
+    title_font = Font(bold=True, size=14)
+    total_font = Font(bold=True)
+    currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
+
+    ws.column_dimensions['A'].width = 65
+    ws.column_dimensions['B'].width = 20
+    ws.column_dimensions['C'].width = 20
+
+    ws.merge_cells('A1:C1')
+    ws['A1'].font = title_font
+    for cell in ws[2]:
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    for row_idx, row in enumerate(ws.iter_rows(min_row=3, max_col=3)):
+        is_total_row = (ws[f'A{row[0].row}'].value == 'Total')
+        for cell in row:
+            if cell.column > 1:
+                cell.number_format = currency_format
+            if is_total_row:
+                cell.font = total_font
+                cell.border = Border(top=Side(style='thin'))
+
+
+def report_finalizer_agent(aggregated_data, company_name):
     """
-    return kpi_html
-
-# === ENHANCED 3D CHARTS ===
-def create_3d_revenue_trend(revenue_data):
-    """Create a stunning 3D revenue trend visualization (defensive)"""
+    AGENT 5: This agent uses the MASTER_TEMPLATE to construct a detailed,
+    multi-sheet Schedule III compliant Excel report WITH PROFESSIONAL STYLING.
+    """
+    print("\n--- Agent 5 (Report Finalizer): Building styled report... ---")
     try:
-        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-        fig = go.Figure()
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            
+            # --- PROCESS AND STYLE BALANCE SHEET AND PROFIT & LOSS ---
+            for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), 
+                                         ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
+                
+                sheet_data = []
+                pbt_cy, pbt_py = 0, 0
+                total_revenue_cy, total_revenue_py = 0, 0
+                total_expenses_cy, total_expenses_py = 0, 0
+                total_tax_cy, total_tax_py = 0, 0
 
-        # Current Year - 3D Line with single color (removed invalid 'colorscale')
-        fig.add_trace(go.Scatter3d(
-            x=list(range(12)),
-            y=[1]*12,
-            z=list(revenue_data['current_year']),
-            mode='lines+markers',
-            line=dict(color='#667eea', width=12),
-            marker=dict(size=8, color='#667eea', opacity=0.9, symbol='diamond'),
-            name='Current Year',
-            hovertemplate='<b>%{text}</b><br>Revenue: ₹%{z:,.0f}<extra></extra>',
-            text=months
-        ))
+                for row_template in template:
+                    col_a, particulars, note, row_type = row_template
+                    
+                    row = { ' ': col_a, 'Particulars': particulars, 'Note': "" if not isinstance(note, str) else note,
+                            'As at March 31, 2025': None, 'As at March 31, 2024': None }
 
-        # Previous Year - 3D Line
-        fig.add_trace(go.Scatter3d(
-            x=list(range(12)),
-            y=[0]*12,
-            z=list(revenue_data['previous_year']),
-            mode='lines+markers',
-            line=dict(color='#764ba2', width=12),
-            marker=dict(size=8, color='#764ba2', opacity=0.9, symbol='circle'),
-            name='Previous Year',
-            hovertemplate='<b>%{text}</b><br>Revenue: ₹%{z:,.0f}<extra></extra>',
-            text=months
-        ))
+                    if row_type in ["item", "item_no_alpha"]:
+                        note_str = str(note)
+                        row['As at March 31, 2025'] = aggregated_data.get(note_str, {}).get('total', {}).get('CY', 0)
+                        row['As at March 31, 2024'] = aggregated_data.get(note_str, {}).get('total', {}).get('PY', 0)
+                    elif row_type == "total" and isinstance(note, list):
+                        cy_val, py_val = 0, 0
+                        for note_to_sum in note:
+                            cy_val += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('CY', 0)
+                            py_val += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = cy_val, py_val
+                        if particulars.startswith("Total Revenue"): total_revenue_cy, total_revenue_py = cy_val, py_val
+                        if particulars == "Total Expenses": total_expenses_cy, total_expenses_py = cy_val, py_val
+                        if particulars.startswith("Total Tax Expense"): total_tax_cy, total_tax_py = cy_val, py_val
+                    elif note == "PBT":
+                        pbt_cy = total_revenue_cy - total_expenses_cy
+                        pbt_py = total_revenue_py - total_expenses_py
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, pbt_py
+                    elif note == "PAT":
+                        row['As at March 31, 2025'] = pbt_cy - total_tax_cy
+                        row['As at March 31, 2024'] = pbt_py - total_tax_py
+                    
+                    sheet_data.append(row)
 
-        # Add connecting ribbons for better 3D effect (mesh)
-        for i in range(11):
-            # ensure values are numeric
-            p0 = float(revenue_data['previous_year'][i])
-            p1 = float(revenue_data['previous_year'][i+1])
-            c1 = float(revenue_data['current_year'][i+1])
-            c0 = float(revenue_data['current_year'][i])
-            fig.add_trace(go.Mesh3d(
-                x=[i, i+1, i+1, i],
-                y=[0, 0, 1, 1],
-                z=[p0, p1, c1, c0],
-                opacity=0.18,
-                color='lightblue',
-                showscale=False,
-                showlegend=False
-            ))
+                df = pd.DataFrame(sheet_data)
+                df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=3)
+                
+                ws = writer.sheets[sheet_name]
+                apply_main_sheet_styling(ws, template, company_name)
 
-        fig.update_layout(
-            title=dict(
-                text="<b>🚀 3D Revenue Trend Analysis</b>",
-                font=dict(size=20, color='#667eea', family='Poppins'),
-                x=0.5
-            ),
-            scene=dict(
-                xaxis=dict(
-                    title="Months",
-                    titlefont=dict(color='#667eea', size=14),
-                    tickvals=list(range(12)),
-                    ticktext=months,
-                    backgroundcolor="rgba(255,255,255,0.8)",
-                    gridcolor="rgba(102, 126, 234, 0.3)"
-                ),
-                yaxis=dict(
-                    title="Year Comparison",
-                    titlefont=dict(color='#667eea', size=14),
-                    tickvals=[0, 1],
-                    ticktext=['Previous Year', 'Current Year'],
-                    backgroundcolor="rgba(255,255,255,0.8)",
-                    gridcolor="rgba(118, 75, 162, 0.3)"
-                ),
-                zaxis=dict(
-                    title="Revenue (₹)",
-                    titlefont=dict(color='#667eea', size=14),
-                    backgroundcolor="rgba(255,255,255,0.8)",
-                    gridcolor="rgba(102, 126, 234, 0.3)"
-                ),
-                camera=dict(
-                    eye=dict(x=1.8, y=1.8, z=1.5),
-                    center=dict(x=0, y=0, z=0)
-                ),
-                bgcolor="rgba(248,250,252,0.95)"
-            ),
-            paper_bgcolor="rgba(255,255,255,0.95)",
-            plot_bgcolor="rgba(255,255,255,0.95)",
-            height=600,
-            font=dict(family='Poppins')
-        )
-        return fig
+
+            # --- PROCESS AND STYLE ALL NOTES ---
+            for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
+                note_info = NOTES_STRUCTURE_AND_MAPPING[note_num_str]
+                note_data = aggregated_data.get(note_num_str)
+                if note_data and note_data.get('sub_items'):
+                    sheet_name = f'Note {note_num_str}'
+                    note_title = note_info['title']
+                    note_df_data = [{'Particulars': 'Particulars', 'As at March 31, 2025': 'As at March 31, 2025', 'As at March 31, 2024': 'As at March 31, 2024'}]
+
+                    def process_sub_items(items, level=0):
+                        for key, value in items.items():
+                            indent = '  ' * level
+                            if isinstance(value, dict) and 'CY' in value and 'PY' in value:
+                                note_df_data.append({'Particulars': indent + key, 'As at March 31, 2025': value.get('CY', 0), 'As at March 31, 2024': value.get('PY', 0)})
+                            elif isinstance(value, dict):
+                                note_df_data.append({'Particulars': indent + key, 'As at March 31, 2025': None, 'As at March 31, 2024': None})
+                                process_sub_items(value, level + 1)
+                    
+                    process_sub_items(note_data['sub_items'])
+                    
+                    note_df = pd.DataFrame(note_df_data)
+                    total_row = pd.DataFrame([{'Particulars': 'Total', 'As at March 31, 2025': note_data['total'].get('CY', 0), 'As at March 31, 2024': note_data['total'].get('PY', 0)}])
+                    note_df = pd.concat([note_df, total_row], ignore_index=True)
+                    
+                    note_df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=1)
+                    ws_note = writer.sheets[sheet_name]
+                    apply_note_sheet_styling(ws_note)
+                    ws_note['A1'].value = f'Note {note_num_str}: {note_title}'
+
+        print("✅ Report Finalizer SUCCESS: Report generated with styling.")
+        return output.getvalue()
     except Exception as e:
-        # Return fallback figure with helpful annotation to avoid crashing the app
-        tb = traceback.format_exc()
-        fig = go.Figure()
-        fig.add_annotation(
-            text="Unable to render 3D revenue chart — using fallback.\n" + str(e),
-            x=0.5, y=0.5, showarrow=False, font=dict(size=14, color='#ff0000')
-        )
-        return fig
-
-def create_3d_asset_distribution(asset_data):
-    """Create a stunning 3D donut chart for asset distribution"""
-    try:
-        filtered_data = {k: v for k, v in asset_data.items() if v > 0}
-        if not filtered_data:
-            fig = go.Figure()
-            fig.add_annotation(text="No Asset Data Available", x=0.5, y=0.5,
-                               font=dict(size=20, color='#667eea'), showarrow=False)
-            return fig
-        labels = list(filtered_data.keys())
-        values = list(filtered_data.values())
-        colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe'][:len(labels)]
-        fig = go.Figure()
-        fig.add_trace(go.Pie(
-            labels=labels,
-            values=values,
-            hole=0.6,
-            marker=dict(colors=colors, line=dict(color='#FFFFFF', width=4)),
-            textinfo='label+percent',
-            textfont=dict(size=14, color='white', family='Poppins'),
-            hovertemplate='<b>%{label}</b><br>Value: ₹%{value:,.0f}<br>Percentage: %{percent}<extra></extra>',
-            rotation=45
-        ))
-        fig.update_layout(
-            title=dict(text="<b>💎 3D Asset Distribution</b>", font=dict(size=20, color='#667eea', family='Poppins'), x=0.5),
-            paper_bgcolor="rgba(255,255,255,0.95)",
-            plot_bgcolor="rgba(255,255,255,0.95)",
-            height=600,
-            font=dict(family='Poppins'),
-            annotations=[dict(text="<b>Total<br>Assets</b>", x=0.5, y=0.5, font=dict(size=18, color='#667eea', family='Poppins'), showarrow=False)],
-            showlegend=True,
-            legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.05, font=dict(family='Poppins'))
-        )
-        return fig
-    except Exception as e:
-        fig = go.Figure()
-        fig.add_annotation(text="Unable to render assets chart.", x=0.5, y=0.5, showarrow=False)
-        return fig
-
-def create_3d_performance_metrics(metrics):
-    """Create a 3D radar chart for performance metrics"""
-    try:
-        categories = ['Profit Margin', 'Current Ratio', 'ROA', 'Liquidity Score']
-        cy = metrics.get('CY', {})
-        py = metrics.get('PY', {})
-
-        cy_values = [
-            min(abs(cy.get('Profit Margin', 0)), 100),
-            min(cy.get('Current Ratio', 0) * 30, 100),
-            min(abs(cy.get('ROA', 0)) * 2, 100),
-            min(cy.get('Current Assets', 0) / max(cy.get('Total Assets', 1), 1) * 100, 100)
-        ]
-        py_values = [
-            min(abs(py.get('Profit Margin', 0)), 100),
-            min(py.get('Current Ratio', 0) * 30, 100),
-            min(abs(py.get('ROA', 0)) * 2, 100),
-            min(py.get('Current Assets', 0) / max(py.get('Total Assets', 1), 1) * 100, 100)
-        ]
-
-        fig = go.Figure()
-        fig.add_trace(go.Scatterpolar(r=cy_values, theta=categories, fill='toself',
-                                     fillcolor='rgba(102, 126, 234, 0.4)', line=dict(color='#667eea', width=4),
-                                     marker=dict(size=8, color='#667eea'), name='Current Year',
-                                     hovertemplate='<b>%{theta}</b><br>Score: %{r:.1f}<extra></extra>'))
-        fig.add_trace(go.Scatterpolar(r=py_values, theta=categories, fill='toself',
-                                     fillcolor='rgba(118, 75, 162, 0.4)', line=dict(color='#764ba2', width=4),
-                                     marker=dict(size=8, color='#764ba2'), name='Previous Year',
-                                     hovertemplate='<b>%{theta}</b><br>Score: %{r:.1f}<extra></extra>'))
-        fig.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, 100], tickfont=dict(size=12, color='#667eea'),
-                                       gridcolor="rgba(102, 126, 234, 0.3)", linecolor="rgba(102, 126, 234, 0.3)"),
-                       angularaxis=dict(tickfont=dict(size=14, color='#667eea', family='Poppins'),
-                                        gridcolor="rgba(102, 126, 234, 0.3)", linecolor="rgba(102, 126, 234, 0.3)"),
-                       bgcolor="rgba(248,250,252,0.95)"),
-            title=dict(text="<b>⚡ 3D Performance Radar</b>", font=dict(size=20, color='#667eea', family='Poppins'), x=0.5),
-            paper_bgcolor="rgba(255,255,255,0.95)", plot_bgcolor="rgba(255,255,255,0.95)", height=600,
-            font=dict(family='Poppins'), showlegend=True,
-            legend=dict(orientation="h", yanchor="bottom", y=-0.1, xanchor="center", x=0.5)
-        )
-        return fig
-    except Exception:
-        fig = go.Figure()
-        fig.add_annotation(text="Unable to render performance radar.", x=0.5, y=0.5, showarrow=False)
-        return fig
-
-# --- EXISTING HELPER FUNCTIONS (UNCHANGED LOGIC, BUT SAFER) ---
-
-def calculate_metrics(agg_data):
-    metrics = {}
-    for year in ['CY', 'PY']:
-        get = lambda key, y=year: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
-        total_revenue = get(21) + get(22)
-        total_expenses = sum(get(n) for n in [23, 24, 25, 11, 26])
-        net_profit = total_revenue - total_expenses
-        total_assets = sum(get(n) for n in [11, 12, 4, 13, 14, 15, 16, 17, 18, 19, 20])
-        current_assets = sum(get(n) for n in [15, 16, 17, 18, 19, 20])
-        current_liabilities = sum(get(n) for n in [7, 8, 9, 10])
-        total_debt = sum(get(n) for n in [3, 7])
-        total_equity = sum(get(n) for n in [1, 2]) or 1  # avoid zero division later
-        metrics[year] = {
-            "Total Revenue": total_revenue, "Net Profit": net_profit, "Total Assets": total_assets,
-            "Current Assets": current_assets, "Fixed Assets": get(11), "Investments": get(12),
-            "Profit Margin": (net_profit / total_revenue) * 100 if total_revenue else 0,
-            "Current Ratio": (current_assets / current_liabilities) if current_liabilities else 0,
-            "Debt-to-Equity": (total_debt / total_equity) if total_equity else 0,
-            "ROA": (net_profit / total_assets) * 100 if total_assets else 0
-        }
-    return metrics
-
-def generate_ai_analysis(metrics):
-    try:
-        YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
-        YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
-    except Exception:
-        return "AI analysis could not be generated because API secrets are not configured."
-    prompt = f"Provide a SWOT analysis for a company with this data: Current Year Revenue: {metrics['CY']['Total Revenue']:,.0f}, Previous Year Revenue: {metrics['PY']['Total Revenue']:,.0f}, Current Year Net Profit: {metrics['CY']['Net Profit']:,.0f}, Previous Year Net Profit: {metrics['PY']['Net Profit']:,.0f}."
-    payload = {"prompt": prompt}
-    headers = {"Authorization": f"Bearer {YOUR_API_KEY}", "Content-Type": "application/json"}
-    try:
-        response = requests.post(YOUR_API_URL, headers=headers, data=json.dumps(payload), timeout=45)
-        response.raise_for_status()
-        return response.json().get("analysis_text", "Could not parse AI analysis.")
-    except Exception:
-        return "Could not generate AI analysis due to an API connection error."
-
-class PDF(FPDF):
-    def header(self):
-        self.set_font('DejaVu', 'B', 16)
-        self.cell(0, 10, 'Financial Dashboard Report', new_x="LMARGIN", new_y="NEXT")
-        self.ln(5)
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('DejaVu', 'I', 8)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
-def create_professional_pdf(metrics, ai_analysis, charts):
-    temp_dir = "temp_charts"
-    if not os.path.exists(temp_dir):
-        os.makedirs(temp_dir, exist_ok=True)
-    chart_paths = {}
-    for name, fig in charts.items():
-        path = os.path.join(temp_dir, f"{name}.png")
-        try:
-            # This requires kaleido in the environment. If not available, skip image save.
-            fig.write_image(path, scale=2, width=600, height=350)
-            chart_paths[name] = path
-        except Exception:
-            # fallback: try to use to_image, else leave missing so PDF will not crash
-            try:
-                img_bytes = fig.to_image(format="png", scale=2, width=600, height=350)
-                with open(path, "wb") as f:
-                    f.write(img_bytes)
-                chart_paths[name] = path
-            except Exception:
-                chart_paths[name] = None
-
-    pdf = PDF('P', 'mm', 'A4')
-    # If DejaVu fonts not present, FPDF will raise; wrap in try to avoid crash.
-    try:
-        pdf.add_font('DejaVu', '', 'DejaVuSans.ttf')
-        pdf.add_font('DejaVu', 'B', 'DejaVuSans-Bold.ttf')
-        pdf.add_font('DejaVu', 'I', 'DejaVuSans-Oblique.ttf')
-        pdf.add_font('DejaVu', 'BI', 'DejaVuSans-BoldOblique.ttf')
-        font_name = 'DejaVu'
-    except Exception:
-        font_name = 'Arial'  # fallback
-
-    pdf.add_page()
-    pdf.set_font(font_name, 'B', 12)
-    pdf.cell(0, 10, 'Top KPI Summary', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font(font_name, 'B', 10)
-    pdf.cell(60, 8, 'Metric', 1)
-    pdf.cell(60, 8, 'Value', 1)
-    pdf.cell(70, 8, 'Interpretation', 1, new_x="LMARGIN", new_y="NEXT")
-
-    pdf.set_font(font_name, '', 10)
-    kpi_cy = metrics.get('CY', {}); kpi_py = metrics.get('PY', {})
-    def get_change(cy, py):
-        try:
-            pct = (cy - py) / py * 100 if py else 100.0
-            arrow = "⬆" if cy >= py else "⬇"
-            return f' ({arrow} {abs(pct):.1f}%)'
-        except Exception:
-            return ""
-    kpi_data = [
-        ("Total Revenue", f"₹ {kpi_cy.get('Total Revenue',0):,.0f}{get_change(kpi_cy.get('Total Revenue',0), kpi_py.get('Total Revenue',0))}", "Indicates sales or operational growth."),
-        ("Net Profit", f"₹ {kpi_cy.get('Net Profit',0):,.0f}{get_change(kpi_cy.get('Net Profit',0), kpi_py.get('Net Profit',0))}", "Indicates cost control or margin improvement."),
-    ]
-    for title, value, interp in kpi_data:
-        pdf.cell(60, 8, title, 1)
-        pdf.cell(60, 8, value, 1)
-        pdf.cell(70, 8, interp, 1, new_x="LMARGIN", new_y="NEXT")
-
-    pdf.ln(10)
-    pdf.set_font(font_name, 'B', 12)
-    pdf.cell(0, 10, 'Visualizations', new_x="LMARGIN", new_y="NEXT")
-    # Add images if available
-    try:
-        if chart_paths.get("revenue_trend"):
-            pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w / 2 - 15)
-        if chart_paths.get("asset_distribution"):
-            pdf.image(chart_paths["asset_distribution"], x=pdf.w / 2 + 5, w=pdf.w / 2 - 15)
-    except Exception:
-        pass
-    pdf.ln(70)
-
-    pdf.set_font(font_name, 'B', 12)
-    pdf.cell(0, 10, 'AI-Generated SWOT Analysis', new_x="LMARGIN", new_y="NEXT")
-    pdf.set_font(font_name, '', 10)
-    pdf.multi_cell(0, 5, str(ai_analysis))
-
-    # Return bytes
-    try:
-        return pdf.output(dest='S').encode('latin-1')
-    except Exception:
-        # Last resort: write to temp file and return bytes
-        tmp = os.path.join(temp_dir, "report.pdf")
-        pdf.output(tmp)
-        with open(tmp, "rb") as f:
-            return f.read()
-
-def generate_monthly_data(total):
-    """Generate realistic monthly data distribution"""
-    if total == 0:
-        return [0]*12
-    pattern = np.array([0.8, 0.85, 0.9, 1.0, 1.1, 1.15, 1.2, 1.1, 1.0, 0.95, 0.9, 0.85])
-    monthly = pattern * (total / 12)
-    # preserve distribution proportions
-    return (monthly / monthly.sum()) * total
-
-# --- MAIN APP UI ---
-
-load_custom_css()
-
-st.set_page_config(page_title="🚀 AI Financial Reporter", page_icon="🚀", layout="wide", initial_sidebar_state="expanded")
-st.markdown('<h1 class="dashboard-title">🚀 Financial Dashboard 3D</h1>', unsafe_allow_html=True)
-
-if 'report_generated' not in st.session_state:
-    st.session_state.report_generated = False
-if 'excel_report_bytes' not in st.session_state:
-    st.session_state.excel_report_bytes = None
-if 'aggregated_data' not in st.session_state:
-    st.session_state.aggregated_data = None
-
-# Sidebar - upload
-with st.sidebar:
-    st.header("🎯 Upload & Process")
-    uploaded_file = st.file_uploader("Upload financial data (Excel)", type=["xlsx", "xls"])
-    company_name = st.text_input("Enter Company Name", "My Company Inc.")
-    if st.button("🚀 Generate 3D Dashboard", type="primary", use_container_width=True):
-        if uploaded_file:
-            with st.spinner("🔄 Executing financial agent pipeline..."):
-                try:
-                    source_df = intelligent_data_intake_agent(uploaded_file)
-                    if source_df is None:
-                        st.error("Pipeline Failed: Data Intake")
-                        st.stop()
-                    refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
-                    aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                    if not aggregated_data:
-                        st.error("Pipeline Failed: Aggregation")
-                        st.stop()
-                    excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                    if excel_report_bytes is None:
-                        st.error("Pipeline Failed: Report Finalizer")
-                        st.stop()
-                except Exception as e:
-                    st.error(f"Pipeline error: {e}")
-                    st.stop()
-            st.session_state.report_generated = True
-            st.session_state.aggregated_data = aggregated_data
-            st.session_state.company_name = company_name
-            st.session_state.excel_report_bytes = excel_report_bytes
-            st.rerun()
-        else:
-            st.warning("⚠️ Please upload a file.")
-
-# Main display
-if st.session_state.report_generated:
-    agg_data = st.session_state.aggregated_data
-    metrics = calculate_metrics(agg_data)
-    kpi_cy = metrics.get('CY', {})
-    kpi_py = metrics.get('PY', {})
-
-    get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if (py not in (0, None)) else 0
-
-    st.markdown('<div class="success-3d">✨ 3D Dashboard generated from extracted financial data! ✨</div>', unsafe_allow_html=True)
-    st.markdown("## 💎 Key Performance Indicators")
-    col1, col2, col3, col4 = st.columns(4)
-
-    with col1:
-        revenue_change = get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0))
-        revenue_kpi = create_3d_kpi_card("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", revenue_change, "💰", "revenue")
-        st.markdown(revenue_kpi, unsafe_allow_html=True)
-
-    with col2:
-        profit_change = get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0))
-        profit_kpi = create_3d_kpi_card("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.0f}", profit_change, "📊", "profit")
-        st.markdown(profit_kpi, unsafe_allow_html=True)
-
-    with col3:
-        assets_change = get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0))
-        assets_kpi = create_3d_kpi_card("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", assets_change, "🏦", "assets")
-        st.markdown(assets_kpi, unsafe_allow_html=True)
-
-    with col4:
-        debt_change = get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0))
-        debt_kpi = create_3d_kpi_card("Debt-to-Equity", f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", debt_change, "⚖️", "debt")
-        st.markdown(debt_kpi, unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("## 📈 3D Financial Visualizations")
-
-    # Prepare data for 3D charts
-    revenue_data = {
-        'current_year': generate_monthly_data(kpi_cy.get('Total Revenue', 0)),
-        'previous_year': generate_monthly_data(kpi_py.get('Total Revenue', 0))
-    }
-    asset_data = {
-        'Current Assets': kpi_cy.get('Current Assets', 0),
-        'Fixed Assets': kpi_cy.get('Fixed Assets', 0),
-        'Investments': kpi_cy.get('Investments', 0)
-    }
-
-    chart_col1, chart_col2 = st.columns(2)
-    with chart_col1:
-        st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
-        fig_3d_revenue = create_3d_revenue_trend(revenue_data)
-        st.plotly_chart(fig_3d_revenue, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with chart_col2:
-        st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
-        fig_3d_assets = create_3d_asset_distribution(asset_data)
-        st.plotly_chart(fig_3d_assets, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown('<div class="chart-container-3d">', unsafe_allow_html=True)
-    fig_3d_performance = create_3d_performance_metrics(metrics)
-    st.plotly_chart(fig_3d_performance, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("## 📊 Download Reports")
-
-    with st.spinner("🎨 Generating enhanced reports..."):
-        ai_analysis = generate_ai_analysis(metrics)
-
-        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-        revenue_df = pd.DataFrame({
-            'Month': months * 2,
-            'Year': ['Previous Year'] * 12 + ['Current Year'] * 12,
-            'Revenue': np.concatenate([
-                generate_monthly_data(kpi_py.get('Total Revenue', 0)),
-                generate_monthly_data(kpi_cy.get('Total Revenue', 0))
-            ])
-        })
-        fig_revenue_pdf = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="Revenue Trend", template="seaborn")
-        asset_df = pd.DataFrame({
-            'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments'],
-            'Value': [kpi_cy.get('Current Assets', 0), kpi_cy.get('Fixed Assets', 0), kpi_cy.get('Investments', 0)]
-        }).query("Value > 0")
-        fig_asset_pdf = px.pie(asset_df, names='Asset Type', values='Value', title="Asset Distribution", hole=0.3)
-
-        charts = {"revenue_trend": fig_revenue_pdf, "asset_distribution": fig_asset_pdf}
-        pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
-
-    dl_col1, dl_col2 = st.columns(2)
-    with dl_col1:
-        st.download_button(label="💡 Download Professional Insights (PDF)",
-                           data=pdf_bytes,
-                           file_name=f"{st.session_state.company_name}_3D_Insights_Report.pdf",
-                           mime="application/pdf",
-                           use_container_width=True)
-    with dl_col2:
-        st.download_button(label="📊 Download Detailed Report (Excel)",
-                           data=st.session_state.excel_report_bytes,
-                           file_name=f"{st.session_state.company_name}_Detailed_Report.xlsx",
-                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                           use_container_width=True)
-
-else:
-    st.markdown("""
-    <div style="text-align: center; padding: 50px;">
-        <h2 style="color: #667eea;">🎯 Welcome to the 3D Financial Dashboard</h2>
-        <p style="font-size: 18px; color: #6b7280; margin: 20px 0;">
-            Upload your financial data and experience stunning 3D visualizations!
-        </p>
-        <div style="background: rgba(255,255,255,0.9); padding: 30px; border-radius: 20px; margin: 20px auto; max-width: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.1);">
-            <h3 style="color: #667eea;">✨ Features:</h3>
-            <ul style="text-align: left; color: #6b7280;">
-                <li>🚀 Beautiful 3D KPI cards with hover effects</li>
-                <li>📊 Interactive 3D charts and visualizations</li>
-                <li>💎 Modern glassmorphism design</li>
-                <li>📈 Real-time financial analysis</li>
-                <li>🎨 Professional PDF and Excel reports</li>
-            </ul>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+        print(f"❌ Report Finalizer FAILED: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
