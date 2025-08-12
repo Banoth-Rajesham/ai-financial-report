@@ -1,6 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version correctly handles an Excel file with multiple sheets and a variable number of header rows.
+# This version generates a detailed, multi-page PDF report with visualizations and insights.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -45,14 +45,56 @@ class PDF(FPDF):
     def header(self): self.set_font('Arial', 'B', 16); self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C'); self.ln(5)
     def footer(self): self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    pdf = PDF(); pdf.add_page(); pdf.set_font('Arial', 'B', 20); pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C'); pdf.ln(10)
-    pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L'); pdf.set_font('Arial', '', 12)
-    for key, value in kpis['CY'].items(): pdf.cell(0, 8, f"- {key}: {'INR {:,.0f}'.format(value) if any(x in key for x in ['Revenue', 'Profit', 'Assets']) else '{:.2f}'.format(value)}", 0, 1)
-    pdf.ln(10); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L'); pdf.set_font('Arial', '', 12); pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
+def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data):
+    pdf = PDF()
+
+    # --- Page 1: Summary & Insights ---
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 20)
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, '1. Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    for key, value in kpis['CY'].items():
+        pdf.cell(0, 8, f"- {key}: {'INR {:,.0f}'.format(value) if any(x in key for x in ['Revenue', 'Profit', 'Assets']) else '{:.2f}'.format(value)}", 0, 1)
+    pdf.ln(10)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
+
+    # --- Page 2: Visualizations ---
     if charts:
-        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L'); pdf.ln(5)
-        for title, chart_bytes in charts.items(): pdf.set_font('Arial', 'B', 14); pdf.cell(0, 10, title, 0, 1, 'C'); pdf.image(chart_bytes, x=15, w=180, type='PNG')
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L')
+        pdf.ln(5)
+        for title, chart_bytes in charts.items():
+            pdf.set_font('Arial', 'B', 14)
+            pdf.cell(0, 10, title, 0, 1, 'C')
+            pdf.image(chart_bytes, x=15, w=180, type='PNG')
+            pdf.ln(10)
+
+    # --- Pages for Balance Sheet, Profit & Loss, and Notes ---
+    for sheet_name, df in sheets_data.items():
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, f'4. {sheet_name}', 0, 1, 'L')
+        pdf.ln(5)
+
+        # Convert DataFrame to a list of lists for FPDF table
+        data_to_render = [df.columns.tolist()] + df.values.tolist()
+        pdf.set_font('Arial', '', 10)
+        # Set column widths dynamically
+        col_widths = [pdf.w / (len(df.columns) + 1) for _ in df.columns]
+        
+        with pdf.table(text_align='C') as table:
+            for row_data in data_to_render:
+                row = table.row()
+                for datum in row_data:
+                    row.cell(str(datum))
+
     return bytes(pdf.output())
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
@@ -154,16 +196,18 @@ else:
     col1, col2 = st.columns((5, 4)); col1.subheader("📊 Financial Visualization"); col1.plotly_chart(fig, use_container_width=True); col2.subheader("🤖 AI-Generated Insights"); col2.markdown(ai_analysis)
     st.subheader("⬇️ Download Center")
     chart_bytes = io.BytesIO(); fig.write_image(chart_bytes, format="png", scale=2, engine="kaleido"); charts_for_pdf = {"Performance Overview": chart_bytes}
-    pdf_bytes = create_professional_pdf(st.session_state.kpis, ai_analysis, charts_for_pdf, st.session_state.company_name)
+    # Note: This old PDF generation is still here for the main flow
+    pdf_bytes = create_professional_pdf(st.session_state.kpis, ai_analysis, charts_for_pdf, st.session_state.company_name, {})
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button("📄 Download PDF with Professional Insights", pdf_bytes, f"{st.session_state.company_name}_Financial_Report.pdf", "application/pdf", use_container_width=True)
     d_col2.download_button("💹 Download Formatted Excel Report", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
 
-# ==============================================================================
-# NEW SECTION FOR GENERATING PDF FROM AN EXCEL OUTPUT
-# This version is universal and looks for keywords to find data.
-# ==============================================================================
 st.divider()
+
+# ==============================================================================
+# UPDATED SECTION FOR GENERATING PDF FROM A PROCESSED EXCEL FILE
+# This now includes the full Balance Sheet, P&L, and Notes.
+# ==============================================================================
 st.header("Generate PDF Report from a Previously Downloaded Excel File")
 st.markdown("Use this section to upload the single formatted Excel report you've already generated to create a professional PDF. This section is more flexible and can handle modified files.")
 
@@ -178,36 +222,39 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                 all_sheets_raw = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
                 
                 combined_df = pd.DataFrame()
+                sheets_for_pdf = {}
                 
-                for sheet_name, df_raw in all_sheets_raw.items():
-                    # Dynamically find the header row by searching for 'Particulars' across all columns
-                    header_row_candidates = df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
-                    header_row_index = header_row_candidates[header_row_candidates].index
-                    
-                    if not header_row_index.empty:
-                        # Reread the sheet with the correct header
-                        header_index_to_use = header_row_index[0]
-                        df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
-                        combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
+                # List of sheets to include in the PDF
+                sheet_names_to_include = ['Balance Sheet', 'Profit and Loss'] + [f'Note {i}' for i in range(1, 28)]
+                
+                for sheet_name in sheet_names_to_include:
+                    if sheet_name in all_sheets_raw:
+                        df_raw = all_sheets_raw[sheet_name]
+                        header_row_candidates = df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
+                        header_row_index = header_row_candidates[header_row_candidates].index
+                        
+                        if not header_row_index.empty:
+                            header_index_to_use = header_row_index[0]
+                            df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
+                            
+                            # Filter out any rows that are entirely blank, and fill any NaN values with 0
+                            df_correctly_read = df_correctly_read.dropna(subset=['Particulars']).fillna('')
+                            
+                            # Add to dictionary for PDF rendering
+                            sheets_for_pdf[sheet_name] = df_correctly_read
+                            combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
 
-                # Final check to ensure we have the 'Particulars' column
+                # Final check to ensure we have the 'Particulars' column for KPI calculation
                 if 'Particulars' not in combined_df.columns:
                     st.error("The uploaded Excel file does not contain a 'Particulars' column in any of the sheets. Please check your file format.")
                 else:
-                    # Filter out any rows that are entirely blank, and fill any NaN values with 0
-                    combined_df = combined_df.dropna(subset=['Particulars']).fillna(0)
-                    
-                    # Create a dictionary to hold our aggregated data based on keywords
                     agg_data_from_excel = {}
 
                     def find_value(keyword, df_to_search=combined_df):
-                        # Use regex to find the keyword and handle partial matches
                         row = df_to_search[df_to_search['Particulars'].astype(str).str.contains(keyword, na=False, case=False, regex=False)]
                         if not row.empty:
-                            # Use a more robust way to find the CY and PY columns
                             cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
                             py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
-                            
                             if cy_col_candidates and py_col_candidates:
                                 cy_val = row[cy_col_candidates[0]].iloc[0]
                                 py_val = row[py_col_candidates[0]].iloc[0]
@@ -221,14 +268,13 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                                 if sub_keyword in str(df_to_search.iloc[i]['Particulars']):
                                     cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
                                     py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
-                                    
                                     if cy_col_candidates and py_col_candidates:
                                         cy_val = df_to_search.iloc[i][cy_col_candidates[0]]
                                         py_val = df_to_search.iloc[i][py_col_candidates[0]]
                                         return cy_val, py_val
                         return 0, 0
                     
-                    # Map keywords from the new Excel file to the old `aggregated_data` structure
+                    # Map keywords for KPI calculation
                     cy_equity, py_equity = find_value("Shareholder's funds")
                     cy_debt, py_debt = find_value("Total Debt")
                     cy_assets, py_assets = find_value("Total Assets")
@@ -250,22 +296,16 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                         '26': {'total': {'CY': 0, 'PY': 0}},
                     }
                     
-                    # Try to get depreciation from a notes sheet if available
-                    if 'Note 11' in all_sheets_raw:
-                        # Reread the notes sheet with the correct header
-                        notes_df_raw = pd.read_excel(excel_file, sheet_name='Note 11', header=None)
-                        notes_header_row_candidates = notes_df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
-                        notes_header_row_index = notes_header_row_candidates[notes_header_row_candidates].index
-                        
-                        if not notes_header_row_index.empty:
-                            notes_df = pd.read_excel(excel_file, sheet_name='Note 11', header=notes_header_row_index[0])
-                            depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
-                            if depreciation_cy and depreciation_py:
-                                agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
+                    if 'Note 11' in sheets_for_pdf:
+                        notes_df = sheets_for_pdf['Note 11']
+                        depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
+                        if depreciation_cy and depreciation_py:
+                            agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
 
                     re_kpis = calculate_kpis(agg_data_from_excel)
                     re_ai_analysis = generate_ai_analysis(re_kpis)
                     
+                    # Generate charts for the PDF
                     re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
                     re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
                     re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
@@ -273,10 +313,11 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                     re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
                     re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
                     
-                    re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf)
+                    # --- Generate the comprehensive PDF with all dataframes ---
+                    re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf, sheets_for_pdf)
                     
                     st.success("PDF Report Generated!")
-                    st.download_button("📄 Download PDF Report", re_pdf_bytes, f"{company_name_pdf}_Excel_Report.pdf", "application/pdf", use_container_width=True)
+                    st.download_button("📄 Download Comprehensive PDF Report", re_pdf_bytes, f"{company_name_pdf}_Comprehensive_Financial_Report.pdf", "application/pdf", use_container_width=True)
             except Exception as e:
                 st.error(f"An error occurred while processing the Excel file: {e}. Please ensure the file is an Excel workbook and contains the necessary financial data.")
     else:
