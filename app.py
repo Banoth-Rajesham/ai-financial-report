@@ -1,6 +1,7 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version correctly imports and uses your project's agent and config files.
+# This version handles a single, potentially modified Excel file from the first
+# part of the application to generate a PDF report.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -160,63 +161,95 @@ else:
     d_col2.download_button("💹 Download Formatted Excel Report", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
 
 # ==============================================================================
-# NEW SECTION FOR GENERATING PDF FROM EXISTING EXCEL OUTPUT
+# NEW SECTION FOR GENERATING PDF FROM AN EXCEL OUTPUT
+# This version is universal and looks for keywords to find data.
 # ==============================================================================
 st.divider()
 st.header("Generate PDF Report from a Previously Downloaded Excel File")
-st.markdown("Use this section to upload the formatted Excel report you've already generated to create a professional PDF.")
+st.markdown("Use this section to upload the single formatted Excel report you've already generated to create a professional PDF. This section is more flexible and can handle modified files.")
 
-excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx"], key="excel_uploader")
+excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx", "xls"], key="excel_uploader")
 company_name_pdf = st.text_input("Enter Company Name for Report", st.session_state.company_name, key="pdf_company_name")
 
 if st.button("Generate PDF Report", type="secondary", use_container_width=True, key="generate_pdf_button"):
     if excel_file and company_name_pdf:
-        try:
-            # Read the uploaded Excel file
-            df = pd.read_excel(excel_file, sheet_name=None)
-            
-            # The aggregated data is typically in a specific sheet. Let's assume it's "Aggregated Statement".
-            if "Aggregated Statement" in df:
-                # The data is structured, so we need to process it to get the numerical values
-                st.info("Reading and processing data from the uploaded Excel file...")
-                aggregated_data = {} # You would need a more robust parser here, but for this example, we'll simulate.
+        with st.spinner("Processing Excel file and generating report..."):
+            try:
+                # Read all sheets into a dictionary of DataFrames
+                all_sheets = pd.read_excel(excel_file, sheet_name=None)
                 
-                # Simplified parsing for demonstration
-                aggregated_data = {
-                    '1': {'total': {'CY': df['Aggregated Statement'].loc[3,'CY'], 'PY': df['Aggregated Statement'].loc[3,'PY']}}, # Total Equity
-                    '2': {'total': {'CY': df['Aggregated Statement'].loc[4,'CY'], 'PY': df['Aggregated Statement'].loc[4,'PY']}},
-                    '3': {'total': {'CY': df['Aggregated Statement'].loc[5,'CY'], 'PY': df['Aggregated Statement'].loc[5,'PY']}}, # Total Debt
-                    '7': {'total': {'CY': df['Aggregated Statement'].loc[6,'CY'], 'PY': df['Aggregated Statement'].loc[6,'PY']}},
-                    '11': {'total': {'CY': df['Aggregated Statement'].loc[7,'CY'], 'PY': df['Aggregated Statement'].loc[7,'PY']}, 'sub_items': {'Depreciation for the year': {'CY': df['Aggregated Statement'].loc[8,'CY'], 'PY': df['Aggregated Statement'].loc[8,'PY']}}},
-                    '16': {'total': {'CY': df['Aggregated Statement'].loc[9,'CY'], 'PY': df['Aggregated Statement'].loc[9,'PY']}}, # Change in Inv
-                    '21': {'total': {'CY': df['Aggregated Statement'].loc[10,'CY'], 'PY': df['Aggregated Statement'].loc[10,'PY']}}, # Revenue
-                    '22': {'total': {'CY': df['Aggregated Statement'].loc[11,'CY'], 'PY': df['Aggregated Statement'].loc[11,'PY']}},
-                    '23': {'total': {'CY': df['Aggregated Statement'].loc[12,'CY'], 'PY': df['Aggregated Statement'].loc[12,'PY']}}, # Expenses
-                    '24': {'total': {'CY': df['Aggregated Statement'].loc[13,'CY'], 'PY': df['Aggregated Statement'].loc[13,'PY']}},
-                    '25': {'total': {'CY': df['Aggregated Statement'].loc[14,'CY'], 'PY': df['Aggregated Statement'].loc[14,'PY']}},
-                    '26': {'total': {'CY': df['Aggregated Statement'].loc[15,'CY'], 'PY': df['Aggregated Statement'].loc[15,'PY']}},
-                }
+                # We need a robust way to find the data. Let's find the sheet with "Particulars" column.
+                source_df = None
+                for sheet_name, df in all_sheets.items():
+                    if 'Particulars' in df.columns:
+                        source_df = df
+                        break
+                
+                if source_df is not None:
+                    # Rename columns for consistency
+                    source_df.columns = ['Particulars', 'CY', 'PY']
+                    source_df = source_df.fillna(0)
+                    
+                    # Create a dictionary to hold our aggregated data based on keywords
+                    agg_data_from_excel = {}
+                    
+                    def find_value(keyword):
+                        row = source_df[source_df['Particulars'].str.contains(keyword, na=False)]
+                        if not row.empty:
+                            return row.iloc[0]['CY'], row.iloc[0]['PY']
+                        return 0, 0
+                    
+                    def find_sub_item_value(main_keyword, sub_keyword):
+                         # Find the main row first
+                        main_row_index = source_df[source_df['Particulars'].str.contains(main_keyword, na=False)].index
+                        if not main_row_index.empty:
+                            # Search for the sub_keyword immediately after the main row
+                            for i in range(main_row_index[0] + 1, len(source_df)):
+                                if sub_keyword in str(source_df.iloc[i]['Particulars']):
+                                    return source_df.iloc[i]['CY'], source_df.iloc[i]['PY']
+                        return 0, 0
+                    
+                    # Map keywords from the new Excel file to the old `aggregated_data` structure
+                    # These are approximations based on likely content of the Aggregated Statement
+                    cy, py = find_value("Total Equity")
+                    agg_data_from_excel['1'] = {'total': {'CY': cy, 'PY': py}}
 
-                # Recalculate KPIs, analysis, and generate charts and PDF
-                re_kpis = calculate_kpis(aggregated_data)
-                re_ai_analysis = generate_ai_analysis(re_kpis)
-                
-                # Create a sample bar chart from the re-calculated KPIs
-                re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
-                re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
-                re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
-                re_chart_bytes = io.BytesIO()
-                re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
-                re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
-                
-                re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf)
-                
-                st.success("PDF Report Generated!")
-                st.download_button("📄 Download PDF Report", re_pdf_bytes, f"{company_name_pdf}_Excel_Report.pdf", "application/pdf", use_container_width=True)
-                
-            else:
-                st.error("The uploaded Excel file does not contain a sheet named 'Aggregated Statement'. Please upload a file generated by this application.")
-        except Exception as e:
-            st.error(f"An error occurred while processing the Excel file: {e}")
+                    cy, py = find_value("Total Revenue")
+                    agg_data_from_excel['21'] = {'total': {'CY': cy, 'PY': py}}
+
+                    cy, py = find_value("Other Income")
+                    agg_data_from_excel['22'] = {'total': {'CY': cy, 'PY': py}}
+
+                    cy, py = find_value("Total Assets")
+                    agg_data_from_excel['11'] = {'total': {'CY': cy, 'PY': py}}
+
+                    cy, py = find_value("Net Profit")
+                    agg_data_from_excel['2'] = {'total': {'CY': cy, 'PY': py}}
+
+                    # Note: The code below is a simplification. A more robust solution might need a more complex parsing logic.
+                    # This assumes the keywords are present and the structure is similar to the Aggregated Statement.
+                    cy_debt, py_debt = find_value("Total Debt")
+                    agg_data_from_excel['3'] = {'total': {'CY': cy_debt, 'PY': py_debt}}
+                    agg_data_from_excel['7'] = {'total': {'CY': 0, 'PY': 0}} # Assuming total debt is the sum
+                    
+                    # Re-calculate KPIs, analysis, and generate charts and PDF
+                    re_kpis = calculate_kpis(agg_data_from_excel)
+                    re_ai_analysis = generate_ai_analysis(re_kpis)
+                    
+                    re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
+                    re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
+                    re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
+                    re_chart_bytes = io.BytesIO()
+                    re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
+                    re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
+                    
+                    re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf)
+                    
+                    st.success("PDF Report Generated!")
+                    st.download_button("📄 Download PDF Report", re_pdf_bytes, f"{company_name_pdf}_Excel_Report.pdf", "application/pdf", use_container_width=True)
+                else:
+                    st.error("The uploaded Excel file does not contain a sheet with a 'Particulars' column. Please check your file format.")
+            except Exception as e:
+                st.error(f"An error occurred while processing the Excel file: {e}")
     else:
         st.warning("Please upload a formatted Excel report and enter the company name.")
