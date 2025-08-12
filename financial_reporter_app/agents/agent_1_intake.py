@@ -38,31 +38,39 @@ def intelligent_data_intake_agent(uploaded_file):
         
         # Find the actual column names by looking for keywords
         cols = df.columns
-        particulars_col = [c for c in cols if 'particulars' in c][0]
-        note_col = [c for c in cols if 'note' in c][0]
+        particulars_col = next((c for c in cols if 'particulars' in c), None)
+        note_col = next((c for c in cols if 'note' in c), None)
         
         # Find amount columns, which might be unnamed or have dates
         amount_cols = [c for c in cols if 'unnamed' in str(c) or 'as at' in str(c) or 'amount' in str(c)]
         
-        if len(amount_cols) < 2:
-            st.error("Data Intake Error: Could not identify at least two amount columns for Current and Previous Year.")
+        if not particulars_col or len(amount_cols) < 2:
+            st.error("Data Intake Error: Could not identify the required 'Particulars' column and at least two amount columns.")
             return None
 
         cy_col = amount_cols[0]
         py_col = amount_cols[1]
         
-        # Select and rename the columns to a consistent standard
-        df_renamed = df[[particulars_col, note_col, cy_col, py_col]].copy()
-        df_renamed.columns = ['Particulars', 'Note', 'Amount_CY', 'Amount_PY']
+        # Build the final DataFrame with consistent column names
+        final_cols = {
+            particulars_col: 'Particulars',
+            cy_col: 'Amount_CY',
+            py_col: 'Amount_PY'
+        }
+        if note_col:
+            final_cols[note_col] = 'Note'
         
-        # Drop rows where 'Particulars' is completely empty, which often represent spacer rows
+        df_renamed = df[list(final_cols.keys())].copy()
+        df_renamed.rename(columns=final_cols, inplace=True)
+        
+        # Drop rows where 'Particulars' is completely empty
         df_cleaned = df_renamed.dropna(subset=['Particulars'])
         
         print("✅ Data Intake SUCCESS: File ingested, header found, and columns standardized.")
         return df_cleaned
 
     except Exception as e:
-        st.error(f"Data Intake FAILED: An unexpected error occurred. Please ensure the Excel file contains columns for 'Particulars', 'Note', and two amount columns. Error: {e}")
+        st.error(f"Data Intake FAILED: An unexpected error occurred. Please ensure the Excel file is not corrupted. Error: {e}")
         import traceback
         traceback.print_exc()
         return None
