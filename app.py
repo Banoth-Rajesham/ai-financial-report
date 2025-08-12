@@ -174,15 +174,14 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel file and generating report..."):
             try:
-                # Read all sheets into a dictionary of DataFrames, reading only a few rows initially to find the header
-                all_sheets = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
+                # Read all sheets into a dictionary of DataFrames, reading the first 10 rows without a header
+                all_sheets_raw = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
                 
-                # We need to create a unified dataframe from relevant sheets
                 combined_df = pd.DataFrame()
                 
-                for sheet_name, df_raw in all_sheets.items():
-                    # Find the header row by searching for 'Particulars'
-                    header_row_candidates = df_raw.iloc[:, 0].astype(str).str.contains('Particulars', case=False)
+                for sheet_name, df_raw in all_sheets_raw.items():
+                    # Dynamically find the header row by searching for 'Particulars' across all columns
+                    header_row_candidates = df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
                     header_row_index = header_row_candidates[header_row_candidates].index
                     
                     if not header_row_index.empty:
@@ -191,7 +190,7 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                         df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
                         combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
 
-                # Check if we have a valid combined dataframe
+                # Final check to ensure we have the 'Particulars' column
                 if 'Particulars' not in combined_df.columns:
                     st.error("The uploaded Excel file does not contain a 'Particulars' column in any of the sheets. Please check your file format.")
                 else:
@@ -252,11 +251,17 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                     }
                     
                     # Try to get depreciation from a notes sheet if available
-                    if 'Note 11' in all_sheets:
-                        notes_df = all_sheets['Note 11']
-                        depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
-                        if depreciation_cy and depreciation_py:
-                            agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
+                    if 'Note 11' in all_sheets_raw:
+                        # Reread the notes sheet with the correct header
+                        notes_df_raw = pd.read_excel(excel_file, sheet_name='Note 11', header=None)
+                        notes_header_row_candidates = notes_df_raw.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)
+                        notes_header_row_index = notes_header_row_candidates[notes_header_row_candidates].index
+                        
+                        if not notes_header_row_index.empty:
+                            notes_df = pd.read_excel(excel_file, sheet_name='Note 11', header=notes_header_row_index[0])
+                            depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
+                            if depreciation_cy and depreciation_py:
+                                agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
 
                     re_kpis = calculate_kpis(agg_data_from_excel)
                     re_ai_analysis = generate_ai_analysis(re_kpis)
