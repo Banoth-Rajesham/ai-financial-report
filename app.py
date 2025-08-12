@@ -1,5 +1,5 @@
 # ==============================================================================
-# FINAL, COMPLETE, AND CORRECTED app.py
+# FINAL, COMPLETE, AND CORRECTED my_appy.py
 # ==============================================================================
 import streamlit as st
 import sys
@@ -10,20 +10,20 @@ import os
 import io
 
 # --- THIS IS THE PERMANENT FIX for the path issue ---
-# Add the project's root directory (where this app.py file is located) to the Python path.
+# Add the current directory (which is the project root) to Python's path.
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # --- END OF FIX ---
 
 # --- Now, all imports will work correctly from the root ---
 try:
-    from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
-    from financial_reporter_app.agents import (
-        intelligent_data_intake_agent,
-        ai_mapping_agent,
-        hierarchical_aggregator_agent,
-        data_validation_agent,
-        report_finalizer_agent
-    )
+    # CORRECTED IMPORT PATHS to use 'config' folder
+    from config.MASTER_TEMPLATE import MASTER_TEMPLATE
+    from config.NOTES_STRUCTURE_AND_MAPPING import NOTES_STRUCTURE_AND_MAPPING
+    from agents.agent_1_intake import intelligent_data_intake_agent
+    from agents.agent_2_ai_mapping import ai_mapping_agent
+    from agents.agent_3_aggregator import hierarchical_aggregator_agent
+    from agents.agent_4_validator import data_validation_agent
+    from agents.agent_5_reporter import report_finalizer_agent
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
     st.stop()
