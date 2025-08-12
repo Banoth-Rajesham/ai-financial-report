@@ -64,7 +64,7 @@ def ai_mapping_agent(source_particulars, mapping_structure, api_url=None, api_ke
                     if isinstance(sub_item, list):
                         if new_keyword not in sub_item: sub_item.append(new_keyword)
                         return True
-        return False
+                return False
 
     for term, category_title in ai_responses.items():
         if not find_and_update(updated_mapping, category_title, term):
