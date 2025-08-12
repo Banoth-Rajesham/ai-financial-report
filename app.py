@@ -3,31 +3,21 @@
 # This version features a completely redesigned, multi-page visual PDF dashboard report.
 # ==============================================================================
 import streamlit as st
-import sys
 import pandas as pd
 import plotly.express as px
 from fpdf import FPDF
-import os
 import io
+import os
 
 try:
-    # THIS IS THE PERMANENT FIX: Use a relative import to go up one level to find config.py
-    # Fallback for local execution or if run as a script
-    if os.path.basename(os.path.dirname(__file__)) == 'financial_reporter_app':
-        from .config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
-        from .agents.agent_1_intake import intelligent_data_intake_agent
-        from .agents.agent_2_ai_mapping import ai_mapping_agent
-        from .agents.agent_3_aggregator import hierarchical_aggregator_agent
-        from .agents.agent_4_validator import data_validation_agent
-        from .agents.agent_5_reporter import report_finalizer_agent
-    else:
-        # This is for running locally in a simple folder structure
-        from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
-        from agents.agent_1_intake import intelligent_data_intake_agent
-        from agents.agent_2_ai_mapping import ai_mapping_agent
-        from agents.agent_3_aggregator import hierarchical_aggregator_agent
-        from agents.agent_4_validator import data_validation_agent
-        from agents.agent_5_reporter import report_finalizer_agent
+    # This simplified import assumes the correct file structure:
+    # app.py and config.py in the root, and a sub-folder 'agents'
+    from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+    from agents.agent_1_intake import intelligent_data_intake_agent
+    from agents.agent_2_ai_mapping import ai_mapping_agent
+    from agents.agent_3_aggregator import hierarchical_aggregator_agent
+    from agents.agent_4_validator import data_validation_agent
+    from agents.agent_5_reporter import report_finalizer_agent
 except ImportError as e:
     st.error(f"CRITICAL ERROR: Could not import a module. This is likely a path issue. Error: {e}")
     st.stop()
@@ -38,24 +28,27 @@ def calculate_kpis(agg_data):
     for year in ['CY', 'PY']:
         get = lambda key, y=year: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
         total_revenue = get(21) + get(22)
-        change_in_inv = get(16, 'CY') - get(16, 'PY') if year == 'CY' else 0
+        # Calculate change in inventories for the P&L statement
+        change_in_inv = (get(16, 'CY') - get(16, 'PY')) if year == 'CY' else 0
+        # Check if 'Depreciation for the year' exists before trying to access it
         depreciation = agg_data.get('11', {}).get('sub_items', {}).get('Depreciation for the year', {}).get(year, 0)
-        total_expenses = get(23) - change_in_inv + get(24) + get(25) + depreciation + get(26)
+        total_expenses = get(23) + get(24) + get(25) + depreciation + get(26)
+        # A more robust way to calculate Total Expenses is to sum all P&L expense notes
+        # The aggregation logic needs to handle this.
         net_profit = total_revenue - total_expenses
         total_assets = sum(get(n) for n in range(11, 21))
         total_debt = get(3) + get(7)
         total_equity = get(1) + get(2)
-        
-        # Handle cases where total_equity is zero to prevent division by zero
+
         if total_equity == 0:
             debt_to_equity = 0
         else:
             debt_to_equity = total_debt / total_equity
             
         kpis[year] = {
-            "Total Revenue": total_revenue, 
-            "Net Profit": net_profit, 
-            "Total Assets": total_assets, 
+            "Total Revenue": total_revenue,
+            "Net Profit": net_profit,
+            "Total Assets": total_assets,
             "Debt-to-Equity": debt_to_equity
         }
     return kpis
@@ -90,7 +83,6 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
         pdf.set_font('Arial', 'B', 8)
         pdf.set_fill_color(220, 220, 220)
         
-        # Dynamic calculation of column widths
         num_columns = len(df.columns)
         page_width = pdf.w - 2 * pdf.l_margin
         col_width = page_width / num_columns if num_columns > 0 else 0
@@ -120,7 +112,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
     pdf.ln(5)
 
     kpi_cy = kpis['CY']
-    colors = [(255, 202, 40), (0, 204, 122), (41, 182, 246), (244, 67, 54)] # Yellow, Green, Blue, Red
+    colors = [(255, 202, 40), (0, 204, 122), (41, 182, 246), (244, 67, 54)]
     kpi_items = [("Total Revenue", f"INR {kpi_cy['Total Revenue']:,.0f}"), ("Net Profit", f"INR {kpi_cy['Net Profit']:,.0f}"),
                     ("Total Assets", f"INR {kpi_cy['Total Assets']:,.0f}"), ("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f}")]
     
@@ -143,7 +135,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
         pdf.set_font('Arial', 'B', 16)
         pdf.cell(card_width, 10, value, 0, 1, 'C')
 
-    pdf.set_y(y_pos + 2 * (card_height + 5) + 10) # Move below the cards
+    pdf.set_y(y_pos + 2 * (card_height + 5) + 10)
     pdf.set_text_color(0, 0, 0)
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L')
@@ -157,11 +149,9 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data
         pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L')
         pdf.ln(5)
         
-        # Performance Overview chart
         pdf.image(charts["Performance Overview"], x=15, w=180)
         pdf.ln(10)
 
-        # Create Asset Composition Pie Chart
         get = lambda key, y='CY': agg_data.get(str(key), {}).get('total', {}).get(y, 0)
         fixed_assets = get(11)
         current_assets = sum(get(n) for n in range(15, 21))
@@ -188,7 +178,7 @@ if 'report_generated' not in st.session_state: st.session_state.report_generated
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
 if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
-if 'agg_data' not in st.session_state: st.session_state.agg_data = {} # Store aggregated data for PDF
+if 'agg_data' not in st.session_state: st.session_state.agg_data = {}
 
 st.markdown("""<style>.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}.block-container{padding:2rem 3rem}.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}.kpi-card{background:#2b2b3c;border-radius:25px 25px 8px 8px;padding:1.5rem 2rem;box-shadow:6px 6px 16px #141e1e,-6px -6px 16px #38384a;min-width:250px;color:#e0e0e0;flex:1;transition:box-shadow .3s ease-in-out}.revenue-card:hover{box-shadow:0 0 20px #ffca28,0 0 30px #ffca28,0 0 40px #ffca28}.profit-card:hover{box-shadow:0 0 20px #00cc7a,0 0 30px #00cc7a,0 0 40px #00cc7a}.assets-card:hover{box-shadow:0 0 20px #29b6f6,0 0 30px #29b6f6,0 0 40px #29b6f6}.debt-card:hover{box-shadow:0 0 20px #f44336,0 0 30px #f44336,0 0 40px #f44336}.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}</style>""", unsafe_allow_html=True)
 
@@ -203,7 +193,7 @@ with st.sidebar:
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 
                 st.info("Step 2/5: Mapping financial terms...")
-                refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), MASTER_TEMPLATE['Notes to Accounts'])
+                refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), NOTES_STRUCTURE_AND_MAPPING)
                 
                 st.info("Step 3/5: Aggregating values...")
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
@@ -217,10 +207,10 @@ with st.sidebar:
             st.success("Dashboard Generated!")
             [st.warning(w) for w in warnings]
             st.session_state.update(
-                report_generated=True, 
-                excel_report_bytes=excel_report_bytes, 
-                kpis=calculate_kpis(aggregated_data), 
-                company_name=company_name, 
+                report_generated=True,
+                excel_report_bytes=excel_report_bytes,
+                kpis=calculate_kpis(aggregated_data),
+                company_name=company_name,
                 agg_data=aggregated_data
             )
             st.rerun()
@@ -279,36 +269,30 @@ else:
     fig.write_image(chart_bytes, format="png", scale=2, engine="kaleido")
     charts_for_pdf = {"Performance Overview": chart_bytes}
     
-    # --- Read data from the generated Excel in memory for the PDF ---
     excel_file_for_pdf = io.BytesIO(st.session_state.excel_report_bytes)
     sheets_data = pd.read_excel(excel_file_for_pdf, sheet_name=None)
     cleaned_sheets_data = {name: df.dropna(how='all').fillna('') for name, df in sheets_data.items() if not df.dropna(how='all').fillna('').empty}
     
-    # CORRECTED FUNCTION CALL: Passing all required arguments
     pdf_bytes = create_professional_pdf(st.session_state.kpis, ai_analysis, charts_for_pdf, st.session_state.company_name, cleaned_sheets_data, st.session_state.agg_data)
 
     d_col1, d_col2 = st.columns(2)
     d_col1.download_button(
-        "📊 Download Visual PDF Report", 
-        pdf_bytes, 
-        f"{st.session_state.company_name}_Dashboard_Report.pdf", 
-        "application/pdf", 
+        "📊 Download Visual PDF Report",
+        pdf_bytes,
+        f"{st.session_state.company_name}_Dashboard_Report.pdf",
+        "application/pdf",
         use_container_width=True
     )
     d_col2.download_button(
-        "💹 Download Formatted Excel Data", 
-        st.session_state.excel_report_bytes, 
-        f"{st.session_state.company_name}_Financial_Statements.xlsx", 
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+        "💹 Download Formatted Excel Data",
+        st.session_state.excel_report_bytes,
+        f"{st.session_state.company_name}_Financial_Statements.xlsx",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
 st.divider()
 
-# ==============================================================================
-# UPDATED SECTION FOR GENERATING PDF FROM A PROCESSED EXCEL FILE
-# This now includes the full Balance Sheet, P&L, and Notes.
-# ==============================================================================
 st.header("Generate PDF Report from a Previously Downloaded Excel File")
 st.markdown("Use this section to upload the single formatted Excel report you've already generated to create a professional PDF. This section is more flexible and can handle modified files.")
 
@@ -319,13 +303,11 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel file and generating report..."):
             try:
-                # Read all sheets into a dictionary of DataFrames, reading the first 10 rows without a header
                 all_sheets_raw = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
                 
                 combined_df = pd.DataFrame()
                 sheets_for_pdf = {}
                 
-                # List of sheets to include in the PDF
                 sheet_names_to_include = ['Balance Sheet', 'Profit and Loss'] + [f'Note {i}' for i in range(1, 28)]
                 
                 for sheet_name in sheet_names_to_include:
@@ -338,14 +320,11 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                             header_index_to_use = header_row_index[0]
                             df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
                             
-                            # Filter out any rows that are entirely blank, and fill any NaN values with ''
                             df_correctly_read = df_correctly_read.dropna(subset=['Particulars']).fillna('')
                             
-                            # Add to dictionary for PDF rendering
                             sheets_for_pdf[sheet_name] = df_correctly_read
                             combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
 
-                # Final check to ensure we have the 'Particulars' column for KPI calculation
                 if 'Particulars' not in combined_df.columns:
                     st.error("The uploaded Excel file does not contain a 'Particulars' column in any of the sheets. Please check your file format.")
                 else:
@@ -375,38 +354,42 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                                         return cy_val, py_val
                         return 0, 0
                     
-                    # Map keywords for KPI calculation
                     cy_equity, py_equity = find_value("Shareholder's funds")
-                    cy_debt, py_debt = find_value("Total Debt")
-                    cy_assets, py_assets = find_value("Total Assets")
-                    cy_revenue, py_revenue = find_value("Total Revenue")
-                    cy_profit, py_profit = find_value("Profit for the period")
+                    cy_total_liab_equity, py_total_liab_equity = find_value("TOTAL EQUITY AND LIABILITIES")
+                    cy_total_assets, py_total_assets = find_value("TOTAL ASSETS")
+                    cy_total_revenue, py_total_revenue = find_value("Total Revenue")
+                    cy_pbt, py_pbt = find_value("Profit before tax")
+                    cy_pat, py_pat = find_value("Profit/(Loss) for the period")
+
+                    # Note 11 (Fixed Assets) is needed to find depreciation for P&L
+                    depreciation_cy, depreciation_py = find_sub_item_value("Fixed Assets", "Depreciation for the year", sheets_for_pdf.get('Note 11', pd.DataFrame()))
                     
+                    # Create a mock aggregated data structure
                     agg_data_from_excel = {
                         '1': {'total': {'CY': cy_equity, 'PY': py_equity}},
-                        '2': {'total': {'CY': 0, 'PY': 0}},
-                        '3': {'total': {'CY': cy_debt, 'PY': py_debt}},
+                        '2': {'total': {'CY': cy_total_liab_equity - cy_equity, 'PY': py_total_liab_equity - py_equity}},
+                        '3': {'total': {'CY': 0, 'PY': 0}}, # This is a placeholder, as the complex calculation would require the full notes.
                         '7': {'total': {'CY': 0, 'PY': 0}},
-                        '11': {'total': {'CY': cy_assets, 'PY': py_assets}},
+                        '11': {'total': {'CY': cy_total_assets, 'PY': py_total_assets}, 'sub_items': {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}},
+                        '15': {'total': {'CY': 0, 'PY': 0}},
                         '16': {'total': {'CY': 0, 'PY': 0}},
-                        '21': {'total': {'CY': cy_revenue, 'PY': py_revenue}},
+                        '17': {'total': {'CY': 0, 'PY': 0}},
+                        '18': {'total': {'CY': 0, 'PY': 0}},
+                        '19': {'total': {'CY': 0, 'PY': 0}},
+                        '20': {'total': {'CY': 0, 'PY': 0}},
+                        '21': {'total': {'CY': cy_total_revenue, 'PY': py_total_revenue}},
                         '22': {'total': {'CY': 0, 'PY': 0}},
-                        '23': {'total': {'CY': cy_profit, 'PY': py_profit}},
+                        '23': {'total': {'CY': 0, 'PY': 0}},
                         '24': {'total': {'CY': 0, 'PY': 0}},
                         '25': {'total': {'CY': 0, 'PY': 0}},
                         '26': {'total': {'CY': 0, 'PY': 0}},
+                        'PBT': {'total': {'CY': cy_pbt, 'PY': py_pbt}},
+                        'PAT': {'total': {'CY': cy_pat, 'PY': py_pat}},
                     }
                     
-                    if 'Note 11' in sheets_for_pdf:
-                        notes_df = sheets_for_pdf['Note 11']
-                        depreciation_cy, depreciation_py = find_sub_item_value("Tangible assets", "Depreciation", notes_df)
-                        if depreciation_cy and depreciation_py:
-                            agg_data_from_excel['11']['sub_items'] = {'Depreciation for the year': {'CY': depreciation_cy, 'PY': depreciation_py}}
-
                     re_kpis = calculate_kpis(agg_data_from_excel)
                     re_ai_analysis = generate_ai_analysis(re_kpis)
                     
-                    # Generate charts for the PDF
                     re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
                     re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
                     re_fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
@@ -414,7 +397,6 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                     re_fig.write_image(re_chart_bytes, format="png", scale=2, engine="kaleido")
                     re_charts_for_pdf = {"Performance Overview": re_chart_bytes}
                     
-                    # --- Generate the comprehensive PDF with all dataframes ---
                     re_pdf_bytes = create_professional_pdf(re_kpis, re_ai_analysis, re_charts_for_pdf, company_name_pdf, sheets_for_pdf, agg_data_from_excel)
                     
                     st.success("PDF Report Generated!")
