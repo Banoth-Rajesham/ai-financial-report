@@ -1,6 +1,5 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version permanently fixes the TypeError by calling the agent correctly.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -9,14 +8,9 @@ import plotly.express as px
 from fpdf import FPDF
 import os
 import io
-import copy
 
-# --- THIS IS THE PERMANENT FIX for the path issue ---
-# Add the project's root directory to Python's path.
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-# --- END OF FIX ---
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '.')))
 
-# --- Now, all imports will work correctly from the root ---
 try:
     from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
     from financial_reporter_app.agents import (
@@ -93,7 +87,7 @@ if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 if 'agg_data' not in st.session_state: st.session_state.agg_data = {}
 
-st.markdown("""<style> /* Your CSS Here */ </style>""", unsafe_allow_html=True)
+st.markdown("""<style>/* Your CSS Here */</style>""", unsafe_allow_html=True)
 
 with st.sidebar:
     st.header("Upload & Process"); uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"]); company_name = st.text_input("Enter Company Name", st.session_state.company_name)
@@ -102,17 +96,17 @@ with st.sidebar:
             with st.spinner("Executing financial agent pipeline..."):
                 st.info("Step 1/5: Ingesting data..."); source_df = intelligent_data_intake_agent(uploaded_file)
                 
-                # ========================================================== #
-                # == THIS IS THE CORRECTED BLOCK                          == #
-                # ========================================================== #
-                st.info("Step 2/5: Mapping terms...")
-                # The agent needs the 'Notes to Accounts' part of the template
-                refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), MASTER_TEMPLATE['Notes to Accounts'])
-                # ========================================================== #
-                
+                # --- THIS IS THE PERMANENT SAFETY CHECK ---
+                if source_df is None or 'Particulars' not in source_df.columns:
+                    st.error("Pipeline HALTED: The data intake agent failed to process the uploaded file correctly. Please check the file format.")
+                    st.stop()
+                # --- END OF SAFETY CHECK ---
+
+                st.info("Step 2/5: Mapping terms..."); refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), MASTER_TEMPLATE['Notes to Accounts'])
                 st.info("Step 3/5: Aggregating values..."); aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 st.info("Step 4/5: Validating balances..."); warnings = data_validation_agent(aggregated_data)
                 st.info("Step 5/5: Generating report..."); excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
+            
             st.success("Dashboard Generated!"); [st.warning(w) for w in warnings]
             st.session_state.update(report_generated=True, excel_report_bytes=excel_report_bytes, kpis=calculate_kpis(aggregated_data), company_name=company_name, agg_data=aggregated_data)
             st.rerun()
