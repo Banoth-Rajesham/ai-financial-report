@@ -35,29 +35,13 @@ NOTES_STRUCTURE_AND_MAPPING = {
     '2': {
         'title': 'Reserve and surplus',
         'sub_items': {
-            '2.1 Capital reserve': {
-                'Balance at the end of the year': ['Capital reserve']
-            },
-            '2.2 Securities premium account': {
-                'Balance at the end of the year ': ['Securities premium', 'share premium']
-            },
-            '2.4 General reserve': {
-                'Balance at the end of the year   ': ['General reserve']
-            },
-            '2.6 Surplus / (Deficit) in Statement of Profit and Loss': {
-                'Balance at the end of the year     ': ['Retained Earnings', 'Surplus', 'P&L Account Balance', 'Profit & Loss A/c', 'Reserves and surplus']
-            }
+            '2.1 Capital reserve': { 'Balance at the end of the year': ['Capital reserve'] },
+            '2.2 Securities premium account': { 'Balance at the end of the year ': ['Securities premium', 'share premium'] },
+            '2.4 General reserve': { 'Balance at the end of the year   ': ['General reserve'] },
+            '2.6 Surplus / (Deficit) in Statement of Profit and Loss': { 'Balance at the end of the year     ': ['Retained Earnings', 'Surplus', 'P&L Account Balance', 'Profit & Loss A/c', 'Reserves and surplus'] }
         }
     },
-    '3': {
-        'title': 'Long term borrowings',
-        'sub_items': {
-            '3.0 Long term borrowings Summary': {
-                '(a) Term loans from banks': ['Term loans from banks', 'term loan', 'long term borrowings', 'Mortgage Loan'],
-                '(e) Other loans and advances': ['Other loans and advances specify nature', 'debentures']
-            }
-        }
-    },
+    '3': {'title': 'Long term borrowings', 'sub_items': {'3.0 Long term borrowings Summary': {'(a) Term loans from banks': ['Term loans from banks', 'term loan', 'long term borrowings', 'Mortgage Loan'], '(e) Other loans and advances': ['Other loans and advances specify nature', 'debentures']}}},
     '4': {'title': 'Deferred Tax Asset/Liability','sub_items': {'Tax on Difference between Book & Tax depreciation': ['deferred tax asset', 'deferred tax liability', 'deferred tax']}},
     '5': {'title': 'Other long term liabilities', 'sub_items': {'(b) Others': {'Others (specify nature)': ['other long term liabilities']}}},
     '6': {'title': 'Long term provisions', 'sub_items': {'(b) Provision - Others': {'Provision - others (give details)': ['long term provisions']}}},
@@ -65,77 +49,23 @@ NOTES_STRUCTURE_AND_MAPPING = {
     '8': {'title': 'Trade payables', 'sub_items': {'Trade payables: Other than Acceptances': ['trade payables', 'sundry creditors']}},
     '9': {'title': 'Other current liabilities', 'sub_items': {'Other payables (Salaries and consultant fee)': ['other current liabilities', 'bills payable', 'outstanding expenses']}},
     '10': {'title': 'Short term provisions', 'sub_items': {'(b) Provision - Others': {'Provision for tax (net)':['short term provisions', 'provision for tax']}}},
-    '11': {
-        'title': 'Fixed Assets (Tangible & Intangible)',
-        'sub_items': {
-            'Closing WDV': ['tangible assets', 'net fixed assets', 'fixed assets', 'land & building', 'plant & machinery', 'motor vehicles', 'Furniture & Fixture'],
-            'Depreciation for the year': ['Depreciation', 'Depriciation for the year', 'to depreciation']
-        }
-    },
+    '11': {'title': 'Fixed Assets (Tangible & Intangible)', 'sub_items': {'Closing WDV': ['tangible assets', 'net fixed assets', 'fixed assets', 'land & building', 'plant & machinery', 'motor vehicles', 'Furniture & Fixture'], 'Depreciation for the year': ['Depreciation', 'Depriciation for the year', 'to depreciation']}},
     '12': {'title': 'Non-current Investments', 'sub_items': {'B. Other Investments': {'(h) Other non-current investments ': ['non-current investments', 'investments']}}},
     '13': {'title': 'Long term loans and advances', 'sub_items': {'(e) Prepaid expenses - Unsecured, considered good': ['long term loans and advances']}},
     '14': {'title': 'Other non-current assets', 'sub_items': {'(d) Others': {'Others (specify nature)':['other non-current assets']}}},
     '15': {'title': 'Current Investments', 'sub_items': {'B. Other current investments': {'(g) Other investments (specify nature)': ['current investments']}}},
-    '16': {
-        'title': 'Inventories',
-        'sub_items': {
-            '(d) Stock-in-trade': {'Stock-in-trade': ['inventories', 'stock/inventories', 'closing stock', 'opening stock', 'to opening stock', 'by closing stock']}
-        }
-    },
+    '16': {'title': 'Inventories', 'sub_items': {'(d) Stock-in-trade': {'Stock-in-trade': ['inventories', 'stock/inventories', 'closing stock', 'opening stock', 'to opening stock', 'by closing stock']}}},
     '17': {'title': 'Trade Receivables', 'sub_items': {'Other Trade receivables': {'Unsecured, considered good ': ['trade receivables', 'sundry debtors', 'bills receivable']}}},
     '18': {'title': 'Cash and cash equivalents', 'sub_items': {'(c) Balances with banks': {'(i) In current accounts': ['cash and cash equivalents', 'cash at bank']}}},
     '19': {'title': 'Short term loans and advances', 'sub_items': {'(d) Prepaid expenses': ['short term loans and advances', 'prepaid']}},
     '20': {'title': 'Other current assets', 'sub_items': {'(a) Unbilled revenue': ['other current assets']}},
-    '21': {
-        'title': 'Revenue from Operations',
-        'sub_items': {
-            'Sale of Services': ['revenue from operations', 'by sales']
-        }
-    },
-    '22': {
-        'title': 'Other income',
-        'sub_items': {
-            'Miscellaneous Income': ['other income', 'by interest received', 'by dividend received', 'by commission received', 'by discount received', 'by bad debts recovered', 'miscellaneous income']
-        }
-    },
-    '23': {
-        'title': 'Cost of Materials Consumed',
-        'sub_items': {
-            'Purchases': ['cost of materials consumed', 'to purchases']
-        }
-    },
-    '24': {
-        'title': 'Employee benefit expenses',
-        'sub_items': {
-            'Salaries and Wages': ['employee benefit expenses', 'to wages', 'to salaries']
-        }
-    },
-    '25': {
-        'title': 'Finance Costs',
-        'sub_items': {
-            'Interest on borrowings': ['finance costs', 'to interest paid']
-        }
-    },
-    '26': {
-        'title': 'Other expenses',
-        'sub_items': {
-            'Accounting Fee': ['Accounting Fee'],
-            'Audit Fees': ['Audit Fees'],
-            'Admin expenses': ['Admin expenses'],
-            'Bank Charges': ['Bank Charges'],
-            'Consultancy charges': ['Consultancy charges'],
-            'Electrcity charges': ['Electrcity charges', 'Electricity charges', 'to electricity'],
-            'Insurance': ['Insurance', 'to insurance'],
-            'Rent': ['Rent', 'to rent'],
-            'Travelling Expense': ['Travelling Expense'],
-            'Telephone expenses': ['Telephone expenses', 'to telephone'],
-            'Repair and maintenance': ['Repair and maintenance', 'to repairs & maintenance'],
-            'Other expenses': ['Other expenses', 'miscellaneous expenses', 'to bad debts', 'to printing & stationery']
-        }
-    },
-    "27": { "title": "Tax expense", "sub_items": {
-        'Current tax': ['current tax', 'taxation']
-    } }
+    '21': {'title': 'Revenue from Operations', 'sub_items': {'Sale of Services': ['revenue from operations', 'by sales']}},
+    '22': {'title': 'Other income', 'sub_items': {'Miscellaneous Income': ['other income', 'by interest received', 'by dividend received', 'by commission received', 'by discount received', 'by bad debts recovered', 'miscellaneous income']}},
+    '23': {'title': 'Cost of Materials Consumed', 'sub_items': {'Purchases': ['cost of materials consumed', 'to purchases']}},
+    '24': {'title': 'Employee benefit expenses', 'sub_items': {'Salaries and Wages': ['employee benefit expenses', 'to wages', 'to salaries']}},
+    '25': {'title': 'Finance Costs', 'sub_items': {'Interest on borrowings': ['finance costs', 'to interest paid']}},
+    '26': {'title': 'Other expenses', 'sub_items': {'Accounting Fee': ['Accounting Fee'],'Audit Fees': ['Audit Fees'],'Admin expenses': ['Admin expenses'],'Bank Charges': ['Bank Charges'],'Consultancy charges': ['Consultancy charges'],'Electrcity charges': ['Electrcity charges', 'Electricity charges', 'to electricity'],'Insurance': ['Insurance', 'to insurance'],'Rent': ['Rent', 'to rent'],'Travelling Expense': ['Travelling Expense'],'Telephone expenses': ['Telephone expenses', 'to telephone'],'Repair and maintenance': ['Repair and maintenance', 'to repairs & maintenance'],'Other expenses': ['Other expenses', 'miscellaneous expenses', 'to bad debts', 'to printing & stationery']}},
+    "27": { "title": "Tax expense", "sub_items": {'Current tax': ['current tax', 'taxation']}}
 }
 
 MASTER_TEMPLATE = {
