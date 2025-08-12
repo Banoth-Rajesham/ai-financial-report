@@ -1,7 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version includes a permanent fix for the font_mode AttributeError,
-# making the PDF generation compatible with multiple fpdf library versions.
+# This version features a completely redesigned, multi-page visual PDF dashboard report.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -43,46 +42,116 @@ def generate_ai_analysis(kpis):
     return f"**Strengths:**\n- **Strong Profitability:** A Net Profit of INR {kpi_cy['Net Profit']:,.0f} on Revenue of INR {kpi_cy['Total Revenue']:,.0f} signals efficient operations.\n- **Balanced Financial Structure:** The Debt-to-Equity ratio of {kpi_cy['Debt-to-Equity']:.2f} suggests a healthy balance between debt and equity financing.\n\n**Opportunities:**\n- **Growth Funding:** The stable financial structure provides an opportunity to raise further capital at a reasonable cost for expansion or R&D.\n\n**Threats:**\n- **Market Competition:** High profitability may attract competitors, putting pressure on future margins.\n- **Economic Headwinds:** A broader economic downturn could impact customer spending and affect revenue growth."
 
 class PDF(FPDF):
-    def header(self): self.set_font('Arial', 'B', 16); self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C'); self.ln(5)
-    def footer(self): self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+    def header(self):
+        self.set_font('Arial', 'B', 12)
+        self.cell(0, 10, 'Financial Dashboard Report', 0, 0, 'C')
+        self.ln(10)
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
 # ==============================================================================
 # THIS IS THE ONLY FUNCTION THAT HAS BEEN MODIFIED
 # ==============================================================================
-def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data):
+def create_professional_pdf(kpis, ai_analysis, charts, company_name, sheets_data, agg_data):
+    """
+    Generates a multi-page, visually rich PDF dashboard report.
+    """
     pdf = PDF()
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 20); pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C'); pdf.ln(10)
-    pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '1. Key Performance Indicators (Current Year)', 0, 1, 'L'); pdf.set_font('Arial', '', 12)
-    for key, value in kpis['CY'].items(): pdf.cell(0, 8, f"- {key}: {'INR {:,.0f}'.format(value) if any(x in key for x in ['Revenue', 'Profit', 'Assets']) else '{:.2f}'.format(value)}", 0, 1)
-    pdf.ln(10); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L'); pdf.set_font('Arial', '', 12); pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
-    if charts:
-        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L'); pdf.ln(5)
-        for title, chart_bytes in charts.items():
-            pdf.set_font('Arial', 'B', 14); pdf.cell(0, 10, title, 0, 1, 'C'); pdf.image(chart_bytes, x=15, w=180, type='PNG'); pdf.ln(10)
     
-    for sheet_name, df in sheets_data.items():
-        pdf.add_page(); pdf.set_font('Arial', 'B', 16); pdf.cell(0, 10, f'Sheet: {sheet_name}', 0, 1, 'L'); pdf.ln(5)
-        num_cols = len(df.columns)
-        if num_cols == 0: continue
-        if "Note" in sheet_name and num_cols == 3: col_widths = (100, 40, 40)
-        elif ("Balance Sheet" in sheet_name or "Profit and Loss" in sheet_name) and num_cols == 5: col_widths = (10, 80, 20, 40, 40)
-        else: page_width = pdf.w - 2 * pdf.l_margin; col_widths = tuple([page_width / num_cols] * num_cols)
+    # --- Helper function to draw styled tables ---
+    def draw_table(title, df):
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, title, 0, 1, 'L')
+        pdf.ln(5)
         
-        data_to_render = [df.columns.tolist()] + df.values.tolist()
+        pdf.set_font('Arial', 'B', 8)
+        pdf.set_fill_color(220, 220, 220)
+        col_widths = (10, 80, 20, 40, 40)
         
-        pdf.set_font('Arial', '', 8) # Set default font for table body
+        # Draw header
+        for i, header in enumerate(df.columns):
+            pdf.cell(col_widths[i], 8, str(header), 1, 0, 'C', 1)
+        pdf.ln()
+
+        # Draw rows
+        pdf.set_font('Arial', '', 8)
+        pdf.set_fill_color(245, 245, 245)
+        for index, row in df.iterrows():
+            fill = index % 2 == 0
+            for i, datum in enumerate(row):
+                pdf.cell(col_widths[i], 6, str(datum), 1, 0, 'L', fill)
+            pdf.ln()
+
+    # --- Page 1: Executive Summary with KPI Cards ---
+    pdf.add_page()
+    pdf.set_font('Arial', 'B', 20)
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.ln(5)
+
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, '1. Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.ln(5)
+
+    kpi_cy = kpis['CY']
+    colors = [(255, 202, 40), (0, 204, 122), (41, 182, 246), (244, 67, 54)] # Yellow, Green, Blue, Red
+    kpi_items = [("Total Revenue", f"INR {kpi_cy['Total Revenue']:,.0f}"), ("Net Profit", f"INR {kpi_cy['Net Profit']:,.0f}"),
+                   ("Total Assets", f"INR {kpi_cy['Total Assets']:,.0f}"), ("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f}")]
+    
+    x_pos = pdf.get_x()
+    y_pos = pdf.get_y()
+    card_width = 90
+    card_height = 25
+
+    for i, (title, value) in enumerate(kpi_items):
+        col = i % 2
+        row = i // 2
+        pdf.set_xy(x_pos + (col * (card_width + 10)), y_pos + (row * (card_height + 5)))
+        pdf.set_fill_color(colors[i][0], colors[i][1], colors[i][2])
+        pdf.rect(pdf.get_x(), pdf.get_y(), card_width, card_height, 'F')
         
-        with pdf.table(text_align='L', col_widths=col_widths) as table:
-            for i, row_data in enumerate(data_to_render):
-                row = table.row()
-                for datum in row_data:
-                    if i == 0: # This is the header row
-                        pdf.set_font('Arial', 'B', 8) # Set font to BOLD for header
-                        row.cell(str(datum))
-                        pdf.set_font('Arial', '', 8) # Set font back to REGULAR
-                    else:
-                        row.cell(str(datum)) # Body rows use the default regular font
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(card_width, 10, title, 0, 1, 'C')
+        
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(card_width, 10, value, 0, 1, 'C')
+
+    pdf.set_y(y_pos + 2 * (card_height + 5) + 10) # Move below the cards
+    pdf.set_text_color(0, 0, 0)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, '2. AI-Generated Insights', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    pdf.multi_cell(0, 6, ai_analysis.replace('**', ''))
+
+    # --- Page 2: Visualizations ---
+    if charts:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, '3. Financial Visualizations', 0, 1, 'L')
+        pdf.ln(5)
+        pdf.image(charts["Performance Overview"], x=15, w=180)
+        pdf.ln(10)
+
+        # Create Asset Composition Pie Chart
+        get = lambda key, y='CY': agg_data.get(str(key), {}).get('total', {}).get(y, 0)
+        fixed_assets = get(11)
+        current_assets = sum(get(n) for n in range(15, 21))
+        asset_data = pd.DataFrame({'Asset Type': ['Fixed Assets', 'Current Assets'], 'Value': [fixed_assets, current_assets]})
+        fig_pie = px.pie(asset_data, names='Asset Type', values='Value', title='Composition of Assets (CY)', hole=0.3)
+        fig_pie.update_traces(textinfo='percent+label', marker=dict(colors=['#29b6f6', '#00cc7a']))
+        pie_chart_bytes = io.BytesIO()
+        fig_pie.write_image(pie_chart_bytes, format="png", scale=2)
+        
+        pdf.image(pie_chart_bytes, x=15, w=180)
+
+    # --- Subsequent Pages: Formatted Data Tables ---
+    if "Balance Sheet" in sheets_data:
+        draw_table("Balance Sheet", sheets_data["Balance Sheet"])
+    if "Profit and Loss" in sheets_data:
+        draw_table("Profit and Loss", sheets_data["Profit and Loss"])
 
     return bytes(pdf.output())
 
@@ -94,6 +163,7 @@ if 'report_generated' not in st.session_state: st.session_state.report_generated
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
 if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
+if 'agg_data' not in st.session_state: st.session_state.agg_data = {} # Store aggregated data for PDF
 
 st.markdown("""<style>.stApp{background-color:#1e1e2f;color:#e0e0e0;font-family:'Segoe UI',sans-serif}.block-container{padding:2rem 3rem}.kpi-container{display:flex;flex-wrap:wrap;gap:1.5rem;justify-content:center;margin-bottom:2rem}.kpi-card{background:#2b2b3c;border-radius:25px 25px 8px 8px;padding:1.5rem 2rem;box-shadow:6px 6px 16px #141e1e,-6px -6px 16px #38384a;min-width:250px;color:#e0e0e0;flex:1;transition:box-shadow .3s ease-in-out}.revenue-card:hover{box-shadow:0 0 20px #ffca28,0 0 30px #ffca28,0 0 40px #ffca28}.profit-card:hover{box-shadow:0 0 20px #00cc7a,0 0 30px #00cc7a,0 0 40px #00cc7a}.assets-card:hover{box-shadow:0 0 20px #29b6f6,0 0 30px #29b6f6,0 0 40px #29b6f6}.debt-card:hover{box-shadow:0 0 20px #f44336,0 0 30px #f44336,0 0 40px #f44336}.kpi-card .title{font-weight:600;font-size:1rem;margin-bottom:.3rem;color:#a0a0a0}.kpi-card .value{font-size:2.2rem;font-weight:700;margin-bottom:.5rem;line-height:1.1}.kpi-card .delta{display:inline-flex;align-items:center;font-weight:600;font-size:.9rem;border-radius:20px;padding:.25rem .8rem}.kpi-card .delta.up{background-color:#00cc7a;color:#0f2f1f}.kpi-card .delta.up::before{content:"⬆";margin-right:.3rem}.kpi-card .delta.down{background-color:#ff4c4c;color:#3a0000}.kpi-card .delta.down::before{content:"⬇";margin-right:.3rem}</style>""", unsafe_allow_html=True)
 
@@ -105,89 +175,4 @@ with st.sidebar:
                 st.info("Step 1/5: Ingesting data..."); source_df = intelligent_data_intake_agent(uploaded_file)
                 st.info("Step 2/5: Mapping financial terms..."); refined_mapping = ai_mapping_agent(source_df['Particulars'].tolist(), MASTER_TEMPLATE['Notes to Accounts'])
                 st.info("Step 3/5: Aggregating values..."); aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                st.info("Step 4/5: Validating balances..."); warnings = data_validation_agent(aggregated_data)
-                st.info("Step 5/5: Generating final report..."); excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-            st.success("Dashboard Generated!"); [st.warning(w) for w in warnings]
-            st.session_state.update(report_generated=True, excel_report_bytes=excel_report_bytes, kpis=calculate_kpis(aggregated_data), company_name=company_name)
-            st.rerun()
-        else: st.warning("Please upload a file and enter a company name.")
-
-if not st.session_state.report_generated:
-    st.markdown("<div align='center'><h1>Financial Analysis Dashboard</h1><p>Upload your financial data in the sidebar to begin.</p></div>", unsafe_allow_html=True)
-else:
-    kpis = st.session_state.kpis; kpi_cy, kpi_py = kpis['CY'], kpis['PY']
-    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue'] * 100) if kpi_py['Total Revenue'] else 0
-    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit'] * 100) if kpi_py.get('Net Profit', 0) > 0 else 0
-    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets'] * 100) if kpi_py['Total Assets'] else 0
-    dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
-    st.markdown(f"""<div class="kpi-container"><div class="kpi-card revenue-card"><div class="title">Total Revenue (CY)</div><div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div><div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div></div><div class="kpi-card profit-card"><div class="title">Net Profit (CY)</div><div class="value">₹{kpi_cy['Net Profit']:,.0f}</div><div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div></div><div class="kpi-card assets-card"><div class="title">Total Assets (CY)</div><div class="value">₹{kpi_cy['Total Assets']:,.0f}</div><div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div></div><div class="kpi-card debt-card"><div class="title">Debt-to-Equity (CY)</div><div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div><div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div></div></div>""", unsafe_allow_html=True)
-    ai_analysis = generate_ai_analysis(kpis)
-    chart_data = pd.DataFrame(kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
-    fig = px.bar(chart_data[chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group', title='Current (CY) vs. Previous (PY) Year Performance')
-    fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='#2b2b3c', font_color='#e0e0e0')
-    col1, col2 = st.columns((5, 4)); col1.subheader("📊 Financial Visualization"); col1.plotly_chart(fig, use_container_width=True); col2.subheader("🤖 AI-Generated Insights"); col2.markdown(ai_analysis)
-    st.subheader("⬇️ Download Center")
-    chart_bytes = io.BytesIO(); fig.write_image(chart_bytes, format="png", scale=2, engine="kaleido"); charts_for_pdf = {"Performance Overview": chart_bytes}
-    pdf_bytes = create_professional_pdf(st.session_state.kpis, ai_analysis, charts_for_pdf, st.session_state.company_name, {})
-    d_col1, d_col2 = st.columns(2)
-    d_col1.download_button("📄 Download PDF with Professional Insights", pdf_bytes, f"{st.session_state.company_name}_Financial_Report.pdf", "application/pdf", use_container_width=True)
-    d_col2.download_button("💹 Download Formatted Excel Report", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Financial_Statements.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-
-st.divider()
-
-st.header("Generate PDF Report from Formatted Excel File")
-st.markdown("Upload the formatted Excel report you generated above to create a comprehensive, multi-page PDF.")
-excel_file = st.file_uploader("Upload Formatted Excel Report", type=["xlsx"], key="excel_uploader")
-company_name_pdf = st.text_input("Re-enter Company Name for PDF Report", st.session_state.company_name, key="pdf_company_name")
-if st.button("Generate Comprehensive PDF Report", type="secondary", use_container_width=True, key="generate_pdf_button"):
-    if excel_file and company_name_pdf:
-        with st.spinner("Processing Excel and generating comprehensive PDF..."):
-            try:
-                all_sheets = pd.read_excel(excel_file, sheet_name=None)
-                sheets_for_pdf = {name: df.dropna(how='all').fillna('') for name, df in all_sheets.items() if not df.dropna(how='all').fillna('').empty}
-                
-                def clean_and_convert_to_numeric(value):
-                    if isinstance(value, (int, float)): return float(value)
-                    if isinstance(value, str):
-                        cleaned_str = value.replace(',', '').strip()
-                        if not cleaned_str: return 0.0
-                        try: return float(cleaned_str)
-                        except ValueError: return 0.0
-                    return 0.0
-
-                def find_value_from_df(keyword, df):
-                    row = df[df.iloc[:, 1].astype(str).str.contains(keyword, na=False, case=False, regex=False)]
-                    if not row.empty:
-                        cy_val = clean_and_convert_to_numeric(row.iloc[0, 3])
-                        py_val = clean_and_convert_to_numeric(row.iloc[0, 4])
-                        return cy_val, py_val
-                    return 0.0, 0.0
-                
-                agg_data, bs_df, pl_df = {}, sheets_for_pdf.get("Balance Sheet"), sheets_for_pdf.get("Profit and Loss")
-                if bs_df is not None:
-                    cy_eq, py_eq = find_value_from_df("Share Capital", bs_df); agg_data['1'] = {'total': {'CY': cy_eq, 'PY': py_eq}}
-                    cy_debt, py_debt = find_value_from_df("Long-term borrowings", bs_df); agg_data['3'] = {'total': {'CY': cy_debt, 'PY': py_debt}}
-                    cy_assets, py_assets = find_value_from_df("TOTAL ASSETS", bs_df); agg_data['11'] = {'total': {'CY': cy_assets, 'PY': py_assets}}
-                if pl_df is not None:
-                    cy_rev, py_rev = find_value_from_df("Total Revenue", pl_df); agg_data['21'] = {'total': {'CY': cy_rev, 'PY': py_rev}}
-                    cy_profit, py_profit = find_value_from_df("Profit/\\(Loss\\) for the period", pl_df); agg_data['23'] = {'total': {'CY': cy_profit, 'PY': py_profit}}
-                
-                for note in ['2','7','16','22','24','25','26']: agg_data.setdefault(note, {'total': {'CY': 0, 'PY': 0}})
-                agg_data.setdefault('11', {}).setdefault('sub_items', {}).setdefault('Depreciation for the year', {'CY': 0, 'PY': 0})
-                
-                re_kpis = calculate_kpis(agg_data)
-                re_ai = generate_ai_analysis(re_kpis)
-                re_chart_data = pd.DataFrame(re_kpis).reset_index().rename(columns={'index': 'Metric'}).melt(id_vars='Metric', var_name='Year', value_name='Amount')
-                re_fig = px.bar(re_chart_data[re_chart_data['Metric'].isin(['Total Revenue', 'Net Profit'])], x='Metric', y='Amount', color='Year', barmode='group')
-                re_chart_bytes = io.BytesIO(); re_fig.write_image(re_chart_bytes, format="png", scale=2); re_charts = {"Performance Overview": re_chart_bytes}
-                
-                re_pdf_bytes = create_professional_pdf(re_kpis, re_ai, re_charts, company_name_pdf, sheets_for_pdf)
-                
-                st.success("Comprehensive PDF Report Generated!")
-                st.download_button("📄 Download Comprehensive PDF Report", re_pdf_bytes, f"{company_name_pdf}_Comprehensive_Report.pdf", "application/pdf", use_container_width=True)
-
-            except Exception as e:
-                st.error(f"An error occurred while processing the Excel file: {e}. Please ensure it is the formatted report generated by this app.")
-                import traceback; traceback.print_exc()
-    else:
-        st.warning("Please upload the formatted Excel report and enter the company name to generate the PDF.")
+     
