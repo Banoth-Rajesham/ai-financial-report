@@ -1,5 +1,7 @@
-# agents/agent_4_validator.py
-
+# ==============================================================================
+# PASTE THIS ENTIRE, CORRECTED BLOCK INTO: agent_4_validator.py
+# This version is professionally structured to be independent of Streamlit.
+# ==============================================================================
 def data_validation_agent(aggregated_data):
     """
     AGENT 4: Performs automated checks on the aggregated data.
