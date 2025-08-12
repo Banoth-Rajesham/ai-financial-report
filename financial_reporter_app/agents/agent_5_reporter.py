@@ -5,11 +5,11 @@ import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 
-# THIS IS THE PERMANENT FIX: Use the full, unambiguous path from the project's root.
-from financial_reporter_app.config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+# THIS IS THE PERMANENT FIX: Use a relative import to go up one level to find config.py
+from ..config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
-    # This function is correct and does not need changes.
+    # This function is correct and unchanged
     title_font = Font(bold=True, size=16); subtitle_font = Font(bold=True, size=12)
     header_font = Font(bold=True); bold_font = Font(bold=True)
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
@@ -27,7 +27,7 @@ def apply_main_sheet_styling(ws, template, company_name):
             if ws[f'{col_letter}{row_num}'].value is not None: ws[f'{col_letter}{row_num}'].number_format = currency_format
 
 def apply_note_sheet_styling(ws):
-    # This function is correct and does not need changes.
+    # This function is correct and unchanged
     header_font = Font(bold=True, color="FFFFFF"); title_font = Font(bold=True, size=14); total_font = Font(bold=True)
     currency_format = '_(* #,##0_);_(* (#,##0);_(* "-"??_);_(@_)'
     ws.column_dimensions['A'].width = 65; ws.column_dimensions['B'].width = 20; ws.column_dimensions['C'].width = 20
@@ -41,7 +41,7 @@ def apply_note_sheet_styling(ws):
 
 def report_finalizer_agent(aggregated_data, company_name):
     """AGENT 5: Constructs a detailed, styled, multi-sheet Excel report."""
-    # This function is correct and does not need changes.
+    # This function is correct and unchanged
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
