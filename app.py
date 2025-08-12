@@ -174,23 +174,22 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel file and generating report..."):
             try:
-                # Read all sheets into a dictionary of DataFrames, using pandas to find header row dynamically
-                all_sheets = pd.read_excel(excel_file, sheet_name=None, header=None)
+                # Read all sheets into a dictionary of DataFrames, reading only a few rows initially to find the header
+                all_sheets = pd.read_excel(excel_file, sheet_name=None, header=None, nrows=10)
                 
                 # We need to create a unified dataframe from relevant sheets
                 combined_df = pd.DataFrame()
                 
                 for sheet_name, df_raw in all_sheets.items():
                     # Find the header row by searching for 'Particulars'
-                    header_row_index = df_raw[df_raw.astype(str).apply(lambda row: row.str.contains('Particulars', case=False).any(), axis=1)].index
+                    header_row_candidates = df_raw.iloc[:, 0].astype(str).str.contains('Particulars', case=False)
+                    header_row_index = header_row_candidates[header_row_candidates].index
                     
                     if not header_row_index.empty:
-                        header_row_index = header_row_index[0]
-                        # Correctly set the header and reset the index
-                        df_with_header = df_raw.iloc[header_row_index:].copy()
-                        df_with_header.columns = df_with_header.iloc[0]
-                        df_with_header = df_with_header[1:].reset_index(drop=True)
-                        combined_df = pd.concat([combined_df, df_with_header], ignore_index=True)
+                        # Reread the sheet with the correct header
+                        header_index_to_use = header_row_index[0]
+                        df_correctly_read = pd.read_excel(excel_file, sheet_name=sheet_name, header=header_index_to_use)
+                        combined_df = pd.concat([combined_df, df_correctly_read], ignore_index=True)
 
                 # Check if we have a valid combined dataframe
                 if 'Particulars' not in combined_df.columns:
