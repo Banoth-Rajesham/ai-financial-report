@@ -1,6 +1,6 @@
 # ==============================================================================
 # FINAL, COMPLETE, AND CORRECTED app.py
-# This version correctly handles an Excel file with multiple sheets and extra header rows.
+# This version correctly handles an Excel file with multiple sheets and a variable number of header rows.
 # ==============================================================================
 import streamlit as st
 import sys
@@ -174,27 +174,27 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
     if excel_file and company_name_pdf:
         with st.spinner("Processing Excel file and generating report..."):
             try:
-                # Read all sheets into a dictionary of DataFrames, skipping the header rows
-                all_sheets = pd.read_excel(excel_file, sheet_name=None)
+                # Read all sheets into a dictionary of DataFrames, using pandas to find header row dynamically
+                all_sheets = pd.read_excel(excel_file, sheet_name=None, header=None)
                 
-                # We need to create a unified dataframe from relevant sheets by skipping the first 3 rows
-                relevant_sheets = ['Balance Sheet', 'Profit and Loss']
+                # We need to create a unified dataframe from relevant sheets
                 combined_df = pd.DataFrame()
                 
-                for sheet_name in relevant_sheets:
-                    if sheet_name in all_sheets:
-                        df = all_sheets[sheet_name]
-                        # Find the row with 'Particulars' as header
-                        header_row = df[df.apply(lambda row: row.astype(str).str.contains('Particulars', case=False).any(), axis=1)]
-                        if not header_row.empty:
-                            header_index = header_row.index[0]
-                            # Read the data again from the header row
-                            df = pd.read_excel(excel_file, sheet_name=sheet_name, skiprows=header_index, header=0)
-                            combined_df = pd.concat([combined_df, df], ignore_index=True)
-                
+                for sheet_name, df_raw in all_sheets.items():
+                    # Find the header row by searching for 'Particulars'
+                    header_row_index = df_raw[df_raw.astype(str).apply(lambda row: row.str.contains('Particulars', case=False).any(), axis=1)].index
+                    
+                    if not header_row_index.empty:
+                        header_row_index = header_row_index[0]
+                        # Correctly set the header and reset the index
+                        df_with_header = df_raw.iloc[header_row_index:].copy()
+                        df_with_header.columns = df_with_header.iloc[0]
+                        df_with_header = df_with_header[1:].reset_index(drop=True)
+                        combined_df = pd.concat([combined_df, df_with_header], ignore_index=True)
+
                 # Check if we have a valid combined dataframe
                 if 'Particulars' not in combined_df.columns:
-                    st.error("The uploaded Excel file does not contain the expected 'Particulars' column in the main sheets ('Balance Sheet' or 'Profit and Loss').")
+                    st.error("The uploaded Excel file does not contain a 'Particulars' column in any of the sheets. Please check your file format.")
                 else:
                     # Filter out any rows that are entirely blank, and fill any NaN values with 0
                     combined_df = combined_df.dropna(subset=['Particulars']).fillna(0)
@@ -207,12 +207,12 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                         row = df_to_search[df_to_search['Particulars'].astype(str).str.contains(keyword, na=False, case=False, regex=False)]
                         if not row.empty:
                             # Use a more robust way to find the CY and PY columns
-                            cy_col = [col for col in df_to_search.columns if '2025' in str(col)]
-                            py_col = [col for col in df_to_search.columns if '2024' in str(col)]
+                            cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
+                            py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
                             
-                            if cy_col and py_col:
-                                cy_val = row[cy_col[0]].iloc[0]
-                                py_val = row[py_col[0]].iloc[0]
+                            if cy_col_candidates and py_col_candidates:
+                                cy_val = row[cy_col_candidates[0]].iloc[0]
+                                py_val = row[py_col_candidates[0]].iloc[0]
                                 return cy_val, py_val
                         return 0, 0
                     
@@ -221,12 +221,12 @@ if st.button("Generate PDF Report", type="secondary", use_container_width=True, 
                         if not main_row_index.empty:
                             for i in range(main_row_index[0] + 1, len(df_to_search)):
                                 if sub_keyword in str(df_to_search.iloc[i]['Particulars']):
-                                    cy_col = [col for col in df_to_search.columns if '2025' in str(col)]
-                                    py_col = [col for col in df_to_search.columns if '2024' in str(col)]
+                                    cy_col_candidates = [col for col in df_to_search.columns if '2025' in str(col)]
+                                    py_col_candidates = [col for col in df_to_search.columns if '2024' in str(col)]
                                     
-                                    if cy_col and py_col:
-                                        cy_val = df_to_search.iloc[i][cy_col[0]]
-                                        py_val = df_to_search.iloc[i][py_col[0]]
+                                    if cy_col_candidates and py_col_candidates:
+                                        cy_val = df_to_search.iloc[i][cy_col_candidates[0]]
+                                        py_val = df_to_search.iloc[i][py_col_candidates[0]]
                                         return cy_val, py_val
                         return 0, 0
                     
