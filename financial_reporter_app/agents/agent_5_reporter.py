@@ -3,7 +3,8 @@
 import pandas as pd
 import io
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
+# This import assumes app.py has correctly set up the system path
+from financial_reporter_app.config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
     """Applies the beautiful, professional styling to the Balance Sheet and P&L."""
@@ -35,12 +36,11 @@ def apply_main_sheet_styling(ws, template, company_name):
     ws['A2'].alignment = Alignment(horizontal='center')
 
     for cell in ws[4]:
-        cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
 
     for i, row_template in enumerate(template):
-        row_num = i + 4
+        row_num = i + 5 # Adjust for 0-indexing and startrow
         row_type = row_template[3]
         
         if row_type in ['header', 'sub_header']:
@@ -48,9 +48,6 @@ def apply_main_sheet_styling(ws, template, company_name):
         
         elif row_type == 'total':
             fill_color = None
-            # ========================================================== #
-            # == THIS IS THE FIX that prevents the crash              == #
-            # ========================================================== #
             particulars = ws[f'B{row_num}'].value
             if particulars and "Revenue" in particulars: fill_color = revenue_fill
             elif particulars and "Expenses" in particulars: fill_color = expenses_fill
@@ -84,7 +81,7 @@ def apply_note_sheet_styling(ws):
         cell.font = header_font
     
     for row_idx, row in enumerate(ws.iter_rows(min_row=3, max_col=3)):
-        is_total_row = (ws[f'A{row[0].row}'].value == 'Total')
+        is_total_row = (str(ws[f'A{row[0].row}'].value).strip() == 'Total')
         for cell in row:
             if cell.column > 1:
                 cell.number_format = currency_format
@@ -134,7 +131,8 @@ def report_finalizer_agent(aggregated_data, company_name):
                     elif note == "PBT":
                         pbt_cy = total_revenue_cy - total_expenses_cy
                         pbt_py = total_revenue_py - total_expenses_py
-                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, py_val
+                        # BUG FIX: Was using py_val instead of pbt_py
+                        row['As at March 31, 2025'], row['As at March 31, 2024'] = pbt_cy, pbt_py
                     elif note == "PAT":
                         row['As at March 31, 2025'] = pbt_cy - total_tax_cy
                         row['As at March 31, 2024'] = pbt_py - total_tax_py
@@ -142,11 +140,10 @@ def report_finalizer_agent(aggregated_data, company_name):
                     sheet_data.append(row)
 
                 df = pd.DataFrame(sheet_data)
-                df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=0)
+                df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=3)
                 
                 ws = writer.sheets[sheet_name]
                 apply_main_sheet_styling(ws, template, company_name)
-
 
             for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=int):
                 note_info = NOTES_STRUCTURE_AND_MAPPING[note_num_str]
@@ -154,7 +151,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                 if note_data and note_data.get('sub_items'):
                     sheet_name = f'Note {note_num_str}'
                     note_title = note_info['title']
-                    note_df_data = [{'Particulars': 'Particulars', 'As at March 31, 2025': 'As at March 31, 2025', 'As at March 31, 2024': 'As at March 31, 2024'}]
+                    note_df_data = []
 
                     def process_sub_items(items, level=0):
                         for key, value in items.items():
@@ -171,7 +168,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     total_row = pd.DataFrame([{'Particulars': 'Total', 'As at March 31, 2025': note_data['total'].get('CY', 0), 'As at March 31, 2024': note_data['total'].get('PY', 0)}])
                     note_df = pd.concat([note_df, total_row], ignore_index=True)
                     
-                    note_df.to_excel(writer, sheet_name=sheet_name, index=False, header=False, startrow=1)
+                    note_df.to_excel(writer, sheet_name=sheet_name, index=False, header=True, startrow=1)
                     ws_note = writer.sheets[sheet_name]
                     apply_note_sheet_styling(ws_note)
                     ws_note['A1'].value = f'Note {note_num_str}: {note_title}'
