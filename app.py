@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH KPI HOVER GLOW EFFECT)
+# FILE: app.py (FINAL, WITH KPI NEON GLOW HOVER EFFECT)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -118,7 +118,7 @@ if 'aggregated_data' not in st.session_state: st.session_state.aggregated_data =
 if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
-# --- Neumorphic CSS Styles with Hover Glow Effect ---
+# --- Neumorphic CSS Styles with Neon Glow Hover Effect ---
 st.markdown("""
 <style>
     .stApp { background-color: #1e1e2f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -128,14 +128,13 @@ st.markdown("""
     .kpi-container { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; margin-bottom: 2rem; }
     .kpi-card {
         background: #2b2b3c;
-        border-radius: 25px 25px 8px 8px;
+        border-radius: 25px; /* Symmetrical border radius */
         padding: 1.5rem 2rem;
         box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a;
         min-width: 250px;
         color: #e0e0e0;
         flex: 1;
-        border-bottom: 4px solid #4a4a6a;
-        /* Added transition for smooth effect */
+        border: 2px solid transparent; /* Start with a transparent border */
         transition: all 0.3s ease-in-out;
     }
     .kpi-card .title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; color: #a0a0a0; }
@@ -146,15 +145,22 @@ st.markdown("""
     .kpi-card .delta.down { background-color: #ff4c4c; color: #3a0000; }
     .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
 
-    /* --- THIS IS THE NEW CODE FOR THE HOVER GLOW --- */
+    /* --- THIS IS THE NEW CODE FOR THE NEON GLOW HOVER --- */
     .kpi-card:hover {
-        transform: translateY(-5px); /* Lifts the card up slightly */
-        box-shadow: 10px 10px 20px #14141e, -10px -10px 20px #38384a;
+        transform: translateY(-5px);
     }
-    .kpi-container .kpi-card:nth-child(1):hover { border-bottom-color: #00aaff; } /* Revenue: Blue glow */
-    .kpi-container .kpi-card:nth-child(2):hover { border-bottom-color: #00ff7f; } /* Profit: Green glow */
-    .kpi-container .kpi-card:nth-child(3):hover { border-bottom-color: #ffcc00; } /* Assets: Yellow glow */
-    .kpi-container .kpi-card:nth-child(4):hover { border-bottom-color: #ff5555; } /* Debt-to-Equity: Red glow */
+    .kpi-container .kpi-card:nth-child(1):hover {
+        box-shadow: 0 0 25px rgba(0, 170, 255, 0.8); /* Blue glow */
+    }
+    .kpi-container .kpi-card:nth-child(2):hover {
+        box-shadow: 0 0 25px rgba(0, 255, 127, 0.8); /* Green glow */
+    }
+    .kpi-container .kpi-card:nth-child(3):hover {
+        box-shadow: 0 0 25px rgba(255, 204, 0, 0.8); /* Yellow glow */
+    }
+    .kpi-container .kpi-card:nth-child(4):hover {
+        box-shadow: 0 0 25px rgba(255, 85, 85, 0.8); /* Red glow */
+    }
 
 </style>
 """, unsafe_allow_html=True)
