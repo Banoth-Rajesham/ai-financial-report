@@ -1,10 +1,18 @@
 # ==============================================================================
-# FILE: app.py
+# FILE: app.py (CORRECTED)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
+
+# --- FIX FOR ModuleNotFoundError ---
+# Add the project root to the Python path. This allows the app to find the 'agents' module.
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# ------------------------------------
+
 from agents import (
     intelligent_data_intake_agent,
     ai_mapping_agent,
