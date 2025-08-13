@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, COMBINING DARK THEME WITH ALL CHARTS & RATIOS)
+# FILE: app.py (FINAL, WITH DOWNLOADS FIXED)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -81,17 +81,44 @@ class PDF(FPDF):
 
 def create_professional_pdf(kpis, ai_analysis, charts, company_name):
     """Creates a professional, multi-page PDF report in memory."""
-    # (This function can be expanded later if needed)
     pdf = PDF()
     pdf.add_page()
     pdf.set_font('Arial', '', 12)
+
     pdf.set_font('Arial', 'B', 20)
     pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
     pdf.ln(10)
+
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    kpi_cy = kpis['CY']
+    for key, value in kpi_cy.items():
+        if key in ["Total Revenue", "Net Profit", "Total Assets"]:
+            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+        elif key != "Other Assets": # Exclude 'Other Assets' from this summary
+             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+    pdf.ln(10)
+
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
+    pdf.ln(10)
+
+    # Corrected section to handle charts
+    if charts:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
+        pdf.ln(5)
+        for title, chart_bytes in charts.items():
+            pdf.set_font('Arial', 'B', 14)
+            pdf.cell(0, 10, title, 0, 1, 'C')
+            # Use io.BytesIO to handle image bytes for FPDF
+            pdf.image(io.BytesIO(chart_bytes), x=15, w=180)
+            pdf.ln(5)
+
     return bytes(pdf.output())
 
 # --- MAIN APP UI ---
@@ -186,79 +213,60 @@ else:
     assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py.get('Total Assets') else 0
     dte_change = kpi_cy.get('Debt-to-Equity', 0) - kpi_py.get('Debt-to-Equity', 0)
 
-    # --- KPI CARDS ---
     st.markdown(f"""
     <div class="kpi-container">
-        <div class="kpi-card">
-            <div class="title">Total Revenue (CY)</div>
-            <div class="value">₹{kpi_cy.get('Total Revenue', 0):,.0f}</div>
-            <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card">
-            <div class="title">Net Profit (CY)</div>
-            <div class="value">₹{kpi_cy.get('Net Profit', 0):,.0f}</div>
-            <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card">
-            <div class="title">Total Assets (CY)</div>
-            <div class="value">₹{kpi_cy.get('Total Assets', 0):,.0f}</div>
-            <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div>
-        </div>
-        <div class="kpi-card">
-            <div class="title">Debt-to-Equity (CY)</div>
-            <div class="value">{kpi_cy.get('Debt-to-Equity', 0):.2f}</div>
-            <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div>
-        </div>
+        <div class="kpi-card"> <div class="title">Total Revenue (CY)</div> <div class="value">₹{kpi_cy.get('Total Revenue', 0):,.0f}</div> <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Net Profit (CY)</div> <div class="value">₹{kpi_cy.get('Net Profit', 0):,.0f}</div> <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Total Assets (CY)</div> <div class="value">₹{kpi_cy.get('Total Assets', 0):,.0f}</div> <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Debt-to-Equity (CY)</div> <div class="value">{kpi_cy.get('Debt-to-Equity', 0):.2f}</div> <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div> </div>
     </div>
     """, unsafe_allow_html=True)
 
-    # --- CHARTS AND RATIOS ---
     col1, col2 = st.columns([6, 4], gap="large")
     with col1:
-        with st.container():
-            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-            revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12), np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)])})
-            fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend (From Extracted Data)</b>")
-            fig_revenue.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0', legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
-            st.plotly_chart(fig_revenue, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        st.write("") # Spacer
-
-        with st.container():
-            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            profit_margin_df = pd.DataFrame({'Quarter': ['Q1', 'Q2', 'Q3', 'Q4'], 'Margin': np.random.uniform(kpi_cy['Profit Margin']-1, kpi_cy['Profit Margin']+1, 4)})
-            fig_margin = px.line(profit_margin_df, x='Quarter', y='Margin', title="<b>Profit Margin Trend (Calculated)</b>", markers=True)
-            fig_margin.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
-            st.plotly_chart(fig_margin, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+        revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12), np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)])})
+        fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>")
+        fig_revenue.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0', legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        st.plotly_chart(fig_revenue, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        profit_margin_df = pd.DataFrame({'Quarter': ['Q1', 'Q2', 'Q3', 'Q4'], 'Margin': np.random.uniform(kpi_cy['Profit Margin']-1, kpi_cy['Profit Margin']+1, 4)})
+        fig_margin = px.line(profit_margin_df, x='Quarter', y='Margin', title="<b>Profit Margin Trend</b>", markers=True)
+        fig_margin.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
+        st.plotly_chart(fig_margin, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        with st.container():
-            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-            asset_df = pd.DataFrame({ 'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'], 'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']] }).query("Value > 0")
-            fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution (From Extracted Data)</b>")
-            fig_asset.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
-            st.plotly_chart(fig_asset, use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        st.write("") # Spacer
-
-        with st.container():
-            st.markdown('<div class="ratio-card">', unsafe_allow_html=True)
-            st.markdown("<h4 style='text-align: center; color: #ffffff;'>Key Financial Ratios</h4>", unsafe_allow_html=True)
-            st.markdown(f"""
-                <div class='ratio-row'> <span class='ratio-label'>Current Ratio</span> <span class='ratio-value'>{kpi_cy['Current Ratio']:.2f}</span> </div>
-                <div class='ratio-row'> <span class='ratio-label'>Profit Margin</span> <span class='ratio-value'>{kpi_cy['Profit Margin']:.2f}%</span> </div>
-                <div class='ratio-row'> <span class='ratio-label'>Return on Assets (ROA)</span> <span class='ratio-value'>{kpi_cy['ROA']:.2f}%</span> </div>
-                <div class='ratio-row'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
-            """, unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        asset_df = pd.DataFrame({ 'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'], 'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']] }).query("Value > 0")
+        fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>")
+        fig_asset.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
+        st.plotly_chart(fig_asset, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown('<div class="ratio-card">', unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #ffffff;'>Key Financial Ratios</h4>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class='ratio-row'> <span class='ratio-label'>Current Ratio</span> <span class='ratio-value'>{kpi_cy['Current Ratio']:.2f}</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Profit Margin</span> <span class='ratio-value'>{kpi_cy['Profit Margin']:.2f}%</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Return on Assets (ROA)</span> <span class='ratio-value'>{kpi_cy['ROA']:.2f}%</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
     
     st.write("---")
     st.subheader("Download Reports")
-    pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, {}) # PDF generation simplified for now
+    
+    # --- THIS IS THE FIX ---
+    # We generate the chart images here and pass them to the PDF function.
+    charts_for_pdf = {
+        "Revenue Trend": fig_revenue.to_image(format="png"),
+        "Asset Distribution": fig_asset.to_image(format="png")
+    }
+    pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, charts_for_pdf)
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
