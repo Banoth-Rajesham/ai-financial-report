@@ -6,4 +6,5 @@ openai
 requests
 plotly
 fpdf2
+fpdf
 kaleido==0.2.1
