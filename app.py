@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (CORRECTED)
+# FILE: app.py (FINAL CORRECTED VERSION)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -7,13 +7,14 @@ import plotly.express as px
 import numpy as np
 
 # --- CORRECTED IMPORTS ---
-# This is a more explicit way to import, which is more reliable on deployment platforms.
-from agents.agent_1_intake import intelligent_data_intake_agent
-from agents.agent_2_ai_mapping import ai_mapping_agent
-from agents.agent_3_aggregator import hierarchical_aggregator_agent
-from agents.agent_4_validator import data_validation_agent
-from agents.agent_5_reporter import report_finalizer_agent
-from config import NOTES_STRUCTURE_AND_MAPPING
+# This tells Python to look inside the 'financial_reporter_app' folder
+# to find the 'agents' module and the 'config' file.
+from financial_reporter_app.agents.agent_1_intake import intelligent_data_intake_agent
+from financial_reporter_app.agents.agent_2_ai_mapping import ai_mapping_agent
+from financial_reporter_app.agents.agent_3_aggregator import hierarchical_aggregator_agent
+from financial_reporter_app.agents.agent_4_validator import data_validation_agent
+from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agent
+from config import NOTES_STRUCTURE_AND_MAPPING, MASTER_TEMPLATE
 # -------------------------
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
@@ -85,7 +86,9 @@ else:
     kpi_cy, kpi_py = {}, {}
     for year, kpi_dict in [('CY', kpi_cy), ('PY', kpi_py)]:
         kpi_dict["Total Revenue"] = get(21, year) + get(22, year)
-        kpi_dict["Total Expenses"] = sum(get(n, year) for n in ['23','16','24','25','11','26'])
+        # Corrected expense calculation for P&L
+        pnl_inventory_change = get(16, 'CY') - get(16, 'PY') if year == 'CY' else 0 # Simplified for PY
+        kpi_dict["Total Expenses"] = sum(get(n, year) for n in ['23','24','25','11','26']) + pnl_inventory_change
         kpi_dict["Net Profit"] = kpi_dict["Total Revenue"] - kpi_dict["Total Expenses"]
         kpi_dict["Total Assets"] = sum(get(n, year) for n in ["11","12","4","13","14","15","16","17","18","19","20"])
         kpi_dict["Total Equity"] = get(1, year) + get(2, year)
