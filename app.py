@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH KPI CARD BORDERS)
+# FILE: app.py (FINAL, WITH KPI HOVER GLOW EFFECT)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -118,7 +118,7 @@ if 'aggregated_data' not in st.session_state: st.session_state.aggregated_data =
 if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
-# --- Neumorphic CSS Styles ---
+# --- Neumorphic CSS Styles with Hover Glow Effect ---
 st.markdown("""
 <style>
     .stApp { background-color: #1e1e2f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -134,8 +134,9 @@ st.markdown("""
         min-width: 250px;
         color: #e0e0e0;
         flex: 1;
-        /* THIS IS THE NEW LINE YOU REQUESTED */
         border-bottom: 4px solid #4a4a6a;
+        /* Added transition for smooth effect */
+        transition: all 0.3s ease-in-out;
     }
     .kpi-card .title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; color: #a0a0a0; }
     .kpi-card .value { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.1; }
@@ -144,6 +145,17 @@ st.markdown("""
     .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
     .kpi-card .delta.down { background-color: #ff4c4c; color: #3a0000; }
     .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
+
+    /* --- THIS IS THE NEW CODE FOR THE HOVER GLOW --- */
+    .kpi-card:hover {
+        transform: translateY(-5px); /* Lifts the card up slightly */
+        box-shadow: 10px 10px 20px #14141e, -10px -10px 20px #38384a;
+    }
+    .kpi-container .kpi-card:nth-child(1):hover { border-bottom-color: #00aaff; } /* Revenue: Blue glow */
+    .kpi-container .kpi-card:nth-child(2):hover { border-bottom-color: #00ff7f; } /* Profit: Green glow */
+    .kpi-container .kpi-card:nth-child(3):hover { border-bottom-color: #ffcc00; } /* Assets: Yellow glow */
+    .kpi-container .kpi-card:nth-child(4):hover { border-bottom-color: #ff5555; } /* Debt-to-Equity: Red glow */
+
 </style>
 """, unsafe_allow_html=True)
 
