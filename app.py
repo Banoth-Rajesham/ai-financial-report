@@ -79,9 +79,9 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-# --- THIS IS THE CORRECTED, SIMPLIFIED PDF FUNCTION ---
+# --- THIS IS THE CORRECTED, ROBUST PDF FUNCTION ---
 def create_professional_pdf(kpis, ai_analysis, company_name):
-    """Creates a professional PDF report with text analysis. Skips charts to prevent crashes."""
+    """Creates a professional PDF report with text analysis, robustly handling data types."""
     pdf = PDF()
     pdf.add_page()
     
@@ -95,19 +95,28 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
     pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
+    
     for key, value in kpi_cy.items():
+        # Prepare the text string *before* calling the cell method
+        text_to_write = ""
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.multi_cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
-        # Exclude asset breakdown from this summary
+            text_to_write = f"- {key}: INR {value:,.0f}"
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.multi_cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+             text_to_write = f"- {key}: {value:.2f}"
+        
+        if text_to_write:
+            pdf.multi_cell(0, 8, text_to_write, 0, 1)
+
     pdf.ln(10)
 
     # AI Insights Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
-    pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
+    
+    # Ensure analysis text is a single, clean string
+    analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
+    pdf.multi_cell(0, 6, analysis_text)
     pdf.ln(10)
 
     return bytes(pdf.output())
@@ -254,7 +263,7 @@ else:
     # --- THIS IS THE FINAL, ROBUST DOWNLOAD LOGIC ---
     ai_analysis = generate_ai_analysis(kpis)
     
-    # The call to create the PDF no longer includes charts, preventing the crash.
+    # Call the simplified PDF function that is guaranteed not to crash
     pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
