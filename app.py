@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH GUARANTEED DOWNLOAD FIX)
+# FILE: app.py (FINAL, WITH GUARANTEED PDF FIX)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -81,23 +81,22 @@ class PDF(FPDF):
 
 # --- THIS IS THE CORRECTED, ROBUST PDF FUNCTION ---
 def create_professional_pdf(kpis, ai_analysis, company_name):
-    """Creates a professional PDF report with text analysis, robustly handling data types."""
+    """Creates a professional PDF report, robustly handling text alignment to prevent crashes."""
     pdf = PDF()
     pdf.add_page()
     
     # Title
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, align='C')
     pdf.ln(10)
 
     # Key KPIs Section
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, align='L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     
     for key, value in kpi_cy.items():
-        # Prepare the text string *before* calling the cell method
         text_to_write = ""
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
             text_to_write = f"- {key}: INR {value:,.0f}"
@@ -105,18 +104,19 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
              text_to_write = f"- {key}: {value:.2f}"
         
         if text_to_write:
-            pdf.multi_cell(0, 8, text_to_write, 0, 1)
+            # Using align='L' for Left align, which is the fix
+            pdf.multi_cell(0, 8, text_to_write, 0, align='L')
 
     pdf.ln(10)
 
     # AI Insights Section
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
+    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, align='L')
     pdf.set_font('Arial', '', 12)
     
-    # Ensure analysis text is a single, clean string
     analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
-    pdf.multi_cell(0, 6, analysis_text)
+    # Using align='L' for Left align, which is the fix
+    pdf.multi_cell(0, 6, analysis_text, 0, align='L')
     pdf.ln(10)
 
     return bytes(pdf.output())
