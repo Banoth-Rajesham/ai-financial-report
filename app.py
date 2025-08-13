@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH GUARANTEED DOWNLOAD FIX)
+# FILE: app.py (FINAL, WITH TITLE ADDED)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -79,54 +79,41 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    """Creates a professional, multi-page PDF report in memory."""
+def create_professional_pdf(kpis, ai_analysis, company_name):
+    """Creates a professional PDF report with text analysis."""
     pdf = PDF()
     pdf.add_page()
-    pdf.set_font('Arial', '', 12)
-
+    
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, align='C')
     pdf.ln(10)
 
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, align='L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
+    
     for key, value in kpi_cy.items():
+        text_to_write = ""
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+            text_to_write = f"- {key}: INR {value:,.0f}"
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+             text_to_write = f"- {key}: {value:.2f}"
+        
+        if text_to_write:
+            pdf.cell(0, 8, text_to_write, ln=1, align='L')
+
     pdf.ln(10)
 
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
+    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, align='L')
     pdf.set_font('Arial', '', 12)
-    pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
+    analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
+    pdf.multi_cell(0, 6, analysis_text, 0, align='L')
     pdf.ln(10)
 
-    if charts:
-        temp_dir = "temp_charts"
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
+    return bytes(pdf.output(dest='S').encode('latin-1'))
 
-        for title, chart_bytes in charts.items():
-            try:
-                safe_title = title.replace(" ", "_").lower()
-                temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
-                with open(temp_image_path, "wb") as f:
-                    f.write(chart_bytes)
-                
-                pdf.add_page()
-                pdf.set_font('Arial', 'B', 14)
-                pdf.cell(0, 10, title, 0, 1, 'C')
-                pdf.image(temp_image_path, x=15, w=180)
-                pdf.ln(5)
-            except Exception as e:
-                print(f"Error adding chart '{title}' to PDF: {e}")
-
-    return pdf.output(dest='S').encode('latin-1')
 
 # --- MAIN APP UI ---
 
@@ -209,9 +196,13 @@ with st.sidebar:
 
 # --- MAIN DASHBOARD DISPLAY ---
 if not st.session_state.report_generated:
-    st.markdown("<div class='main-title'><h1>Financial Analysis Dashboard</h1></div>", unsafe_allow_html=True)
-    st.markdown("<div class='main-title'><p>Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.</p></div>", unsafe_allow_html=True)
+    st.markdown("<div class='main-title'><h1>Schedule III Financial Dashboard</h1><p>AI-powered analysis from any Excel format</p></div>", unsafe_allow_html=True)
 else:
+    # --- THIS IS THE NEW CODE YOU REQUESTED ---
+    st.markdown("<div class='main-title'><h1>Schedule III Financial Dashboard</h1></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='main-title'><p>Displaying analysis for: <strong>{st.session_state.company_name}</strong></p></div>", unsafe_allow_html=True)
+    # ----------------------------------------
+    
     kpis = st.session_state.kpis
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
 
@@ -269,15 +260,7 @@ else:
     
     ai_analysis = generate_ai_analysis(kpis)
     
-    charts_for_pdf = {}
-    try:
-        charts_for_pdf["Revenue Trend"] = fig_revenue.to_image(format="png", scale=2)
-        charts_for_pdf["Asset Distribution"] = fig_asset.to_image(format="png", scale=2)
-    except Exception as e:
-        st.warning(f"Could not generate chart images for PDF: {e}")
-
-    # THIS IS THE CORRECTED FUNCTION CALL
-    pdf_bytes = create_professional_pdf(kpis, ai_analysis, charts_for_pdf, st.session_state.company_name)
+    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
