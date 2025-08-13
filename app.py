@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH PDF DOWNLOADS FIXED)
+# FILE: app.py (FINAL, WITH ROBUST DOWNLOAD FIX)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -79,57 +79,56 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-# --- THIS IS THE CORRECTED PDF GENERATION FUNCTION ---
 def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    """Creates a professional, multi-page PDF report in memory using robust methods."""
+    """Creates a professional, multi-page PDF report in memory."""
     pdf = PDF()
     pdf.add_page()
-    
-    # Title
+    pdf.set_font('Arial', '', 12)
+
     pdf.set_font('Arial', 'B', 20)
     pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
     pdf.ln(10)
 
-    # Key KPIs Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     for key, value in kpi_cy.items():
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.multi_cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
-        # Exclude asset breakdown from this summary section in the PDF
+            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.multi_cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
     pdf.ln(10)
 
-    # AI Insights Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
-    # Use multi_cell for robust text wrapping
     pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
     pdf.ln(10)
 
-    # Charts Section
     if charts:
-        temp_dir = "temp_charts_pdf" # Use a unique name for the temp dir
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
+        pdf.ln(5)
+        
+        temp_dir = "temp_charts"
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
-        
+
         for title, chart_bytes in charts.items():
-            pdf.add_page()
-            pdf.set_font('Arial', 'B', 14)
-            pdf.cell(0, 10, title, 0, 1, 'C')
-            
-            # Save bytes to a temporary file to be read by FPDF
-            safe_title = title.replace(" ", "_").lower()
-            temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
-            with open(temp_image_path, "wb") as f:
-                f.write(chart_bytes)
-            
-            pdf.image(temp_image_path, x=15, w=180)
-            pdf.ln(5)
+            try:
+                safe_title = title.replace(" ", "_").lower()
+                temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
+                with open(temp_image_path, "wb") as f:
+                    f.write(chart_bytes)
+                
+                pdf.set_font('Arial', 'B', 14)
+                pdf.cell(0, 10, title, 0, 1, 'C')
+                pdf.image(temp_image_path, x=15, w=180)
+                pdf.ln(5)
+            except Exception as e:
+                print(f"Error adding chart '{title}' to PDF: {e}")
 
     return bytes(pdf.output())
 
@@ -272,13 +271,18 @@ else:
     st.write("---")
     st.subheader("Download Reports")
     
-    # --- THIS IS THE FIX ---
-    # We generate the chart images here and pass them to the PDF function.
+    # --- THIS IS THE CORRECTED DOWNLOAD LOGIC ---
     ai_analysis = generate_ai_analysis(kpis)
-    charts_for_pdf = {
-        "Revenue Trend": fig_revenue.to_image(format="png", scale=2),
-        "Asset Distribution": fig_asset.to_image(format="png", scale=2)
-    }
+    charts_for_pdf = {}
+    try:
+        charts_for_pdf["Revenue Trend"] = fig_revenue.to_image(format="png", scale=2)
+    except Exception as e:
+        print(f"Could not generate Revenue Trend image for PDF: {e}")
+    try:
+        charts_for_pdf["Asset Distribution"] = fig_asset.to_image(format="png", scale=2)
+    except Exception as e:
+        print(f"Could not generate Asset Distribution image for PDF: {e}")
+
     pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, charts_for_pdf)
     
     d_col1, d_col2 = st.columns(2)
