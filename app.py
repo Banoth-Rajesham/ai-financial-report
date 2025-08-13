@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH UI RESTORED TO PROFESSIONAL LIGHT THEME)
+# FILE: app.py (FINAL, COMBINING DARK THEME WITH ALL CHARTS & RATIOS)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -50,27 +50,28 @@ def calculate_kpis(agg_data):
         }
     return kpis
 
-def generate_swot_analysis(kpis):
-    """Generates a SWOT analysis based on the calculated KPIs for the PDF."""
+def generate_ai_analysis(kpis):
+    """Generates a SWOT-style analysis based on the KPIs."""
     kpi_cy = kpis['CY']
-    return (
-        f"Strengths:\n"
-        f"- Strong Profitability: A Net Profit of INR {kpi_cy['Net Profit']:,.0f} signals efficient operations.\n"
-        f"- Balanced Financial Structure: The Debt-to-Equity ratio of {kpi_cy['Debt-to-Equity']:.2f} suggests a healthy balance between debt and equity financing, indicating low solvency risk.\n\n"
-        f"Weaknesses:\n"
-        f"- (Analysis would identify areas like declining margins or high receivable days if data were present).\n\n"
-        f"Opportunities:\n"
-        f"- Growth Funding: The stable financial structure provides an opportunity to raise further capital to fund expansion or R&D.\n\n"
-        f"Threats:\n"
-        f"- Market Competition: High profitability may attract competitors, potentially putting pressure on future margins.\n"
-        f"- Economic Headwinds: A broader economic downturn could impact customer spending and affect revenue growth."
-    )
+    analysis = f"""
+    **Strengths:**
+    - *Strong Profitability:* A Net Profit of INR {kpi_cy['Net Profit']:,.0f} on Revenue of INR {kpi_cy['Total Revenue']:,.0f} signals efficient operations.
+    - *Balanced Financial Structure:* The Debt-to-Equity ratio of {kpi_cy['Debt-to-Equity']:.2f} suggests a healthy balance between debt and equity financing, indicating low solvency risk.
+
+    **Opportunities:**
+    - *Growth Funding:* The stable financial structure provides an opportunity to raise further capital at a reasonable cost to fund expansion, R&D, or strategic acquisitions.
+
+    **Threats:**
+    - *Market Competition:* High profitability may attract competitors, potentially putting pressure on future margins.
+    - *Economic Headwinds:* A broader economic downturn could impact customer spending and affect revenue growth.
+    """
+    return analysis
 
 class PDF(FPDF):
     """Custom PDF class to define a professional header and footer."""
     def header(self):
-        self.set_font('Arial', 'B', 12)
-        self.cell(0, 10, 'Financial Analysis Report', 0, 1, 'C')
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C')
         self.ln(5)
 
     def footer(self):
@@ -78,94 +79,75 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-    def chapter_title(self, title):
-        self.set_font('Arial', 'B', 12)
-        self.set_fill_color(240, 240, 240)
-        self.cell(0, 8, title, 0, 1, 'L', fill=True)
-        self.ln(2)
-
-    def write_table(self, headers, data, col_widths):
-        self.set_font('Arial', 'B', 9)
-        for i, header in enumerate(headers):
-            self.cell(col_widths[i], 7, header, 1, 0, 'C')
-        self.ln()
-        self.set_font('Arial', '', 9)
-        for row in data:
-            y_before = self.get_y()
-            x_before = self.get_x()
-            self.multi_cell(col_widths[0], 6, str(row[0]), 1, 'L')
-            y_after_mc1 = self.get_y()
-            self.set_xy(x_before + col_widths[0], y_before)
-            self.multi_cell(col_widths[1], 6, str(row[1]), 1, 'L')
-            y_after_mc2 = self.get_y()
-            self.set_xy(x_before + col_widths[0] + col_widths[1], y_before)
-            self.multi_cell(col_widths[2], 6, str(row[2]), 1, 'L')
-            y_after_mc3 = self.get_y()
-            self.set_y(max(y_after_mc1, y_after_mc2, y_after_mc3))
-
-def create_professional_pdf(kpis, company_name, charts):
-    """Creates the detailed professional PDF report."""
+def create_professional_pdf(kpis, ai_analysis, charts, company_name):
+    """Creates a professional, multi-page PDF report in memory."""
+    # (This function can be expanded later if needed)
     pdf = PDF()
     pdf.add_page()
+    pdf.set_font('Arial', '', 12)
+    pdf.set_font('Arial', 'B', 20)
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.ln(10)
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, f'Financial Report for {company_name}', 0, 1, 'C')
-    pdf.ln(5)
-
-    pdf.chapter_title('Top KPI Summary')
-    kpi_cy, kpi_py = kpis['CY'], kpis['PY']
-    get_change = lambda cy, py, suffix='%': f'{"⬆" if cy >= py else "⬇"} {abs((cy - py) / py * 100):.1f}{suffix}' if py and py != 0 else "(new)"
-    kpi_table_data = [
-        ("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f} {get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates healthy year-over-year growth."),
-        ("Net Profit", f"₹{kpi_cy['Net Profit']:,.0f} {get_change(kpi_cy['Net Profit'], kpi_py['Net Profit'])}", "Indicates better cost control or margin improvement."),
-        ("Total Assets", f"₹{kpi_cy['Total Assets']:,.0f} {get_change(kpi_cy['Total Assets'], kpi_py['Total Assets'])}", "Suggests reinvestment or capital infusion."),
-        ("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f} {get_change(kpi_cy['Debt-to-Equity'], kpi_py['Debt-to-Equity'], '')}", "A lower ratio implies reduced financial risk.")
-    ]
-    pdf.write_table(['Metric', 'Value (vs PY)', 'Interpretation'], [45, 45, 100], kpi_table_data)
-    pdf.ln(5)
-
-    pdf.chapter_title('Key Financial Ratios')
-    ratio_table_data = [
-        ("Current Ratio", f"{kpi_cy['Current Ratio']:.2f}", "Excellent liquidity. The company can cover its short-term liabilities nearly 3x over."),
-        ("Profit Margin", f"{kpi_cy['Profit Margin']:.2f}%", "Strong profitability. The company earns significant profit for every ₹100 in revenue."),
-        ("ROA (Return on Assets)", f"{kpi_cy['ROA']:.2f}%", "Effective use of assets to generate profit."),
-        ("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f}", "Financially conservative; well-balanced capital structure.")
-    ]
-    pdf.write_table(['Ratio', 'Value', 'Interpretation'], [45, 45, 100], ratio_table_data)
-    pdf.ln(5)
-
-    pdf.chapter_title('SWOT Analysis')
-    pdf.set_font('Arial', '', 9)
-    pdf.multi_cell(0, 5, generate_swot_analysis(kpis))
-    
+    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
     return bytes(pdf.output())
 
-
 # --- MAIN APP UI ---
+
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
-for key in ['report_generated', 'excel_report_bytes', 'aggregated_data', 'kpis']:
-    if key not in st.session_state: st.session_state[key] = None
+# Initialize session state variables
+if 'report_generated' not in st.session_state: st.session_state.report_generated = False
+if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
+if 'aggregated_data' not in st.session_state: st.session_state.aggregated_data = None
+if 'kpis' not in st.session_state: st.session_state.kpis = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
-# --- Correct, Light-Themed CSS ---
+# --- Neumorphic CSS Styles with Neon Glow Hover Effect ---
 st.markdown("""
 <style>
-    .stApp { background-color: #F8F9FA; }
-    h1 { color: #1E293B; font-size: 2rem; font-weight: 700; }
-    .subtitle { color: #64748B; margin-top: -15px; margin-bottom: 25px; }
-    .success-box { background-color: #F0FFF4; border-left: 5px solid #48BB78; padding: 15px; border-radius: 5px; margin: 10px 0 25px 0; color: #2F855A; }
-    .stMetric { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 0.5rem; padding: 1.25rem; }
-    .stMetric > label { font-weight: 600; color: #4A5568; }
-    .stMetric > div:nth-child(2) { font-size: 1.75rem; font-weight: 700; color: #1E293B; }
-    .ratio-card { background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 0.5rem; padding: 1rem; height: 100%; }
-    .ratio-row { display: flex; justify-content: space-between; padding: 0.85rem 0.5rem; border-bottom: 1px solid #F1F5F9; }
+    .stApp { background-color: #1e1e2f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .block-container { padding: 1rem 2rem; }
+    h1, h2, h3 { color: #ffffff; }
+    .main-title h1 { font-weight: 700; color: #e0e0e0; font-size: 2.2rem; text-align: center; }
+    .main-title p { color: #b0b0b0; font-size: 1.1rem; text-align: center; margin-bottom: 2rem; }
+    .kpi-container { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; margin-bottom: 2rem; }
+    .kpi-card {
+        background: #2b2b3c;
+        border-radius: 25px;
+        padding: 1.5rem 2rem;
+        box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a;
+        min-width: 250px;
+        color: #e0e0e0;
+        flex: 1;
+        border: 2px solid transparent;
+        transition: all 0.3s ease-in-out;
+    }
+    .kpi-card .title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; color: #a0a0a0; }
+    .kpi-card .value { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.1; }
+    .kpi-card .delta { display: inline-flex; align-items: center; font-weight: 600; font-size: 0.9rem; border-radius: 20px; padding: 0.25rem 0.8rem; }
+    .kpi-card .delta.up { background-color: #00cc7a; color: #0f2f1f; }
+    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
+    .kpi-card .delta.down { background-color: #ff4c4c; color: #3a0000; }
+    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
+    .kpi-card:hover { transform: translateY(-5px); }
+    .kpi-container .kpi-card:nth-child(1):hover { box-shadow: 0 0 25px rgba(0, 170, 255, 0.8); }
+    .kpi-container .kpi-card:nth-child(2):hover { box-shadow: 0 0 25px rgba(0, 255, 127, 0.8); }
+    .kpi-container .kpi-card:nth-child(3):hover { box-shadow: 0 0 25px rgba(255, 204, 0, 0.8); }
+    .kpi-container .kpi-card:nth-child(4):hover { box-shadow: 0 0 25px rgba(255, 85, 85, 0.8); }
+    .chart-container { background-color: #2b2b3c; border-radius: 15px; padding: 1rem; box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a; }
+    .ratio-card { background-color: #2b2b3c; border-radius: 15px; padding: 1rem; box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a; height: 100%; }
+    .ratio-row { display: flex; justify-content: space-between; padding: 0.85rem 0.5rem; border-bottom: 1px solid #4a4a6a; }
     .ratio-row:last-child { border-bottom: none; }
-    .ratio-label { color: #4A5568; }
-    .ratio-value { font-weight: 600; color: #1E293B; }
+    .ratio-label { color: #a0a0a0; }
+    .ratio-value { font-weight: 600; color: #e0e0e0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- SIDEBAR ---
+
+# --- SIDEBAR UI CONTROLS ---
 with st.sidebar:
     st.header("Upload & Process")
     uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"])
@@ -173,7 +155,7 @@ with st.sidebar:
 
     if st.button("Generate Dashboard", type="primary", use_container_width=True):
         if uploaded_file and company_name:
-            with st.spinner("Executing financial agent pipeline..."):
+            with st.spinner("Executing financial agent pipeline... Please wait."):
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 if source_df is None: st.error("Pipeline Failed: Data Intake."); st.stop()
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
@@ -193,63 +175,93 @@ with st.sidebar:
 
 # --- MAIN DASHBOARD DISPLAY ---
 if not st.session_state.report_generated:
-    st.title("Financial Dashboard")
-    st.markdown("<p class='subtitle'>AI-generated analysis from extracted Excel data with Schedule III compliance</p>", unsafe_allow_html=True)
-    st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
+    st.markdown("<div class='main-title'><h1>Financial Analysis Dashboard</h1></div>", unsafe_allow_html=True)
+    st.markdown("<div class='main-title'><p>Upload your financial data in the sidebar and click 'Generate Dashboard' to begin.</p></div>", unsafe_allow_html=True)
 else:
     kpis = st.session_state.kpis
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
 
-    st.title("Financial Dashboard")
-    st.markdown(f"<p class='subtitle'>Displaying analysis for: <strong>{st.session_state.company_name}</strong></p>", unsafe_allow_html=True)
-    st.markdown("<div class='success-box'>✅ Dashboard generated from extracted financial data.</div>", unsafe_allow_html=True)
+    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py.get('Total Revenue') else 0
+    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py.get('Net Profit') else 0
+    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py.get('Total Assets') else 0
+    dte_change = kpi_cy.get('Debt-to-Equity', 0) - kpi_py.get('Debt-to-Equity', 0)
 
-    col1, col2, col3, col4 = st.columns(4)
-    with col1: st.metric("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f}", f"{((kpi_cy['Total Revenue']-kpi_py['Total Revenue'])/kpi_py['Total Revenue']):.1%}" if kpi_py.get('Total Revenue') else "N/A")
-    with col2: st.metric("Net Profit", f"₹{kpi_cy['Net Profit']:,.0f}", f"{((kpi_cy['Net Profit']-kpi_py['Net Profit'])/kpi_py['Net Profit']):.1%}" if kpi_py.get('Net Profit') else "N/A")
-    with col3: st.metric("Total Assets", f"₹{kpi_cy['Total Assets']:,.0f}", f"{((kpi_cy['Total Assets']-kpi_py['Total Assets'])/kpi_py['Total Assets']):.1%}" if kpi_py.get('Total Assets') else "N/A")
-    with col4: st.metric("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f}", f"{kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']:.2f}", delta_color="inverse")
+    # --- KPI CARDS ---
+    st.markdown(f"""
+    <div class="kpi-container">
+        <div class="kpi-card">
+            <div class="title">Total Revenue (CY)</div>
+            <div class="value">₹{kpi_cy.get('Total Revenue', 0):,.0f}</div>
+            <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card">
+            <div class="title">Net Profit (CY)</div>
+            <div class="value">₹{kpi_cy.get('Net Profit', 0):,.0f}</div>
+            <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card">
+            <div class="title">Total Assets (CY)</div>
+            <div class="value">₹{kpi_cy.get('Total Assets', 0):,.0f}</div>
+            <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div>
+        </div>
+        <div class="kpi-card">
+            <div class="title">Debt-to-Equity (CY)</div>
+            <div class="value">{kpi_cy.get('Debt-to-Equity', 0):.2f}</div>
+            <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    st.write("") 
-
+    # --- CHARTS AND RATIOS ---
     col1, col2 = st.columns([6, 4], gap="large")
     with col1:
-        with st.container(border=True):
+        with st.container():
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
             revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12), np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)])})
             fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend (From Extracted Data)</b>")
-            fig_revenue.update_layout(legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01), title_x=0.05)
+            fig_revenue.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0', legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
             st.plotly_chart(fig_revenue, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        with st.container(border=True):
+        st.write("") # Spacer
+
+        with st.container():
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             profit_margin_df = pd.DataFrame({'Quarter': ['Q1', 'Q2', 'Q3', 'Q4'], 'Margin': np.random.uniform(kpi_cy['Profit Margin']-1, kpi_cy['Profit Margin']+1, 4)})
             fig_margin = px.line(profit_margin_df, x='Quarter', y='Margin', title="<b>Profit Margin Trend (Calculated)</b>", markers=True)
-            fig_margin.update_layout(title_x=0.05)
+            fig_margin.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
             st.plotly_chart(fig_margin, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        with st.container(border=True):
+        with st.container():
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
             asset_df = pd.DataFrame({ 'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'], 'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']] }).query("Value > 0")
             fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution (From Extracted Data)</b>")
-            fig_asset.update_layout(title_x=0.05)
+            fig_asset.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
             st.plotly_chart(fig_asset, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
 
-        with st.container(border=True):
-            st.markdown("<h4 style='margin-bottom: 20px;'>Key Financial Ratios</h4>", unsafe_allow_html=True)
+        st.write("") # Spacer
+
+        with st.container():
+            st.markdown('<div class="ratio-card">', unsafe_allow_html=True)
+            st.markdown("<h4 style='text-align: center; color: #ffffff;'>Key Financial Ratios</h4>", unsafe_allow_html=True)
             st.markdown(f"""
                 <div class='ratio-row'> <span class='ratio-label'>Current Ratio</span> <span class='ratio-value'>{kpi_cy['Current Ratio']:.2f}</span> </div>
                 <div class='ratio-row'> <span class='ratio-label'>Profit Margin</span> <span class='ratio-value'>{kpi_cy['Profit Margin']:.2f}%</span> </div>
                 <div class='ratio-row'> <span class='ratio-label'>Return on Assets (ROA)</span> <span class='ratio-value'>{kpi_cy['ROA']:.2f}%</span> </div>
-                <div class='ratio-row' style='border-bottom:none !important;'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
+                <div class='ratio-row'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
             """, unsafe_allow_html=True)
-
+            st.markdown('</div>', unsafe_allow_html=True)
+    
     st.write("---")
     st.subheader("Download Reports")
-    pdf_charts = {'revenue_trend': fig_revenue.to_image(format="png")}
-    pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, pdf_charts)
+    pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, {}) # PDF generation simplified for now
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
-        st.download_button("📄 Download PDF with Detailed Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
+        st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
