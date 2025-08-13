@@ -1,16 +1,10 @@
-# app.py
-
+# ==============================================================================
+# FILE: app.py
+# ==============================================================================
 import streamlit as st
-import sys
 import pandas as pd
 import plotly.express as px
-from fpdf import FPDF
-import requests
-import json
-import time
 import numpy as np
-import os
-from config import NOTES_STRUCTURE_AND_MAPPING
 from agents import (
     intelligent_data_intake_agent,
     ai_mapping_agent,
@@ -18,158 +12,128 @@ from agents import (
     data_validation_agent,
     report_finalizer_agent
 )
-
-# --- HELPER FUNCTIONS ---
-
-def calculate_metrics(agg_data):
-    metrics = {}
-    for year in ['CY', 'PY']:
-        get = lambda key, y=year: agg_data.get(key, {}).get('total', {}).get(y, 0)
-        total_revenue = get('21') + get('22')
-        total_expenses = sum(get(n) for n in ['23', '24', '25', '11', '26'])
-        net_profit = total_revenue - total_expenses
-        total_assets = sum(get(n) for n in ["11", "12", "4", "13", "14", "15", "16", "17", "18", "19", "20"])
-        current_assets = sum(get(n) for n in ['15', '16', '17', '18', '19', '20'])
-        current_liabilities = sum(get(n) for n in ['7', '8', '9', '10'])
-        total_debt = sum(get(n) for n in ['3', '7'])
-        total_equity = sum(get(n) for n in ['1', '2'])
-        metrics[year] = {
-            "Total Revenue": total_revenue, "Net Profit": net_profit, "Total Assets": total_assets,
-            "Current Assets": current_assets, "Fixed Assets": get('11'), "Investments": get('12'),
-            "Profit Margin": (net_profit / total_revenue) * 100 if total_revenue else 0,
-            "Current Ratio": current_assets / current_liabilities if current_liabilities else 0,
-            "Debt-to-Equity": total_debt / total_equity if total_equity else 0,
-            "ROA": (net_profit / total_assets) * 100 if total_assets else 0
-        }
-    return metrics
-
-def generate_ai_analysis(metrics):
-    try:
-        YOUR_API_URL = st.secrets["ANALYSIS_API_URL"]
-        YOUR_API_KEY = st.secrets["ANALYSIS_API_KEY"]
-    except (FileNotFoundError, KeyError) as e:
-        st.error(f"⚠️ AI Analysis API not configured. Missing secret: {e}.")
-        return "AI analysis could not be generated due to a configuration error."
-
-    prompt = (
-        f"Analyze this financial data: CY Revenue={metrics['CY']['Total Revenue']:,.0f}, PY Revenue={metrics['PY']['Total Revenue']:,.0f}; CY Net Profit={metrics['CY']['Net Profit']:,.0f}, PY Net Profit={metrics['PY']['Net Profit']:,.0f}; CY D/E Ratio={metrics['CY']['Debt-to-Equity']:.2f}, PY D/E Ratio={metrics['PY']['Debt-to-Equity']:.2f}. Provide a concise SWOT analysis."
-    )
-    payload = {"prompt": prompt}
-    headers = {"Authorization": f"Bearer {YOUR_API_KEY}", "Content-Type": "application/json"}
-    try:
-        response = requests.post(YOUR_API_URL, headers=headers, data=json.dumps(payload), timeout=45)
-        response.raise_for_status()
-        return response.json().get("analysis_text", "Could not parse AI analysis.")
-    except requests.exceptions.RequestException as e:
-        return f"Could not generate AI analysis. API connection error: {e}"
-
-class PDF(FPDF):
-    def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'Financial Dashboard Report', 0, 0, 'L')
-        self.ln(15)
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
-def create_professional_pdf(metrics, ai_analysis, charts):
-    temp_dir = "temp_charts"
-    if not os.path.exists(temp_dir): os.makedirs(temp_dir)
-    chart_paths = {}
-    for name, fig in charts.items():
-        path = os.path.join(temp_dir, f"{name}.png")
-        fig.write_image(path, scale=2, width=600, height=350)
-        chart_paths[name] = path
-    pdf = PDF('P', 'mm', 'A4')
-    pdf.add_page()
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, 'Top KPI Summary', 0, 1)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(50, 8, 'Metric', 1); pdf.cell(60, 8, 'Value', 1); pdf.cell(80, 8, 'Interpretation', 1); pdf.ln()
-    pdf.set_font('Arial', '', 10)
-    kpi_cy = metrics['CY']; kpi_py = metrics['PY']
-    get_change = lambda cy, py: f' ({"⬆" if cy >= py else "⬇"} {abs((cy - py) / py * 100):.1f}%)' if py else " (new)"
-    kpi_data = [
-        ("Total Revenue", f"₹ {kpi_cy['Total Revenue']:,.0f}{get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates sales or operational growth."),
-        ("Net Profit", f"₹ {kpi_cy['Net Profit']:,.0f}{get_change(kpi_cy['Net Profit'], kpi_py['Net Profit'])}", "Indicates cost control or margin improvement."),
-    ]
-    for title, value, interp in kpi_data:
-        pdf.cell(50, 8, title, 1); pdf.cell(60, 8, value, 1); pdf.cell(80, 8, interp, 1); pdf.ln()
-    pdf.ln(10)
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, 'Visualizations', 0, 1)
-    pdf.image(chart_paths["revenue_trend"], x=10, w=pdf.w / 2 - 15)
-    pdf.image(chart_paths["asset_distribution"], x=pdf.w / 2 + 5, w=pdf.w / 2 - 15)
-    pdf.ln(70)
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 10, 'AI-Generated SWOT Analysis', 0, 1)
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 5, ai_analysis)
-    return bytes(pdf.output())
-
-# --- MAIN APP UI ---
+from config import NOTES_STRUCTURE_AND_MAPPING
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
-st.title("Financial Dashboard")
+st.title("AI Financial Analysis Dashboard")
 
+# Initialize session state variables
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
+if 'aggregated_data' not in st.session_state: st.session_state.aggregated_data = None
+if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
+# --- SIDEBAR FOR UPLOAD AND PROCESSING ---
 with st.sidebar:
     st.header("Upload & Process")
     uploaded_file = st.file_uploader("Upload financial data (Excel)", type=["xlsx", "xls"])
-    company_name = st.text_input("Enter Company Name", "My Company Inc.")
+    company_name_input = st.text_input("Enter Company Name", st.session_state.company_name)
+    
     if st.button("Generate Dashboard", type="primary", use_container_width=True):
-        if uploaded_file:
-            with st.spinner("Executing financial agent pipeline..."):
+        if uploaded_file and company_name_input:
+            with st.spinner("Executing financial agent pipeline... Please wait."):
+                st.session_state.company_name = company_name_input
+                # --- RUN THE FULL PIPELINE ---
                 source_df = intelligent_data_intake_agent(uploaded_file)
-                if source_df is None: st.error("Pipeline Failed: Data Intake"); st.stop()
+                if source_df is None:
+                    st.error("Pipeline Failed at Agent 1: Data Intake. Check file format.")
+                    st.stop()
+                
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
+                
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                if not aggregated_data: st.error("Pipeline Failed: Aggregation"); st.stop()
-                final_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                if final_report_bytes is None: st.error("Pipeline Failed: Report Finalizer"); st.stop()
-            st.success("Dashboard Generated!")
+                if not aggregated_data:
+                    st.error("Pipeline Failed at Agent 3: Aggregation. Check mapping rules.")
+                    st.stop()
+                
+                warnings = data_validation_agent(aggregated_data)
+                
+                excel_report_bytes = report_finalizer_agent(aggregated_data, st.session_state.company_name)
+                if excel_report_bytes is None:
+                    st.error("Pipeline Failed at Agent 5: Report Finalizer.")
+                    st.stop()
+            
+            st.success("Pipeline Executed Successfully!")
+            # Store results in session state
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
-            st.session_state.company_name = company_name
+            st.session_state.warnings = warnings
+            st.session_state.excel_report_bytes = excel_report_bytes
             st.rerun()
         else:
-            st.warning("Please upload a file.")
+            st.warning("Please upload a file and enter a company name.")
 
-if st.session_state.report_generated:
-    metrics = calculate_metrics(st.session_state.aggregated_data)
-    kpi_cy = metrics.get('CY', {}); kpi_py = metrics.get('PY', {})
-    get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else 0
-    st.success("Dashboard generated from extracted financial data.")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.0f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
-    col2.metric("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.0f}", f"{get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0)):.1f}%")
-    col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.0f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
-    col4.metric("Debt-to-Equity", f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
-    
-    months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-    def generate_monthly(total):
-        if total == 0: return [0]*12
-        pattern = np.array([0.8, 0.85, 0.9, 1.0, 1.1, 1.15, 1.2, 1.1, 1.0, 0.95, 0.9, 0.85])
-        monthly = pattern * (total / 12)
-        return (monthly / monthly.sum()) * total
-    revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([generate_monthly(kpi_py.get('Total Revenue',0)), generate_monthly(kpi_cy.get('Total Revenue',0))])})
-    fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>", template="seaborn")
-    
-    asset_data = {'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments'], 'Value': [kpi_cy.get('Current Assets',0), kpi_cy.get('Fixed Assets',0), kpi_cy.get('Investments',0)]}
-    asset_df = pd.DataFrame(asset_data).query("Value > 0")
-    fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>", hole=0.3)
-    
-    chart_col1, chart_col2 = st.columns(2)
-    chart_col1.plotly_chart(fig_revenue, use_container_width=True)
-    chart_col2.plotly_chart(fig_asset, use_container_width=True)
-    
-    st.divider()
-    with st.spinner("Generating PDF Report..."):
-        ai_analysis = generate_ai_analysis(metrics)
-        charts = {"revenue_trend": fig_revenue, "asset_distribution": fig_asset}
-        pdf_bytes = create_professional_pdf(metrics, ai_analysis, charts)
-    st.download_button("💡 Download Professional Insights (PDF)", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", "application/pdf", use_container_width=True)
+# --- MAIN DASHBOARD AREA ---
+if not st.session_state.report_generated:
+    st.info("Upload your financial data and click 'Generate Dashboard' to begin analysis.")
+    st.markdown("---")
+    st.subheader("How It Works:")
+    st.markdown("""
+    1.  **Intake Agent**: Intelligently reads your Excel file, finding financial data columns automatically.
+    2.  **Mapping Agent**: Uses a comprehensive dictionary of aliases to understand your data labels (e.g., maps "Sundry Creditors" to "Trade Payables").
+    3.  **Aggregator Agent**: Processes and sums all the data according to the official Schedule III format.
+    4.  **Validator Agent**: Performs an audit check to ensure the Balance Sheet is balanced (Assets = Liabilities + Equity).
+    5.  **Reporter Agent**: Generates a professionally styled, multi-sheet Excel report with main statements and all notes.
+    """)
 else:
-    st.info("Upload your financial data and click 'Generate Dashboard' to begin.")
+    # --- DISPLAY METRICS AND CHARTS ---
+    agg_data = st.session_state.aggregated_data
+    
+    # Calculate key metrics
+    get = lambda key, y: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
+    kpi_cy, kpi_py = {}, {}
+    for year, kpi_dict in [('CY', kpi_cy), ('PY', kpi_py)]:
+        kpi_dict["Total Revenue"] = get(21, year) + get(22, year)
+        kpi_dict["Total Expenses"] = sum(get(n, year) for n in ['23','16','24','25','11','26'])
+        kpi_dict["Net Profit"] = kpi_dict["Total Revenue"] - kpi_dict["Total Expenses"]
+        kpi_dict["Total Assets"] = sum(get(n, year) for n in ["11","12","4","13","14","15","16","17","18","19","20"])
+        kpi_dict["Total Equity"] = get(1, year) + get(2, year)
+        kpi_dict["Total Debt"] = get(3, year) + get(7, year)
+        kpi_dict["Debt-to-Equity"] = kpi_dict["Total Debt"] / kpi_dict["Total Equity"] if kpi_dict["Total Equity"] else 0
+
+    get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else 0
+
+    st.header(f"Dashboard for: {st.session_state.company_name}")
+    
+    # --- KPI CARDS ---
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.2f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
+    col2.metric("Net Profit", f"₹{kpi_cy.get('Net Profit', 0):,.2f}", f"{get_change(kpi_cy.get('Net Profit', 0), kpi_py.get('Net Profit', 0)):.1f}%")
+    col3.metric("Total Assets", f"₹{kpi_cy.get('Total Assets', 0):,.2f}", f"{get_change(kpi_cy.get('Total Assets', 0), kpi_py.get('Total Assets', 0)):.1f}%")
+    col4.metric("Debt-to-Equity", f"{kpi_cy.get('Debt-to-Equity', 0):.2f}", f"{get_change(kpi_cy.get('Debt-to-Equity', 0), kpi_py.get('Debt-to-Equity', 0)):.1f}%", delta_color="inverse")
+
+    # --- CHARTS ---
+    chart_col1, chart_col2 = st.columns(2)
+    with chart_col1:
+        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+        def generate_monthly(total):
+            if total == 0: return [0]*12
+            pattern = np.array([0.8, 0.85, 0.9, 1.0, 1.1, 1.15, 1.2, 1.1, 1.0, 0.95, 0.9, 0.85])
+            monthly_data = pattern * (total / 12)
+            return (monthly_data / monthly_data.sum()) * total
+        revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([generate_monthly(kpi_py.get('Total Revenue',0)), generate_monthly(kpi_cy.get('Total Revenue',0))])})
+        fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>", template="seaborn")
+        st.plotly_chart(fig_revenue, use_container_width=True)
+
+    with chart_col2:
+        asset_data = {'Asset Type': ['Fixed Assets', 'Non-Current Investments', 'Current Assets'], 'Value': [get('11','CY'), get('12','CY'), sum(get(n,'CY') for n in ['15','16','17','18','19','20'])]}
+        asset_df = pd.DataFrame(asset_data).query("Value > 0")
+        fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution (Current Year)</b>", hole=0.3)
+        st.plotly_chart(fig_asset, use_container_width=True)
+
+    st.divider()
+    # --- VALIDATION AND DOWNLOAD SECTION ---
+    st.subheader("Validation & Report Download")
+    warnings = st.session_state.warnings
+    if not warnings:
+        st.success("✅ Validation Passed: The Balance Sheet is balanced.")
+    else:
+        for warning in warnings:
+            st.warning(f"⚠️ {warning}")
+
+    st.download_button(
+        label="⬇️ Download Full Financial Report (Excel)",
+        data=st.session_state.excel_report_bytes,
+        file_name=f"{st.session_state.company_name.replace(' ', '_')}_Financial_Report.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True
+    )
