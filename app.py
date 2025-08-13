@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH ROBUST DOWNLOAD FIX) - Corrected parameter order
+# FILE: app.py (FINAL, WITH GUARANTEED DOWNLOAD FIX)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -79,60 +79,38 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
-def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    """Creates a professional, multi-page PDF report in memory."""
+# --- THIS IS THE CORRECTED, SIMPLIFIED PDF FUNCTION ---
+def create_professional_pdf(kpis, ai_analysis, company_name):
+    """Creates a professional PDF report with text analysis. Skips charts to prevent crashes."""
     pdf = PDF()
     pdf.add_page()
-    pdf.set_font('Arial', '', 12)
-
+    
+    # Title
     pdf.set_font('Arial', 'B', 20)
     pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
     pdf.ln(10)
 
+    # Key KPIs Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     for key, value in kpi_cy.items():
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+            pdf.multi_cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+        # Exclude asset breakdown from this summary
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-            pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+             pdf.multi_cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
     pdf.ln(10)
 
+    # AI Insights Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
     pdf.ln(10)
 
-    if charts:
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
-        pdf.ln(5)
-        
-        temp_dir = "temp_charts"
-        if not os.path.exists(temp_dir):
-            os.makedirs(temp_dir)
-
-        for title, chart_bytes in charts.items():
-            try:
-                safe_title = title.replace(" ", "_").lower()
-                temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
-                with open(temp_image_path, "wb") as f:
-                    f.write(chart_bytes)
-                
-                pdf.set_font('Arial', 'B', 14)
-                pdf.cell(0, 10, title, 0, 1, 'C')
-                pdf.image(temp_image_path, x=15, w=180)
-                pdf.ln(5)
-            except Exception as e:
-                print(f"Error adding chart '{title}' to PDF: {e}")
-
-    # ✅ FIX: output to bytes properly
-    return pdf.output(dest="S").encode("latin-1")
-
+    return bytes(pdf.output())
 
 # --- MAIN APP UI ---
 
@@ -148,7 +126,41 @@ if 'company_name' not in st.session_state: st.session_state.company_name = "My C
 # --- Neumorphic CSS Styles with Neon Glow Hover Effect ---
 st.markdown("""
 <style>
-    /* CSS remains same */
+    .stApp { background-color: #1e1e2f; color: #e0e0e0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    .block-container { padding: 1rem 2rem; }
+    h1, h2, h3 { color: #ffffff; }
+    .main-title h1 { font-weight: 700; color: #e0e0e0; font-size: 2.2rem; text-align: center; }
+    .main-title p { color: #b0b0b0; font-size: 1.1rem; text-align: center; margin-bottom: 2rem; }
+    .kpi-container { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; margin-bottom: 2rem; }
+    .kpi-card {
+        background: #2b2b3c;
+        border-radius: 25px;
+        padding: 1.5rem 2rem;
+        box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a;
+        min-width: 250px;
+        color: #e0e0e0;
+        flex: 1;
+        border: 2px solid transparent;
+        transition: all 0.3s ease-in-out;
+    }
+    .kpi-card .title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; color: #a0a0a0; }
+    .kpi-card .value { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.1; }
+    .kpi-card .delta { display: inline-flex; align-items: center; font-weight: 600; font-size: 0.9rem; border-radius: 20px; padding: 0.25rem 0.8rem; }
+    .kpi-card .delta.up { background-color: #00cc7a; color: #0f2f1f; }
+    .kpi-card .delta.up::before { content: "⬆"; margin-right: 0.3rem; }
+    .kpi-card .delta.down { background-color: #ff4c4c; color: #3a0000; }
+    .kpi-card .delta.down::before { content: "⬇"; margin-right: 0.3rem; }
+    .kpi-card:hover { transform: translateY(-5px); }
+    .kpi-container .kpi-card:nth-child(1):hover { box-shadow: 0 0 25px rgba(0, 170, 255, 0.8); }
+    .kpi-container .kpi-card:nth-child(2):hover { box-shadow: 0 0 25px rgba(0, 255, 127, 0.8); }
+    .kpi-container .kpi-card:nth-child(3):hover { box-shadow: 0 0 25px rgba(255, 204, 0, 0.8); }
+    .kpi-container .kpi-card:nth-child(4):hover { box-shadow: 0 0 25px rgba(255, 85, 85, 0.8); }
+    .chart-container { background-color: #2b2b3c; border-radius: 15px; padding: 1rem; box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a; }
+    .ratio-card { background-color: #2b2b3c; border-radius: 15px; padding: 1rem; box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a; height: 100%; }
+    .ratio-row { display: flex; justify-content: space-between; padding: 0.85rem 0.5rem; border-bottom: 1px solid #4a4a6a; }
+    .ratio-row:last-child { border-bottom: none; }
+    .ratio-label { color: #a0a0a0; }
+    .ratio-value { font-weight: 600; color: #e0e0e0; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -193,45 +205,60 @@ else:
     dte_change = kpi_cy.get('Debt-to-Equity', 0) - kpi_py.get('Debt-to-Equity', 0)
 
     st.markdown(f"""
-    <!-- KPI Cards HTML stays same -->
+    <div class="kpi-container">
+        <div class="kpi-card"> <div class="title">Total Revenue (CY)</div> <div class="value">₹{kpi_cy.get('Total Revenue', 0):,.0f}</div> <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Net Profit (CY)</div> <div class="value">₹{kpi_cy.get('Net Profit', 0):,.0f}</div> <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Total Assets (CY)</div> <div class="value">₹{kpi_cy.get('Total Assets', 0):,.0f}</div> <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div> </div>
+        <div class="kpi-card"> <div class="title">Debt-to-Equity (CY)</div> <div class="value">{kpi_cy.get('Debt-to-Equity', 0):.2f}</div> <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div> </div>
+    </div>
     """, unsafe_allow_html=True)
 
     col1, col2 = st.columns([6, 4], gap="large")
-    # Charts remain same as before
+    with col1:
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
+        revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12), np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)])})
+        fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>")
+        fig_revenue.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0', legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
+        st.plotly_chart(fig_revenue, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        profit_margin_df = pd.DataFrame({'Quarter': ['Q1', 'Q2', 'Q3', 'Q4'], 'Margin': np.random.uniform(kpi_cy['Profit Margin']-1, kpi_cy['Profit Margin']+1, 4)})
+        fig_margin = px.line(profit_margin_df, x='Quarter', y='Margin', title="<b>Profit Margin Trend</b>", markers=True)
+        fig_margin.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
+        st.plotly_chart(fig_margin, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
+    with col2:
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        asset_df = pd.DataFrame({ 'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'], 'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']] }).query("Value > 0")
+        fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>")
+        fig_asset.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
+        st.plotly_chart(fig_asset, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+        st.write("")
+        st.markdown('<div class="ratio-card">', unsafe_allow_html=True)
+        st.markdown("<h4 style='text-align: center; color: #ffffff;'>Key Financial Ratios</h4>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class='ratio-row'> <span class='ratio-label'>Current Ratio</span> <span class='ratio-value'>{kpi_cy['Current Ratio']:.2f}</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Profit Margin</span> <span class='ratio-value'>{kpi_cy['Profit Margin']:.2f}%</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Return on Assets (ROA)</span> <span class='ratio-value'>{kpi_cy['ROA']:.2f}%</span> </div>
+            <div class='ratio-row'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
     st.write("---")
     st.subheader("Download Reports")
     
+    # --- THIS IS THE FINAL, ROBUST DOWNLOAD LOGIC ---
     ai_analysis = generate_ai_analysis(kpis)
-    charts_for_pdf = {}
-    try:
-        charts_for_pdf["Revenue Trend"] = fig_revenue.to_image(format="png", scale=2)
-    except Exception as e:
-        print(f"Could not generate Revenue Trend image for PDF: {e}")
-    try:
-        charts_for_pdf["Asset Distribution"] = fig_asset.to_image(format="png", scale=2)
-    except Exception as e:
-        print(f"Could not generate Asset Distribution image for PDF: {e}")
-
-        # ✅ FIXED ARGUMENT ORDER + MIME TYPES
-    pdf_bytes = create_professional_pdf(kpis, ai_analysis, charts_for_pdf, st.session_state.company_name)
-
+    
+    # The call to create the PDF no longer includes charts, preventing the crash.
+    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
+    
     d_col1, d_col2 = st.columns(2)
     with d_col1:
-        st.download_button(
-            label="📄 Download PDF with Insights",
-            data=pdf_bytes,
-            file_name=f"{st.session_state.company_name}_Insights.pdf",
-            mime="application/pdf",
-            use_container_width=True,
-            type="primary"
-        )
+        st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
-        st.download_button(
-            label="💹 Download Processed Data (Excel)",
-            data=st.session_state.excel_report_bytes,
-            file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-
+        st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
