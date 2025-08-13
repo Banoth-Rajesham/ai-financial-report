@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 import io
-# FPDF is no longer needed and has been removed to prevent errors.
+from fpdf import FPDF
 import os
 
 # --- REAL AGENT IMPORTS ---
@@ -18,7 +18,7 @@ from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agen
 from config import NOTES_STRUCTURE_AND_MAPPING
 
 
-# --- HELPER FUNCTIONS (for UI and Report Generation) ---
+# --- HELPER FUNCTIONS (for UI and PDF Generation) ---
 
 def calculate_kpis(agg_data):
     """Calculates an expanded set of KPIs for the new dashboard and PDF report."""
@@ -67,38 +67,70 @@ def generate_ai_analysis(kpis):
     """
     return analysis
 
-# --- THIS IS THE NEW, ROBUST TEXT REPORT FUNCTION ---
-def create_text_report(kpis, ai_analysis, company_name):
-    """Creates a clean .txt report with analysis. This is guaranteed to not crash."""
-    
-    report_lines = []
-    
-    # Title
-    report_lines.append("======================================================")
-    report_lines.append(f"Financial Report for {company_name}")
-    report_lines.append("======================================================")
-    report_lines.append("\n")
+class PDF(FPDF):
+    """Custom PDF class to define a professional header and footer."""
+    def header(self):
+        self.set_font('Arial', 'B', 16)
+        self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C')
+        self.ln(5)
 
-    # Key KPIs Section
-    report_lines.append("--- Key Performance Indicators (Current Year) ---")
+    def footer(self):
+        self.set_y(-15)
+        self.set_font('Arial', 'I', 8)
+        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
+def create_professional_pdf(kpis, ai_analysis, charts, company_name):
+    """Creates a professional, multi-page PDF report in memory."""
+    pdf = PDF()
+    pdf.add_page()
+    pdf.set_font('Arial', '', 12)
+
+    pdf.set_font('Arial', 'B', 20)
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.ln(10)
+
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     for key, value in kpi_cy.items():
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            report_lines.append(f"- {key}: INR {value:,.0f}")
+            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             report_lines.append(f"- {key}: {value:.2f}")
-    report_lines.append("\n")
+             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+    pdf.ln(10)
 
-    # AI Insights Section
-    report_lines.append("--- AI-Generated Insights ---")
-    analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
-    report_lines.append(analysis_text)
-    
-    # Join all lines into a single string
-    full_report = "\n".join(report_lines)
-    
-    return full_report.encode('utf-8')
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
+    pdf.set_font('Arial', '', 12)
+    pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
+    pdf.ln(10)
 
+    if charts:
+        pdf.add_page()
+        pdf.set_font('Arial', 'B', 16)
+        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
+        pdf.ln(5)
+        
+        temp_dir = "temp_charts"
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
+        for title, chart_bytes in charts.items():
+            try:
+                safe_title = title.replace(" ", "_").lower()
+                temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
+                with open(temp_image_path, "wb") as f:
+                    f.write(chart_bytes)
+                
+                pdf.set_font('Arial', 'B', 14)
+                pdf.cell(0, 10, title, 0, 1, 'C')
+                pdf.image(temp_image_path, x=15, w=180)
+                pdf.ln(5)
+            except Exception as e:
+                print(f"Error adding chart '{title}' to PDF: {e}")
+
+    return bytes(pdf.output())
 
 # --- MAIN APP UI ---
 
@@ -241,18 +273,12 @@ else:
     
     ai_analysis = generate_ai_analysis(kpis)
     
-    # Call the simplified text report function that is guaranteed not to crash
-    text_report_bytes = create_text_report(kpis, ai_analysis, st.session_state.company_name)
+    # --- THIS IS THE FINAL, ROBUST DOWNLOAD LOGIC ---
+    # The call to the PDF function now correctly includes the company name.
+    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
-        st.download_button(
-            label="📄 Download Insights (TXT)", 
-            data=text_report_bytes, 
-            file_name=f"{st.session_state.company_name}_Insights.txt",
-            mime="text/plain",
-            use_container_width=True, 
-            type="primary"
-        )
+        st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
