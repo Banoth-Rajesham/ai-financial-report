@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH DOWNLOADS FIXED)
+# FILE: app.py (FINAL, WITH PDF DOWNLOADS FIXED)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -79,52 +79,55 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
+# --- THIS IS THE CORRECTED PDF GENERATION FUNCTION ---
 def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    """Creates a professional, multi-page PDF report in memory."""
+    """Creates a professional, multi-page PDF report in memory using robust methods."""
     pdf = PDF()
     pdf.add_page()
-    pdf.set_font('Arial', '', 12)
-
+    
+    # Title
     pdf.set_font('Arial', 'B', 20)
     pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
     pdf.ln(10)
 
+    # Key KPIs Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     for key, value in kpi_cy.items():
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+            pdf.multi_cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+        # Exclude asset breakdown from this summary section in the PDF
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+             pdf.multi_cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
     pdf.ln(10)
 
+    # AI Insights Section
     pdf.set_font('Arial', 'B', 16)
     pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
     pdf.set_font('Arial', '', 12)
+    # Use multi_cell for robust text wrapping
     pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
     pdf.ln(10)
 
-    # --- THIS SECTION IS CORRECTED TO FIX THE TypeError ---
+    # Charts Section
     if charts:
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
-        pdf.ln(5)
-
-        temp_dir = "temp_charts"
+        temp_dir = "temp_charts_pdf" # Use a unique name for the temp dir
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
-
+        
         for title, chart_bytes in charts.items():
+            pdf.add_page()
+            pdf.set_font('Arial', 'B', 14)
+            pdf.cell(0, 10, title, 0, 1, 'C')
+            
+            # Save bytes to a temporary file to be read by FPDF
             safe_title = title.replace(" ", "_").lower()
             temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
             with open(temp_image_path, "wb") as f:
                 f.write(chart_bytes)
             
-            pdf.set_font('Arial', 'B', 14)
-            pdf.cell(0, 10, title, 0, 1, 'C')
             pdf.image(temp_image_path, x=15, w=180)
             pdf.ln(5)
 
