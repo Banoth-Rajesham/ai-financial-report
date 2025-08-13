@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH PDF TypeError FIX)
+# FILE: app.py (FINAL, WITH UI RESTORED TO PROFESSIONAL LIGHT THEME)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -84,35 +84,27 @@ class PDF(FPDF):
         self.cell(0, 8, title, 0, 1, 'L', fill=True)
         self.ln(2)
 
-    # --- THIS IS THE CORRECTED, SIMPLER TABLE FUNCTION ---
     def write_table(self, headers, data, col_widths):
         self.set_font('Arial', 'B', 9)
-        # Header
         for i, header in enumerate(headers):
             self.cell(col_widths[i], 7, header, 1, 0, 'C')
         self.ln()
-        # Data
         self.set_font('Arial', '', 9)
         for row in data:
-            # Using multi_cell for the interpretation column to allow text wrapping
             y_before = self.get_y()
+            x_before = self.get_x()
             self.multi_cell(col_widths[0], 6, str(row[0]), 1, 'L')
             y_after_mc1 = self.get_y()
-            
-            self.set_xy(self.get_x() + col_widths[0], y_before) # Move to next cell
+            self.set_xy(x_before + col_widths[0], y_before)
             self.multi_cell(col_widths[1], 6, str(row[1]), 1, 'L')
             y_after_mc2 = self.get_y()
-
-            self.set_xy(self.get_x() + col_widths[0] + col_widths[1], y_before) # Move to final cell
+            self.set_xy(x_before + col_widths[0] + col_widths[1], y_before)
             self.multi_cell(col_widths[2], 6, str(row[2]), 1, 'L')
             y_after_mc3 = self.get_y()
-
-            # Set Y to the max height of the row to ensure alignment
             self.set_y(max(y_after_mc1, y_after_mc2, y_after_mc3))
 
-
 def create_professional_pdf(kpis, company_name, charts):
-    """Creates the new, detailed professional PDF report with the error fix."""
+    """Creates the detailed professional PDF report."""
     pdf = PDF()
     pdf.add_page()
     pdf.set_font('Arial', 'B', 16)
@@ -123,7 +115,7 @@ def create_professional_pdf(kpis, company_name, charts):
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
     get_change = lambda cy, py, suffix='%': f'{"⬆" if cy >= py else "⬇"} {abs((cy - py) / py * 100):.1f}{suffix}' if py and py != 0 else "(new)"
     kpi_table_data = [
-        ("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f} {get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates a healthy year-over-year growth in revenue."),
+        ("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f} {get_change(kpi_cy['Total Revenue'], kpi_py['Total Revenue'])}", "Indicates healthy year-over-year growth."),
         ("Net Profit", f"₹{kpi_cy['Net Profit']:,.0f} {get_change(kpi_cy['Net Profit'], kpi_py['Net Profit'])}", "Indicates better cost control or margin improvement."),
         ("Total Assets", f"₹{kpi_cy['Total Assets']:,.0f} {get_change(kpi_cy['Total Assets'], kpi_py['Total Assets'])}", "Suggests reinvestment or capital infusion."),
         ("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f} {get_change(kpi_cy['Debt-to-Equity'], kpi_py['Debt-to-Equity'], '')}", "A lower ratio implies reduced financial risk.")
@@ -155,6 +147,7 @@ for key in ['report_generated', 'excel_report_bytes', 'aggregated_data', 'kpis']
     if key not in st.session_state: st.session_state[key] = None
 if 'company_name' not in st.session_state: st.session_state.company_name = "My Company Inc."
 
+# --- Correct, Light-Themed CSS ---
 st.markdown("""
 <style>
     .stApp { background-color: #F8F9FA; }
@@ -172,6 +165,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# --- SIDEBAR ---
 with st.sidebar:
     st.header("Upload & Process")
     uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"])
@@ -197,6 +191,7 @@ with st.sidebar:
         else:
             st.warning("Please upload a file and enter a company name.")
 
+# --- MAIN DASHBOARD DISPLAY ---
 if not st.session_state.report_generated:
     st.title("Financial Dashboard")
     st.markdown("<p class='subtitle'>AI-generated analysis from extracted Excel data with Schedule III compliance</p>", unsafe_allow_html=True)
@@ -210,12 +205,12 @@ else:
     st.markdown("<div class='success-box'>✅ Dashboard generated from extracted financial data.</div>", unsafe_allow_html=True)
 
     col1, col2, col3, col4 = st.columns(4)
-    with col1: st.metric("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f}", f"{((kpi_cy['Total Revenue']-kpi_py['Total Revenue'])/kpi_py['Total Revenue']):.1%}" if kpi_py['Total Revenue'] else "N/A")
-    with col2: st.metric("Net Profit", f"₹{kpi_cy['Net Profit']:,.0f}", f"{((kpi_cy['Net Profit']-kpi_py['Net Profit'])/kpi_py['Net Profit']):.1%}" if kpi_py['Net Profit'] else "N/A")
-    with col3: st.metric("Total Assets", f"₹{kpi_cy['Total Assets']:,.0f}", f"{((kpi_cy['Total Assets']-kpi_py['Total Assets'])/kpi_py['Total Assets']):.1%}" if kpi_py['Total Assets'] else "N/A")
+    with col1: st.metric("Total Revenue", f"₹{kpi_cy['Total Revenue']:,.0f}", f"{((kpi_cy['Total Revenue']-kpi_py['Total Revenue'])/kpi_py['Total Revenue']):.1%}" if kpi_py.get('Total Revenue') else "N/A")
+    with col2: st.metric("Net Profit", f"₹{kpi_cy['Net Profit']:,.0f}", f"{((kpi_cy['Net Profit']-kpi_py['Net Profit'])/kpi_py['Net Profit']):.1%}" if kpi_py.get('Net Profit') else "N/A")
+    with col3: st.metric("Total Assets", f"₹{kpi_cy['Total Assets']:,.0f}", f"{((kpi_cy['Total Assets']-kpi_py['Total Assets'])/kpi_py['Total Assets']):.1%}" if kpi_py.get('Total Assets') else "N/A")
     with col4: st.metric("Debt-to-Equity", f"{kpi_cy['Debt-to-Equity']:.2f}", f"{kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']:.2f}", delta_color="inverse")
 
-    st.write("")
+    st.write("") 
 
     col1, col2 = st.columns([6, 4], gap="large")
     with col1:
@@ -245,7 +240,7 @@ else:
                 <div class='ratio-row'> <span class='ratio-label'>Current Ratio</span> <span class='ratio-value'>{kpi_cy['Current Ratio']:.2f}</span> </div>
                 <div class='ratio-row'> <span class='ratio-label'>Profit Margin</span> <span class='ratio-value'>{kpi_cy['Profit Margin']:.2f}%</span> </div>
                 <div class='ratio-row'> <span class='ratio-label'>Return on Assets (ROA)</span> <span class='ratio-value'>{kpi_cy['ROA']:.2f}%</span> </div>
-                <div class='ratio-row'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
+                <div class='ratio-row' style='border-bottom:none !important;'> <span class='ratio-label'>Debt-to-Equity</span> <span class='ratio-value'>{kpi_cy['Debt-to-Equity']:.2f}</span> </div>
             """, unsafe_allow_html=True)
 
     st.write("---")
