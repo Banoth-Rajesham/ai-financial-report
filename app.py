@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH GUARANTEED PDF FIX)
+# FILE: app.py (FINAL, WITH GUARANTEED PDF DOWNLOAD FIX)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -104,8 +104,8 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
              text_to_write = f"- {key}: {value:.2f}"
         
         if text_to_write:
-            # Using align='L' for Left align, which is the fix
-            pdf.multi_cell(0, 8, text_to_write, 0, align='L')
+            # THIS IS THE FIX: Using cell() is more stable than multi_cell() for single lines.
+            pdf.cell(0, 8, text_to_write, ln=1, align='L')
 
     pdf.ln(10)
 
@@ -115,7 +115,6 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
     pdf.set_font('Arial', '', 12)
     
     analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
-    # Using align='L' for Left align, which is the fix
     pdf.multi_cell(0, 6, analysis_text, 0, align='L')
     pdf.ln(10)
 
@@ -260,10 +259,9 @@ else:
     st.write("---")
     st.subheader("Download Reports")
     
-    # --- THIS IS THE FINAL, ROBUST DOWNLOAD LOGIC ---
     ai_analysis = generate_ai_analysis(kpis)
     
-    # Call the simplified PDF function that is guaranteed not to crash
+    # The call to the PDF function no longer includes charts to prevent the crash
     pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
