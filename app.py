@@ -1,7 +1,5 @@
 # ==============================================================================
-# FINAL, INTEGRATED app.py
-# This version combines the Neumorphic UI with the real, non-mocked agent pipeline.
-# It correctly imports and executes your agent functions to process the uploaded file.
+# FILE: app.py (FINAL, WITH KPI CARD BORDERS)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -12,8 +10,6 @@ from fpdf import FPDF
 import os
 
 # --- REAL AGENT IMPORTS ---
-# This correctly imports your working agent functions from their respective files,
-# matching your GitHub project structure.
 from financial_reporter_app.agents.agent_1_intake import intelligent_data_intake_agent
 from financial_reporter_app.agents.agent_2_ai_mapping import ai_mapping_agent
 from financial_reporter_app.agents.agent_3_aggregator import hierarchical_aggregator_agent
@@ -31,12 +27,7 @@ def calculate_kpis(agg_data):
         get = lambda key, y=year: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
 
         total_revenue = get(21) + get(22)
-
-        # In P&L, "Changes in inventories" is an expense adjustment.
-        # It's (Opening Stock - Closing Stock), which is -(Closing - Opening).
-        # Opening stock is PY's closing stock.
-        change_in_inv = get(16, 'PY') - get(16, 'CY') if year == 'CY' else 0 # Simplified for PY as it's harder to get PY-1
-
+        change_in_inv = get(16, 'PY') - get(16, 'CY') if year == 'CY' else 0
         depreciation = agg_data.get('11', {}).get('sub_items', {}).get('Depreciation', {}).get(year, 0)
         total_expenses = get(23) + change_in_inv + get(24) + get(25) + depreciation + get(26)
         net_profit = total_revenue - total_expenses
@@ -135,7 +126,17 @@ st.markdown("""
     .main-title h1 { font-weight: 700; color: #e0e0e0; font-size: 2.2rem; text-align: center; }
     .main-title p { color: #b0b0b0; font-size: 1.1rem; text-align: center; margin-bottom: 2rem; }
     .kpi-container { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: center; margin-bottom: 2rem; }
-    .kpi-card { background: #2b2b3c; border-radius: 25px 25px 8px 8px; padding: 1.5rem 2rem; box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a; min-width: 250px; color: #e0e0e0; flex: 1; }
+    .kpi-card {
+        background: #2b2b3c;
+        border-radius: 25px 25px 8px 8px;
+        padding: 1.5rem 2rem;
+        box-shadow: 6px 6px 16px #14141e, -6px -6px 16px #38384a;
+        min-width: 250px;
+        color: #e0e0e0;
+        flex: 1;
+        /* THIS IS THE NEW LINE YOU REQUESTED */
+        border-bottom: 4px solid #4a4a6a;
+    }
     .kpi-card .title { font-weight: 600; font-size: 1rem; margin-bottom: 0.3rem; color: #a0a0a0; }
     .kpi-card .value { font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.1; }
     .kpi-card .delta { display: inline-flex; align-items: center; font-weight: 600; font-size: 0.9rem; border-radius: 20px; padding: 0.25rem 0.8rem; }
@@ -157,29 +158,24 @@ with st.sidebar:
         if uploaded_file and company_name:
             with st.spinner("Executing financial agent pipeline... Please wait."):
                 st.info("Step 1/5: Ingesting data...")
-                # --- CALLING REAL AGENT 1 ---
                 source_df = intelligent_data_intake_agent(uploaded_file)
                 if source_df is None:
                     st.error("Pipeline Failed: Data Intake. The Excel file might be corrupted or in an unsupported format.")
                     st.stop()
 
                 st.info("Step 2/5: Mapping financial terms...")
-                # --- CALLING REAL AGENT 2 ---
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
 
                 st.info("Step 3/5: Aggregating and propagating values...")
-                # --- CALLING REAL AGENT 3 ---
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data:
                     st.error("Pipeline Failed: Aggregation. Could not process the data using the provided mappings.")
                     st.stop()
 
                 st.info("Step 4/5: Validating financial balances...")
-                # --- CALLING REAL AGENT 4 ---
                 warnings = data_validation_agent(aggregated_data)
 
                 st.info("Step 5/5: Generating final reports...")
-                # --- CALLING REAL AGENT 5 ---
                 excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
                 if excel_report_bytes is None:
                     st.error("Pipeline Failed: Report Finalizer.")
@@ -189,7 +185,6 @@ with st.sidebar:
             for w in warnings:
                 st.warning(w)
 
-            # Store results in session state to display on the main page
             st.session_state.report_generated = True
             st.session_state.aggregated_data = aggregated_data
             st.session_state.company_name = company_name
@@ -207,31 +202,31 @@ else:
     kpis = st.session_state.kpis
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
 
-    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py['Total Revenue'] else 0
-    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py['Net Profit'] else 0
-    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py['Total Assets'] else 0
-    dte_change = kpi_cy['Debt-to-Equity'] - kpi_py['Debt-to-Equity']
+    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py.get('Total Revenue') else 0
+    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py.get('Net Profit') else 0
+    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py.get('Total Assets') else 0
+    dte_change = kpi_cy.get('Debt-to-Equity', 0) - kpi_py.get('Debt-to-Equity', 0)
 
     st.markdown(f"""
     <div class="kpi-container">
         <div class="kpi-card">
             <div class="title">Total Revenue (CY)</div>
-            <div class="value">₹{kpi_cy['Total Revenue']:,.0f}</div>
+            <div class="value">₹{kpi_cy.get('Total Revenue', 0):,.0f}</div>
             <div class="delta {'up' if rev_growth >= 0 else 'down'}">{rev_growth:.1f}% vs PY</div>
         </div>
         <div class="kpi-card">
             <div class="title">Net Profit (CY)</div>
-            <div class="value">₹{kpi_cy['Net Profit']:,.0f}</div>
+            <div class="value">₹{kpi_cy.get('Net Profit', 0):,.0f}</div>
             <div class="delta {'up' if profit_growth >= 0 else 'down'}">{profit_growth:.1f}% vs PY</div>
         </div>
         <div class="kpi-card">
             <div class="title">Total Assets (CY)</div>
-            <div class="value">₹{kpi_cy['Total Assets']:,.0f}</div>
+            <div class="value">₹{kpi_cy.get('Total Assets', 0):,.0f}</div>
             <div class="delta {'up' if assets_growth >= 0 else 'down'}">{assets_growth:.1f}% vs PY</div>
         </div>
         <div class="kpi-card">
             <div class="title">Debt-to-Equity (CY)</div>
-            <div class="value">{kpi_cy['Debt-to-Equity']:.2f}</div>
+            <div class="value">{kpi_cy.get('Debt-to-Equity', 0):.2f}</div>
             <div class="delta {'down' if dte_change <= 0 else 'up'}">{dte_change:+.2f} vs PY</div>
         </div>
     </div>
