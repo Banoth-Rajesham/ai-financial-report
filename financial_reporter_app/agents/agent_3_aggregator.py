@@ -1,61 +1,51 @@
-# ==============================================================================
-# PASTE THIS ENTIRE BLOCK INTO: agents/agent_3_aggregator.py
-# ==============================================================================
+# agents/agent_3_aggregator.py
+
 import pandas as pd
 
-def hierarchical_aggregator_agent(source_df, refined_mapping):
+def hierarchical_aggregator_agent(source_df, notes_structure):
     """
-    AGENT 3: Aggregates financial data based on the detailed mapping structure
-    from config.py. This is the real, working version.
+    AGENT 3: Uses the mapping rules to recursively sum up the source data.
     """
-    print("\n--- Agent 3 (Hierarchical Aggregator): Processing real data... ---")
-    
-    source_df['Particulars_clean'] = source_df['Particulars'].str.lower().str.strip()
-    source_df['Amount_CY'] = pd.to_numeric(source_df.get('Amount_CY'), errors='coerce').fillna(0)
-    source_df['Amount_PY'] = pd.to_numeric(source_df.get('Amount_PY'), errors='coerce').fillna(0)
-    
-    def flatten_keywords(structure):
-        keyword_map = {}
-        def recurse(node, path):
-            for key, value in node.items():
-                new_path = path + (key,)
-                if isinstance(value, list):
-                    for keyword in value: keyword_map[keyword.lower().strip()] = new_path
-                elif isinstance(value, dict): recurse(value, new_path)
-        for note_num, note_data in structure.items():
-            if 'sub_items' in note_data: recurse(note_data['sub_items'], (note_num,))
-        return keyword_map
-        
-    keyword_to_path = flatten_keywords(refined_mapping)
-    
-    aggregated_data = {note: {'total': {'CY': 0, 'PY': 0}, 'sub_items': {}, 'title': data.get('title', '')} for note, data in refined_mapping.items()}
-    
-    for _, row in source_df.iterrows():
-        term = row['Particulars_clean']
-        if term in keyword_to_path:
-            path = keyword_to_path[term]
-            note_num = path[0]
-            current_level = aggregated_data[note_num]['sub_items']
-            for part in path[1:-1]: current_level = current_level.setdefault(part, {})
-            final_key = path[-1]
-            item = current_level.setdefault(final_key, {'CY': 0, 'PY': 0})
-            item['CY'] += row['Amount_CY']
-            item['PY'] += row['Amount_PY']
-            
-    for note_num, note_data in aggregated_data.items():
-        def sum_totals(sub_item_dict):
-            cy_total, py_total = 0, 0
-            for value in sub_item_dict.values():
-                if isinstance(value, dict) and 'CY' in value:
-                    cy_total += value.get('CY', 0); py_total += value.get('PY', 0)
-                elif isinstance(value, dict):
-                    sub_cy, sub_py = sum_totals(value)
-                    if 'total' not in value: value['total'] = {'CY': sub_cy, 'PY': sub_py}
-                    cy_total += sub_cy; py_total += sub_py
-            return cy_total, py_total
-            
-        note_total_cy, note_total_py = sum_totals(note_data['sub_items'])
-        aggregated_data[note_num]['total'] = {'CY': note_total_cy, 'PY': note_total_py}
-        
-    print("✅ Real Aggregation SUCCESS.")
+    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data... ---")
+
+    def initialize_structure(sub_items_template):
+        initialized = {}
+        for key, value in sub_items_template.items():
+            initialized[key] = initialize_structure(value) if isinstance(value, dict) else {'CY': 0, 'PY': 0}
+        return initialized
+
+    def match_and_aggregate(current_data, current_template, full_df):
+        total_cy, total_py = 0, 0
+        for key, template_value in current_template.items():
+            if isinstance(template_value, dict):
+                sub_total_cy, sub_total_py = match_and_aggregate(current_data[key], template_value, full_df)
+                current_data[key]['total'] = {'CY': sub_total_cy, 'PY': sub_total_py}
+                total_cy += sub_total_cy
+                total_py += sub_total_py
+            else:
+                item_total_cy, item_total_py = 0, 0
+                keywords = [kw.lower() for kw in (template_value if isinstance(template_value, list) else [template_value])]
+                for keyword in keywords:
+                    matched_rows = full_df[full_df['Particulars'].str.lower().str.contains(keyword, na=False)]
+                    if not matched_rows.empty:
+                        item_total_cy += matched_rows['Amount_CY'].sum()
+                        item_total_py += matched_rows['Amount_PY'].sum()
+
+                current_data[key] = {'CY': item_total_cy, 'PY': item_total_py}
+                total_cy += item_total_cy
+                total_py += item_total_py
+        return total_cy, total_py
+
+    aggregated_data = {}
+    for note_num, note_data in notes_structure.items():
+        if 'sub_items' in note_data:
+            sub_items_result = initialize_structure(note_data['sub_items'])
+            note_total_cy, note_total_py = match_and_aggregate(sub_items_result, note_data['sub_items'], source_df)
+            aggregated_data[note_num] = {
+                'total': {'CY': note_total_cy, 'PY': note_total_py},
+                'sub_items': sub_items_result,
+                'title': note_data['title']
+            }
+
+    print("✅ Aggregation SUCCESS: Data processed into hierarchical structure.")
     return aggregated_data
