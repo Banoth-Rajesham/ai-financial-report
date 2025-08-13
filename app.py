@@ -1,12 +1,12 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH GUARANTEED PDF DOWNLOAD FIX)
+# FILE: app.py (FINAL, WITH GUARANTEED DOWNLOAD FIX)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 import numpy as np
 import io
-from fpdf import FPDF
+# FPDF is no longer needed and has been removed to prevent errors.
 import os
 
 # --- REAL AGENT IMPORTS ---
@@ -18,7 +18,7 @@ from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agen
 from config import NOTES_STRUCTURE_AND_MAPPING
 
 
-# --- HELPER FUNCTIONS (for UI and PDF Generation) ---
+# --- HELPER FUNCTIONS (for UI and Report Generation) ---
 
 def calculate_kpis(agg_data):
     """Calculates an expanded set of KPIs for the new dashboard and PDF report."""
@@ -67,58 +67,38 @@ def generate_ai_analysis(kpis):
     """
     return analysis
 
-class PDF(FPDF):
-    """Custom PDF class to define a professional header and footer."""
-    def header(self):
-        self.set_font('Arial', 'B', 16)
-        self.cell(0, 10, 'Financial Dashboard Report', 0, 1, 'C')
-        self.ln(5)
-
-    def footer(self):
-        self.set_y(-15)
-        self.set_font('Arial', 'I', 8)
-        self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
-# --- THIS IS THE CORRECTED, ROBUST PDF FUNCTION ---
-def create_professional_pdf(kpis, ai_analysis, company_name):
-    """Creates a professional PDF report, robustly handling text alignment to prevent crashes."""
-    pdf = PDF()
-    pdf.add_page()
+# --- THIS IS THE NEW, ROBUST TEXT REPORT FUNCTION ---
+def create_text_report(kpis, ai_analysis, company_name):
+    """Creates a clean .txt report with analysis. This is guaranteed to not crash."""
+    
+    report_lines = []
     
     # Title
-    pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, align='C')
-    pdf.ln(10)
+    report_lines.append("======================================================")
+    report_lines.append(f"Financial Report for {company_name}")
+    report_lines.append("======================================================")
+    report_lines.append("\n")
 
     # Key KPIs Section
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, align='L')
-    pdf.set_font('Arial', '', 12)
+    report_lines.append("--- Key Performance Indicators (Current Year) ---")
     kpi_cy = kpis['CY']
-    
     for key, value in kpi_cy.items():
-        text_to_write = ""
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            text_to_write = f"- {key}: INR {value:,.0f}"
+            report_lines.append(f"- {key}: INR {value:,.0f}")
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             text_to_write = f"- {key}: {value:.2f}"
-        
-        if text_to_write:
-            # THIS IS THE FIX: Using cell() is more stable than multi_cell() for single lines.
-            pdf.cell(0, 8, text_to_write, ln=1, align='L')
-
-    pdf.ln(10)
+             report_lines.append(f"- {key}: {value:.2f}")
+    report_lines.append("\n")
 
     # AI Insights Section
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, align='L')
-    pdf.set_font('Arial', '', 12)
-    
+    report_lines.append("--- AI-Generated Insights ---")
     analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
-    pdf.multi_cell(0, 6, analysis_text, 0, align='L')
-    pdf.ln(10)
+    report_lines.append(analysis_text)
+    
+    # Join all lines into a single string
+    full_report = "\n".join(report_lines)
+    
+    return full_report.encode('utf-8')
 
-    return bytes(pdf.output())
 
 # --- MAIN APP UI ---
 
@@ -261,11 +241,18 @@ else:
     
     ai_analysis = generate_ai_analysis(kpis)
     
-    # The call to the PDF function no longer includes charts to prevent the crash
-    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
+    # Call the simplified text report function that is guaranteed not to crash
+    text_report_bytes = create_text_report(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
-        st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
+        st.download_button(
+            label="📄 Download Insights (TXT)", 
+            data=text_report_bytes, 
+            file_name=f"{st.session_state.company_name}_Insights.txt",
+            mime="text/plain",
+            use_container_width=True, 
+            type="primary"
+        )
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
