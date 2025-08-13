@@ -4,7 +4,7 @@
 import pandas as pd
 
 def intelligent_data_intake_agent(file_object):
-    """Reads Excel and intelligently extracts [Text, Number, Number] columns."""
+    """AGENT 1: Reads Excel file and extracts financial data."""
     print("\n--- Agent 1 (Data Intake): Reading and parsing Excel file... ---")
     try:
         xls = pd.ExcelFile(file_object)
@@ -22,7 +22,7 @@ def intelligent_data_intake_agent(file_object):
                     pair_df.dropna(subset=['Particulars'], inplace=True)
                     all_data.append(pair_df)
         if not all_data:
-            print("❌ Intake FAILED: No valid [Text, Number, Number] columns found.")
+            print("❌ Intake FAILED: Could not find any valid [Text, Number, Number] columns.")
             return None
         source_df = pd.concat(all_data, ignore_index=True)
         source_df['Amount_CY'] = pd.to_numeric(source_df['Amount_CY'], errors='coerce').fillna(0)
