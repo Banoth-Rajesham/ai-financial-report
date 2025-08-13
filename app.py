@@ -6,21 +6,15 @@ import pandas as pd
 import plotly.express as px
 import numpy as np
 
-# --- FIX FOR ModuleNotFoundError ---
-# Add the project root to the Python path. This allows the app to find the 'agents' module.
-import sys
-import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-# ------------------------------------
-
-from agents import (
-    intelligent_data_intake_agent,
-    ai_mapping_agent,
-    hierarchical_aggregator_agent,
-    data_validation_agent,
-    report_finalizer_agent
-)
+# --- CORRECTED IMPORTS ---
+# This is a more explicit way to import, which is more reliable on deployment platforms.
+from agents.agent_1_intake import intelligent_data_intake_agent
+from agents.agent_2_ai_mapping import ai_mapping_agent
+from agents.agent_3_aggregator import hierarchical_aggregator_agent
+from agents.agent_4_validator import data_validation_agent
+from agents.agent_5_reporter import report_finalizer_agent
 from config import NOTES_STRUCTURE_AND_MAPPING
+# -------------------------
 
 st.set_page_config(page_title="AI Financial Reporter", page_icon="🤖", layout="wide")
 st.title("AI Financial Analysis Dashboard")
@@ -35,7 +29,7 @@ with st.sidebar:
     st.header("Upload & Process")
     uploaded_file = st.file_uploader("Upload financial data (Excel)", type=["xlsx", "xls"])
     company_name_input = st.text_input("Enter Company Name", st.session_state.company_name)
-    
+
     if st.button("Generate Dashboard", type="primary", use_container_width=True):
         if uploaded_file and company_name_input:
             with st.spinner("Executing financial agent pipeline... Please wait."):
@@ -45,21 +39,21 @@ with st.sidebar:
                 if source_df is None:
                     st.error("Pipeline Failed at Agent 1: Data Intake. Check file format.")
                     st.stop()
-                
+
                 refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
-                
+
                 aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
                 if not aggregated_data:
                     st.error("Pipeline Failed at Agent 3: Aggregation. Check mapping rules.")
                     st.stop()
-                
+
                 warnings = data_validation_agent(aggregated_data)
-                
+
                 excel_report_bytes = report_finalizer_agent(aggregated_data, st.session_state.company_name)
                 if excel_report_bytes is None:
                     st.error("Pipeline Failed at Agent 5: Report Finalizer.")
                     st.stop()
-            
+
             st.success("Pipeline Executed Successfully!")
             # Store results in session state
             st.session_state.report_generated = True
@@ -85,7 +79,7 @@ if not st.session_state.report_generated:
 else:
     # --- DISPLAY METRICS AND CHARTS ---
     agg_data = st.session_state.aggregated_data
-    
+
     # Calculate key metrics
     get = lambda key, y: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
     kpi_cy, kpi_py = {}, {}
@@ -101,7 +95,7 @@ else:
     get_change = lambda cy, py: ((cy - py) / abs(py) * 100) if py != 0 else 0
 
     st.header(f"Dashboard for: {st.session_state.company_name}")
-    
+
     # --- KPI CARDS ---
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Total Revenue", f"₹{kpi_cy.get('Total Revenue', 0):,.2f}", f"{get_change(kpi_cy.get('Total Revenue', 0), kpi_py.get('Total Revenue', 0)):.1f}%")
