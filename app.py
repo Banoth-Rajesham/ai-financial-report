@@ -79,39 +79,43 @@ class PDF(FPDF):
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
 
+# --- THIS IS THE CORRECTED, ROBUST PDF FUNCTION ---
 def create_professional_pdf(kpis, ai_analysis, charts, company_name):
-    """Creates a professional, multi-page PDF report in memory."""
+    """Creates a professional PDF report, robustly handling text alignment and output encoding."""
     pdf = PDF()
     pdf.add_page()
-    pdf.set_font('Arial', '', 12)
-
+    
+    # Title
     pdf.set_font('Arial', 'B', 20)
-    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, 'C')
+    pdf.cell(0, 15, f'Financial Report for {company_name}', 0, 1, align='C')
     pdf.ln(10)
 
+    # Key KPIs Section
     pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, 'L')
+    pdf.cell(0, 10, 'Key Performance Indicators (Current Year)', 0, 1, align='L')
     pdf.set_font('Arial', '', 12)
     kpi_cy = kpis['CY']
     for key, value in kpi_cy.items():
+        text_to_write = ""
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
-            pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
+            text_to_write = f"- {key}: INR {value:,.0f}"
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
-    pdf.ln(10)
-
-    pdf.set_font('Arial', 'B', 16)
-    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, 'L')
-    pdf.set_font('Arial', '', 12)
-    pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
-    pdf.ln(10)
-
-    if charts:
-        pdf.add_page()
-        pdf.set_font('Arial', 'B', 16)
-        pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
-        pdf.ln(5)
+             text_to_write = f"- {key}: {value:.2f}"
         
+        if text_to_write:
+            pdf.cell(0, 8, text_to_write, ln=1, align='L')
+    pdf.ln(10)
+
+    # AI Insights Section
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(0, 10, 'AI-Generated Insights', 0, 1, align='L')
+    pdf.set_font('Arial', '', 12)
+    analysis_text = str(ai_analysis).replace('**', '').replace('*', '  - ')
+    pdf.multi_cell(0, 6, analysis_text, 0, align='L')
+    pdf.ln(10)
+    
+    # Charts Section
+    if charts:
         temp_dir = "temp_charts"
         if not os.path.exists(temp_dir):
             os.makedirs(temp_dir)
@@ -123,6 +127,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
                 with open(temp_image_path, "wb") as f:
                     f.write(chart_bytes)
                 
+                pdf.add_page()
                 pdf.set_font('Arial', 'B', 14)
                 pdf.cell(0, 10, title, 0, 1, 'C')
                 pdf.image(temp_image_path, x=15, w=180)
@@ -130,7 +135,8 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
             except Exception as e:
                 print(f"Error adding chart '{title}' to PDF: {e}")
 
-    return bytes(pdf.output())
+    # THIS IS THE FIX: Return a properly encoded byte string.
+    return pdf.output(dest='S').encode('latin-1')
 
 # --- MAIN APP UI ---
 
@@ -273,9 +279,14 @@ else:
     
     ai_analysis = generate_ai_analysis(kpis)
     
-    # --- THIS IS THE FINAL, ROBUST DOWNLOAD LOGIC ---
-    # The call to the PDF function now correctly includes the company name.
-    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
+    charts_for_pdf = {}
+    try:
+        charts_for_pdf["Revenue Trend"] = fig_revenue.to_image(format="png", scale=2)
+        charts_for_pdf["Asset Distribution"] = fig_asset.to_image(format="png", scale=2)
+    except Exception as e:
+        st.warning(f"Could not generate chart images for PDF: {e}")
+
+    pdf_bytes = create_professional_pdf(kpis, ai_analysis, charts_for_pdf, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
     with d_col1:
