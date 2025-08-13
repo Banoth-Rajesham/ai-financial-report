@@ -97,7 +97,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
             pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
         elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
-             pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
+            pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
     pdf.ln(10)
 
     pdf.set_font('Arial', 'B', 16)
@@ -130,7 +130,9 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
             except Exception as e:
                 print(f"Error adding chart '{title}' to PDF: {e}")
 
-    return bytes(pdf.output())
+    # ✅ FIX: output to bytes properly
+    return pdf.output(dest="S").encode("latin-1")
+
 
 # --- MAIN APP UI ---
 
@@ -219,3 +221,4 @@ else:
         st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
+
