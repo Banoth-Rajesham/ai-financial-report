@@ -213,12 +213,25 @@ else:
     except Exception as e:
         print(f"Could not generate Asset Distribution image for PDF: {e}")
 
-    # ✅ FIXED ARGUMENT ORDER HERE
+        # ✅ FIXED ARGUMENT ORDER + MIME TYPES
     pdf_bytes = create_professional_pdf(kpis, ai_analysis, charts_for_pdf, st.session_state.company_name)
-    
+
     d_col1, d_col2 = st.columns(2)
     with d_col1:
-        st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
+        st.download_button(
+            label="📄 Download PDF with Insights",
+            data=pdf_bytes,
+            file_name=f"{st.session_state.company_name}_Insights.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary"
+        )
     with d_col2:
-        st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
+        st.download_button(
+            label="💹 Download Processed Data (Excel)",
+            data=st.session_state.excel_report_bytes,
+            file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
 
