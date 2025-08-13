@@ -96,7 +96,7 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
     for key, value in kpi_cy.items():
         if key in ["Total Revenue", "Net Profit", "Total Assets"]:
             pdf.cell(0, 8, f"- {key}: INR {value:,.0f}", 0, 1)
-        elif key != "Other Assets": # Exclude 'Other Assets' from this summary
+        elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
              pdf.cell(0, 8, f"- {key}: {value:.2f}", 0, 1)
     pdf.ln(10)
 
@@ -106,17 +106,26 @@ def create_professional_pdf(kpis, ai_analysis, charts, company_name):
     pdf.multi_cell(0, 6, ai_analysis.replace('**', '').replace('*', '  - '))
     pdf.ln(10)
 
-    # Corrected section to handle charts
+    # --- THIS SECTION IS CORRECTED TO FIX THE TypeError ---
     if charts:
         pdf.add_page()
         pdf.set_font('Arial', 'B', 16)
         pdf.cell(0, 10, 'Financial Charts', 0, 1, 'L')
         pdf.ln(5)
+
+        temp_dir = "temp_charts"
+        if not os.path.exists(temp_dir):
+            os.makedirs(temp_dir)
+
         for title, chart_bytes in charts.items():
+            safe_title = title.replace(" ", "_").lower()
+            temp_image_path = os.path.join(temp_dir, f"{safe_title}.png")
+            with open(temp_image_path, "wb") as f:
+                f.write(chart_bytes)
+            
             pdf.set_font('Arial', 'B', 14)
             pdf.cell(0, 10, title, 0, 1, 'C')
-            # Use io.BytesIO to handle image bytes for FPDF
-            pdf.image(io.BytesIO(chart_bytes), x=15, w=180)
+            pdf.image(temp_image_path, x=15, w=180)
             pdf.ln(5)
 
     return bytes(pdf.output())
@@ -262,9 +271,10 @@ else:
     
     # --- THIS IS THE FIX ---
     # We generate the chart images here and pass them to the PDF function.
+    ai_analysis = generate_ai_analysis(kpis)
     charts_for_pdf = {
-        "Revenue Trend": fig_revenue.to_image(format="png"),
-        "Asset Distribution": fig_asset.to_image(format="png")
+        "Revenue Trend": fig_revenue.to_image(format="png", scale=2),
+        "Asset Distribution": fig_asset.to_image(format="png", scale=2)
     }
     pdf_bytes = create_professional_pdf(kpis, st.session_state.company_name, charts_for_pdf)
     
