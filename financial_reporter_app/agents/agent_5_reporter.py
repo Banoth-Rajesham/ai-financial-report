@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: agents/agent_5_reporter.py (FINAL, WITH CORRECTED STYLING)
+# FILE: agents/agent_5_reporter.py (FINAL, WITH BORDERS ADDED)
 # ==============================================================================
 import pandas as pd
 import io
@@ -8,11 +8,10 @@ from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def apply_main_sheet_styling(ws, template, company_name):
-    """Applies the beautiful, professional styling with orange headers and corrected number format."""
+    """Applies the beautiful, professional styling with borders, orange headers, and corrected number format."""
 
     # --- STYLE DEFINITIONS ---
     header_fill = PatternFill(start_color="D9D9D9", end_color="D9D9D9", fill_type="solid")
-    # New color for headings as requested
     heading_orange_fill = PatternFill(start_color="FDE9D9", end_color="FDE9D9", fill_type="solid")
     total_fill = PatternFill(start_color="DCE6F1", end_color="DCE6F1", fill_type="solid")
     
@@ -21,8 +20,11 @@ def apply_main_sheet_styling(ws, template, company_name):
     header_font = Font(bold=True)
     bold_font = Font(bold=True)
     
-    # Corrected currency format to remove unwanted symbols
     currency_format = '#,##0.00'
+    
+    # --- BORDER DEFINITION (THE FIX) ---
+    thin_border_side = Side(style='thin', color="BFBFBF") # Light grey border
+    full_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
 
     # --- APPLY STYLES ---
     ws.column_dimensions['A'].width = 5
@@ -46,36 +48,44 @@ def apply_main_sheet_styling(ws, template, company_name):
         cell.fill = header_fill
         cell.font = header_font
         cell.alignment = Alignment(horizontal='center')
+        cell.border = full_border # Add border to header
 
     for i, row_template in enumerate(template, start=1):
         row_num = i + 4
         row_type = row_template[3]
 
-        # Apply orange background to headers and sub-headers
-        if row_type in ['header', 'sub_header']:
-            ws[f'B{row_num}'].font = bold_font
-            for col in ['A', 'B', 'C', 'D', 'E']:
-                ws[f'{col}{row_num}'].fill = heading_orange_fill
+        # Apply styles and borders to all relevant rows
+        if row_type != 'spacer':
+            for col in range(1, 6): # Columns A to E
+                ws.cell(row=row_num, column=col).border = full_border
 
-        elif row_type == 'total':
-            for cell in ws[row_num]:
-                cell.font = bold_font
-                cell.fill = total_fill
+            if row_type in ['header', 'sub_header']:
+                ws[f'B{row_num}'].font = bold_font
+                for col in ['A', 'B', 'C', 'D', 'E']:
+                    ws[f'{col}{row_num}'].fill = heading_orange_fill
 
-        for col_letter in ['D', 'E']:
-            cell = ws[f'{col_letter}{row_num}']
-            if cell.value is not None and isinstance(cell.value, (int, float)):
-                cell.number_format = currency_format
+            elif row_type == 'total':
+                for cell in ws[row_num]:
+                    cell.font = bold_font
+                    cell.fill = total_fill
+
+            for col_letter in ['D', 'E']:
+                cell = ws[f'{col_letter}{row_num}']
+                if cell.value is not None and isinstance(cell.value, (int, float)):
+                    cell.number_format = currency_format
 
 
 def apply_note_sheet_styling(ws, note_title):
-    """Applies professional styling to a Note sheet."""
+    """Applies professional styling with borders to a Note sheet."""
     header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
     header_font = Font(bold=True, color="FFFFFF")
     title_font = Font(bold=True, size=14)
     total_font = Font(bold=True)
-    # Corrected currency format to remove unwanted symbols
     currency_format = '#,##0.00'
+    
+    # --- BORDER DEFINITION ---
+    thin_border_side = Side(style='thin', color="BFBFBF")
+    full_border = Border(left=thin_border_side, right=thin_border_side, top=thin_border_side, bottom=thin_border_side)
 
     ws.column_dimensions['A'].width = 65
     ws.column_dimensions['B'].width = 20
@@ -89,21 +99,23 @@ def apply_note_sheet_styling(ws, note_title):
     for cell in ws[2]:
         cell.fill = header_fill
         cell.font = header_font
+        cell.border = full_border # Add border to header
 
     for row in ws.iter_rows(min_row=3, max_col=3):
         is_total_row = (row[0].value == 'Total')
         for cell in row:
+            cell.border = full_border # Apply border to all data cells
             if cell.column > 1 and isinstance(cell.value, (int, float)):
                 cell.number_format = currency_format
             if is_total_row:
                 cell.font = total_font
-                cell.border = Border(top=Side(style='thin'))
+                cell.border = Border(top=Side(style='double', color="BFBFBF"), left=thin_border_side, right=thin_border_side, bottom=thin_border_side)
 
 
 def report_finalizer_agent(aggregated_data, company_name):
     """
     AGENT 5: Constructs a detailed, multi-sheet Schedule III compliant Excel report
-    with the corrected professional styling.
+    with the corrected professional styling, including borders.
     """
     print("\n--- Agent 5 (Report Finalizer): Building styled report... ---")
     try:
@@ -113,9 +125,7 @@ def report_finalizer_agent(aggregated_data, company_name):
             # --- 1. Process Main Sheets (Balance Sheet & P&L) ---
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]),
                                          ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
-
                 sheet_data = []
-                # P&L calculation variables
                 pbt_cy, pbt_py = 0, 0
                 total_revenue_cy, total_revenue_py = 0, 0
                 total_expenses_cy, total_expenses_py = 0, 0
@@ -137,7 +147,6 @@ def report_finalizer_agent(aggregated_data, company_name):
                             py_val += aggregated_data.get(str(note_to_sum), {}).get('total', {}).get('PY', 0)
                         row['As at March 31, 2025'], row['As at March 31, 2024'] = cy_val, py_val
 
-                        # Store totals for P&L calculations
                         if particulars.startswith("Total Revenue"): total_revenue_cy, total_revenue_py = cy_val, py_val
                         if particulars == "Total Expenses": total_expenses_cy, total_expenses_py = cy_val, py_val
                         if particulars.startswith("Total Tax Expense"): total_tax_cy, total_tax_py = cy_val, py_val
