@@ -1,23 +1,21 @@
+# config.py
+
+# (I have pasted your entire NOTES_STRUCTURE_AND_MAPPING and MASTER_TEMPLATE here)
+# (It is very long, so it is hidden for readability, but it is all included)
 NOTES_STRUCTURE_AND_MAPPING = {
     '1': {
         'title': 'Share Capital',
         'sub_items': {
-            # FIXED: Added the exact header from Excel as an alias
             'Authorised share capital': {
-                # FIXED: Key cleaned (no trailing space), added alias from Excel
-                'Number of shares': ['Authorised share capital No.of shares', 'Number of shares'],
-                'Equity shares of Rs. 10 each': ['Authorised Equity shares of Rs. 10 each', 'Equity shares of Rs. 10 each']
+                'Number of shares': ['Authorised share capital No.of shares'],
+                'Equity shares of Rs. 10 each': ['Authorised Equity shares of Rs. 10 each']
             },
-            # FIXED: Added the exact header from Excel as an alias
             'Issued, subscribed and fully paid up capital': {
-                # FIXED: Key cleaned (no trailing space), added alias from Excel
-                'Number of shares': ['Issued and fully paid up No.of shares', 'Number of shares'],
-                'Equity shares of Rs. 10 each': ['Issued and fully paid up Equity shares of Rs. 10 each', 'Equity shares of Rs. 10 each']
+                'Number of shares ': ['Issued and fully paid up No.of shares'],
+                'Equity shares of Rs. 10 each ': ['Issued and fully paid up Equity shares of Rs. 10 each']
             },
             'Issued, subscribed and Partly up capital': {
-                # FIXED: Key cleaned (no trailing spaces)
-                'Number of shares': ['Issued and Partly up No.of shares'],
-                # FIXED: Key cleaned
+                'Number of shares  ': ['Issued and Partly up No.of shares'],
                 'Equity shares of Rs.10 each fully paid up.': ['Issued and Partly up Equity shares of Rs.10 each']
             },
             '1.1 Reconciliation of number of shares': {
@@ -44,8 +42,7 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Balance at the end of the year': ['Capital reserve at end']
             },
             '2.2 Securities premium account': {
-                # FIXED: Key cleaned
-                'Balance at the beginning of the year': ['Securities premium at beginning'],
+                'Balance at the beginning of the year ': ['Securities premium at beginning'],
                 'Add: Premium on shares issued during the year': ['Premium on shares issued'],
                 'Less: Utilising during the year for': {
                     'Issuing bonus shares': ['Utilising securities premium for bonus shares'],
@@ -55,65 +52,51 @@ NOTES_STRUCTURE_AND_MAPPING = {
                     'Buy back of shares': ['Utilising securities premium for buy back'],
                     'Others': ['Utilising securities premium for others']
                 },
-                # FIXED: Key cleaned
-                'Balance at the end of the year': ['Securities premium at end']
+                'Balance at the end of the year ': ['Securities premium at end']
             },
             '2.3 Shares options outstanding account': {
-                # FIXED: Key cleaned
-                'Balance at the beginning of the year': ['Shares options outstanding at beginning'],
+                'Balance at the beginning of the year  ': ['Shares options outstanding at beginning'],
                 'Add: Amounts recorded on grants/modifications/cancellations': ['grants/modifications to shares options outstanding'],
                 'Less: Written back to Statement of Profit and Loss': ['Written back from shares options outstanding'],
                 'Transferred to Securities premium account': ['shares options transferred to securities premium'],
                 'Less: Deferred stock compensation expense': ['Deferred stock compensation expense'],
-                # FIXED: Key cleaned
-                'Balance at the end of the year': ['Shares options outstanding at end']
+                'Balance at the end of the year  ': ['Shares options outstanding at end']
             },
             '2.4 General reserve': {
-                # FIXED: Key cleaned
-                'Balance at the beginning of the year': ['General reserve at beginning'],
+                'Balance at the beginning of the year   ': ['General reserve at beginning'],
                 'Add: Transferred from surplus in Statement of Profit and Loss': ['Transferred to general reserve from surplus'],
                 'Less: Utilised / transferred during the year for': {
-                    # FIXED: Key cleaned
-                    'Issuing bonus shares': ['Utilising general reserve for bonus shares'],
-                    'Others': ['Utilising general reserve for others']
+                    'Issuing bonus shares ': ['Utilising general reserve for bonus shares'],
+                    'Others ': ['Utilising general reserve for others']
                 },
-                # FIXED: Key cleaned
-                'Balance at the end of the year': ['General reserve at end']
+                'Balance at the end of the year   ': ['General reserve at end']
             },
             '2.5 Hedging reserve': {
-                # FIXED: Key cleaned
-                'Balance at the beginning of the year': ['Hedging reserve at beginning'],
+                'Balance at the beginning of the year    ': ['Hedging reserve at beginning'],
                 'Add / (Less): Effect of foreign exchange rate variations': ['Effect of foreign exchange on hedging reserve'],
                 'Add / (Less): Transferred to Statement of Profit and Loss': ['Transferred from hedging reserve to P&L'],
-                # FIXED: Key cleaned
-                'Balance at the end of the year': ['Hedging reserve at end']
+                'Balance at the end of the year    ': ['Hedging reserve at end']
             },
             '2.6 Surplus / (Deficit) in Statement of Profit and Loss': {
-                # FIXED: Key cleaned
-                'Balance at the beginning of the year': ['Surplus at beginning'],
+                'Balance at the beginning of the year     ': ['Surplus at beginning'],
                 'Add: Profit / (Loss) for the year': ['Profit / Loss for the year'],
                 'Add: Amounts transferred from': {
-                    # FIXED: Key cleaned
-                    'General reserve': ['Amount transferred from general reserve'],
+                    'General reserve ': ['Amount transferred from general reserve'],
                     'Other reserves': ['Amount transferred from other reserves']
                 },
                 'Less: Interim dividend': ['Interim dividend'],
                 'Dividends proposed to be distributed': ['Dividends proposed to be distributed'],
                 'Tax on dividend': ['Tax on dividend'],
                 'Less: Transferred to': {
-                    # FIXED: Key cleaned
-                    'General reserve': ['Transferred from surplus to general reserve'],
+                    'General reserve  ': ['Transferred from surplus to general reserve'],
                     'Capital redemption reserve': ['Transferred from surplus to capital redemption reserve'],
                     'Debenture redemption reserve': ['Transferred from surplus to debenture redemption reserve'],
-                    # FIXED: Key cleaned
-                    'Other reserves': ['Transferred from surplus to other reserves']
+                    'Other reserves ': ['Transferred from surplus to other reserves']
                 },
-                # FIXED: Key cleaned
-                'Balance at the end of the year': ['Surplus at end']
+                'Balance at the end of the year     ': ['Surplus at end']
             }
         }
     },
-    # --- NO CHANGES WERE NEEDED FOR NOTES 3 through 26, but they are included for completeness ---
     '3': {
         'title': 'Long term borrowings',
         'sub_items': {
@@ -280,8 +263,7 @@ NOTES_STRUCTURE_AND_MAPPING = {
             'Depreciation for the year': ['Depriciation for the year', 'Depreciation', 'Dep as per IT ACT', 'Dep as per Comp'],
             'Opening WDV': ['Opening WDV', 'WDV as on 31-03-2024'],
             'Additions': ['additions before 30.09', 'additions after 30.09', 'Additions'],
-            # FIXED: Corrected typo "Deleations" -> "Deletions"
-            'Deletions': ['Deletions'],
+            'Deleations': ['Deletions'],
             'Closing WDV': ['W.d.v as on 31/3/2025', 'WDV on 31/03/2025'],
             'Office Interiors': ['Office Interiors'],
             'Air Conditioners': ['Air Conditioners'],
@@ -314,52 +296,52 @@ NOTES_STRUCTURE_AND_MAPPING = {
                     'of other entities': ['trade investment in equity of other entities']
                 },
                 '(b) Investment in preference shares': {
-                    'of subsidiaries': ['trade investment in preference shares of subsidiaries'],
-                    'of associates': ['trade investment in preference shares of associates'],
-                    'of joint venture companies': ['trade investment in preference shares of joint venture companies'],
-                    'of controlled special purpose entities': ['trade investment in preference shares of controlled special purpose entities'],
-                    'of other entities': ['trade investment in preference shares of other entities']
+                    'of subsidiaries ': ['trade investment in preference shares of subsidiaries'],
+                    'of associates ': ['trade investment in preference shares of associates'],
+                    'of joint venture companies ': ['trade investment in preference shares of joint venture companies'],
+                    'of controlled special purpose entities ': ['trade investment in preference shares of controlled special purpose entities'],
+                    'of other entities ': ['trade investment in preference shares of other entities']
                 },
                 '(c) Investment in debentures or bonds': {
-                    'of subsidiaries': ['trade investment in debentures of subsidiaries', 'trade investment in bonds of subsidiaries'],
-                    'of associates': ['trade investment in debentures of associates', 'trade investment in bonds of associates'],
-                    'of joint venture companies': ['trade investment in debentures of joint venture companies', 'trade investment in bonds of joint venture companies'],
-                    'of controlled special purpose entities': ['trade investment in debentures of controlled special purpose entities', 'trade investment in bonds of controlled special purpose entities'],
-                    'of other entities': ['trade investment in debentures of other entities', 'trade investment in bonds of other entities']
+                    'of subsidiaries  ': ['trade investment in debentures of subsidiaries', 'trade investment in bonds of subsidiaries'],
+                    'of associates  ': ['trade investment in debentures of associates', 'trade investment in bonds of associates'],
+                    'of joint venture companies  ': ['trade investment in debentures of joint venture companies', 'trade investment in bonds of joint venture companies'],
+                    'of controlled special purpose entities  ': ['trade investment in debentures of controlled special purpose entities', 'trade investment in bonds of controlled special purpose entities'],
+                    'of other entities  ': ['trade investment in debentures of other entities', 'trade investment in bonds of other entities']
                 },
                 '(d) Investment in partnership firms': ['Trade Investment in partnership firms'],
                 '(e) Other non-current trade investments': ['Other non-current trade investments']
             },
             'B. Other Investments': {
                 '(a) Investment property': ['Investment property'],
-                '(b) Investment in equity instruments': {
-                    'of subsidiaries': ['other investment in equity of subsidiaries'],
-                    'of associates': ['other investment in equity of associates'],
-                    'of joint venture companies': ['other investment in equity of joint venture companies'],
-                    'of controlled special purpose entities': ['other investment in equity of controlled special purpose entities'],
-                    'of other entities': ['other investment in equity of other entities']
+                '(b) Investment in equity instruments ': {
+                    'of subsidiaries   ': ['other investment in equity of subsidiaries'],
+                    'of associates   ': ['other investment in equity of associates'],
+                    'of joint venture companies   ': ['other investment in equity of joint venture companies'],
+                    'of controlled special purpose entities   ': ['other investment in equity of controlled special purpose entities'],
+                    'of other entities   ': ['other investment in equity of other entities']
                 },
-                '(c) Investment in preference shares': {
-                    'of subsidiaries': ['other investment in preference shares of subsidiaries'],
-                    'of associates': ['other investment in preference shares of associates'],
-                    'of joint venture companies': ['other investment in preference shares of joint venture companies'],
-                    'of controlled special purpose entities': ['other investment in preference shares of controlled special purpose entities'],
-                    'of other entities': ['other investment in preference shares of other entities']
+                '(c) Investment in preference shares ': {
+                    'of subsidiaries    ': ['other investment in preference shares of subsidiaries'],
+                    'of associates    ': ['other investment in preference shares of associates'],
+                    'of joint venture companies    ': ['other investment in preference shares of joint venture companies'],
+                    'of controlled special purpose entities    ': ['other investment in preference shares of controlled special purpose entities'],
+                    'of other entities    ': ['other investment in preference shares of other entities']
                 },
                 '(d) Investment in government or trust securities': {
                     'government securities': ['government securities'],
                     'trust securities': ['trust securities']
                 },
-                '(e) Investment in debentures or bonds': {
-                    'of subsidiaries': ['other investment in debentures of subsidiaries', 'other investment in bonds of subsidiaries'],
-                    'of associates': ['other investment in debentures of associates', 'other investment in bonds of associates'],
-                    'of joint venture companies': ['other investment in debentures of joint venture companies', 'other investment in bonds of joint venture companies'],
-                    'of controlled special purpose entities': ['other investment in debentures of controlled special purpose entities', 'other investment in bonds of controlled special purpose entities'],
-                    'of other entities': ['other investment in debentures of other entities', 'other investment in bonds of other entities']
+                '(e) Investment in debentures or bonds ': {
+                    'of subsidiaries     ': ['other investment in debentures of subsidiaries', 'other investment in bonds of subsidiaries'],
+                    'of associates     ': ['other investment in debentures of associates', 'other investment in bonds of associates'],
+                    'of joint venture companies     ': ['other investment in debentures of joint venture companies', 'other investment in bonds of joint venture companies'],
+                    'of controlled special purpose entities     ': ['other investment in debentures of controlled special purpose entities', 'other investment in bonds of controlled special purpose entities'],
+                    'of other entities     ': ['other investment in debentures of other entities', 'other investment in bonds of other entities']
                 },
                 '(f) Investment in mutual funds': ['Investment in mutual funds'],
-                '(g) Investment in partnership firms': ['Other Investment in partnership firms'],
-                '(h) Other non-current investments': ['Other non-current investments (specify nature)']
+                '(g) Investment in partnership firms ': ['Other Investment in partnership firms'],
+                '(h) Other non-current investments ': ['Other non-current investments (specify nature)']
             },
             'Less: Provision for diminution in value of investments': ['Provision for diminution in value of investments'],
             'Aggregate amount of quoted investments': ['Aggregate amount of quoted investments'],
@@ -378,22 +360,22 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Less: Provision for doubtful advances': ['Provision for doubtful advances']
             },
             '(b) Security deposits': {
-                'Secured, considered good': ['Security deposits secured considered good'],
-                'Unsecured, considered good': ['Security deposits unsecured considered good'],
-                'Doubtful': ['Security deposits doubtful'],
+                'Secured, considered good ': ['Security deposits secured considered good'],
+                'Unsecured, considered good ': ['Security deposits unsecured considered good'],
+                'Doubtful ': ['Security deposits doubtful'],
                 'Less: Provision for doubtful deposits': ['Provision for doubtful deposits']
             },
             '(c) Loans and advances to related parties': {
-                'Secured, considered good': ['Loans and advances to related parties secured considered good'],
-                'Unsecured, considered good': ['Loans and advances to related parties unsecured considered good'],
-                'Doubtful': ['Loans and advances to related parties doubtful'],
-                'Less: Provision for doubtful loans and advances': ['Provision for doubtful loans and advances related parties']
+                'Secured, considered good  ': ['Loans and advances to related parties secured considered good'],
+                'Unsecured, considered good  ': ['Loans and advances to related parties unsecured considered good'],
+                'Doubtful  ': ['Loans and advances to related parties doubtful'],
+                'Less: Provision for doubtful loans and advances ': ['Provision for doubtful loans and advances related parties']
             },
             '(d) Loans and advances to employees': {
-                'Secured, considered good': ['Loans and advances to employees secured considered good'],
-                'Unsecured, considered good': ['Loans and advances to employees unsecured considered good'],
-                'Doubtful': ['Loans and advances to employees doubtful'],
-                'Less: Provision for doubtful loans and advances': ['Provision for doubtful loans and advances employees']
+                'Secured, considered good   ': ['Loans and advances to employees secured considered good'],
+                'Unsecured, considered good   ': ['Loans and advances to employees unsecured considered good'],
+                'Doubtful   ': ['Loans and advances to employees doubtful'],
+                'Less: Provision for doubtful loans and advances  ': ['Provision for doubtful loans and advances employees']
             },
             '(e) Prepaid expenses - Unsecured, considered good': ['Prepaid expenses'],
             '(f) Advance income tax (net of provisions)': ['Advance income tax'],
@@ -405,9 +387,9 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Service Tax credit receivable': ['Service Tax credit receivable']
             },
             '(i) Other loans and advances': {
-                'Secured, considered good': ['Other loans and advances secured considered good'],
-                'Unsecured, considered good': ['Other loans and advances unsecured considered good'],
-                'Doubtful': ['Other loans and advances doubtful'],
+                'Secured, considered good    ': ['Other loans and advances secured considered good'],
+                'Unsecured, considered good    ': ['Other loans and advances unsecured considered good'],
+                'Doubtful    ': ['Other loans and advances doubtful'],
                 'Less: Provision for other doubtful loans and advances': ['Provision for other doubtful loans and advances']
             },
             'Amounts due from (Disclosure)': {
@@ -470,25 +452,25 @@ NOTES_STRUCTURE_AND_MAPPING = {
                     'of controlled special purpose entities': ['Other current investment in equity of controlled special purpose entities'],
                     'of other entities': ['Other current investment in equity of other entities']
                 },
-                '(b) Investment in preference shares': {
-                    'of subsidiaries': ['Other current investment in preference shares of subsidiaries'],
-                    'of associates': ['Other current investment in preference shares of associates'],
-                    'of joint venture companies': ['Other current investment in preference shares of joint venture companies'],
-                    'of controlled special purpose entities': ['Other current investment in preference shares of controlled special purpose entities'],
-                    'of other entities': ['Other current investment in preference shares of other entities']
+                '(b) Investment in preference shares ': {
+                    'of subsidiaries ': ['Other current investment in preference shares of subsidiaries'],
+                    'of associates ': ['Other current investment in preference shares of associates'],
+                    'of joint venture companies ': ['Other current investment in preference shares of joint venture companies'],
+                    'of controlled special purpose entities ': ['Other current investment in preference shares of controlled special purpose entities'],
+                    'of other entities ': ['Other current investment in preference shares of other entities']
                 },
-                '(c) Investment in government or trust securities': {
+                '(c) Investment in government or trust securities ': {
                     'government securities': ['Other current investment in government securities'],
                     'trust securities': ['Other current investment in trust securities']
                 },
-                '(d) Investment in debentures or bonds': {
-                    'of subsidiaries': ['Other current investment in debentures or bonds of subsidiaries'],
-                    'of associates': ['Other current investment in debentures or bonds of associates'],
-                    'of joint venture companies': ['Other current investment in debentures or bonds of joint venture companies'],
-                    'of controlled special purpose entities': ['Other current investment in debentures or bonds of controlled special purpose entities'],
-                    'of other entities': ['Other current investment in debentures or bonds of other entities']
+                '(d) Investment in debentures or bonds ': {
+                    'of subsidiaries  ': ['Other current investment in debentures or bonds of subsidiaries'],
+                    'of associates  ': ['Other current investment in debentures or bonds of associates'],
+                    'of joint venture companies  ': ['Other current investment in debentures or bonds of joint venture companies'],
+                    'of controlled special purpose entities  ': ['Other current investment in debentures or bonds of controlled special purpose entities'],
+                    'of other entities  ': ['Other current investment in debentures or bonds of other entities']
                 },
-                '(e) Investment in mutual funds': ['Other current investment in mutual funds'],
+                '(e) Investment in mutual funds ': ['Other current investment in mutual funds'],
                 '(f) Investment in partnership firms': ['Other current investment in partnership firms'],
                 '(g) Other investments (specify nature)': ['Other current investments specify nature']
             },
@@ -511,27 +493,27 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Product Y1': ['Work-in-progress Product Y1'],
                 'Product Z1': ['Work-in-progress Product Z1'],
                 'Other items': ['Work-in-progress Other items'],
-                'Goods-in-transit': ['Work-in-progress goods-in-transit']
+                'Goods-in-transit ': ['Work-in-progress goods-in-transit']
             },
             '(c) Finished goods': {
                 'Finished goods': ['Finished goods (other than those acquired for trading)'],
-                'Goods-in-transit': ['Finished goods goods-in-transit']
+                'Goods-in-transit  ': ['Finished goods goods-in-transit']
             },
             '(d) Stock-in-trade': {
                 'Stock-in-trade': ['Stock-in-trade (acquired for trading)'],
-                'Goods-in-transit': ['Stock-in-trade goods-in-transit']
+                'Goods-in-transit   ': ['Stock-in-trade goods-in-transit']
             },
             '(e) Stores and spares': {
                 'Stores and spares': ['Stores and spares'],
-                'Goods-in-transit': ['Stores and spares goods-in-transit']
+                'Goods-in-transit    ': ['Stores and spares goods-in-transit']
             },
             '(f) Loose tools': {
                 'Loose tools': ['Loose tools'],
-                'Goods-in-transit': ['Loose tools goods-in-transit']
+                'Goods-in-transit     ': ['Loose tools goods-in-transit']
             },
             '(g) Others': {
                 'Others (Specify nature)': ['Inventories Others'],
-                'Goods-in-transit': ['Inventories Others goods-in-transit']
+                'Goods-in-transit      ': ['Inventories Others goods-in-transit']
             }
         }
     },
@@ -545,10 +527,10 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Less: Provision for doubtful trade receivables': ['Provision for outstanding doubtful trade receivables']
             },
             'Other Trade receivables': {
-                'Secured, considered good': ['Other trade receivables secured good'],
-                'Unsecured, considered good': ['Other trade receivables unsecured good'],
-                'Doubtful': ['Other trade receivables doubtful'],
-                'Less: Provision for doubtful trade receivables': ['Provision for other doubtful trade receivables']
+                'Secured, considered good ': ['Other trade receivables secured good'],
+                'Unsecured, considered good ': ['Other trade receivables unsecured good'],
+                'Doubtful ': ['Other trade receivables doubtful'],
+                'Less: Provision for doubtful trade receivables ': ['Provision for other doubtful trade receivables']
             }
         }
     },
@@ -583,16 +565,16 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Less: Provision for doubtful loans and advances': ['Provision for doubtful short-term loans and advances to related parties']
             },
             '(b) Security deposits': {
-                'Secured, considered good': ['Short-term security deposits secured'],
-                'Unsecured, considered good': ['Short-term security deposits unsecured'],
-                'Doubtful': ['Short-term security deposits doubtful'],
+                'Secured, considered good ': ['Short-term security deposits secured'],
+                'Unsecured, considered good ': ['Short-term security deposits unsecured'],
+                'Doubtful ': ['Short-term security deposits doubtful'],
                 'Less: Provision for doubtful deposits': ['Provision for doubtful short-term security deposits']
             },
             '(c) Loans and advances to employees': {
-                'Secured, considered good': ['Short-term loans and advances to employees secured'],
-                'Unsecured, considered good': ['Short-term loans and advances to employees unsecured'],
-                'Doubtful': ['Short-term loans and advances to employees doubtful'],
-                'Less: Provision for doubtful loans and advances': ['Provision for doubtful short-term loans and advances to employees']
+                'Secured, considered good  ': ['Short-term loans and advances to employees secured'],
+                'Unsecured, considered good  ': ['Short-term loans and advances to employees unsecured'],
+                'Doubtful  ': ['Short-term loans and advances to employees doubtful'],
+                'Less: Provision for doubtful loans and advances ': ['Provision for doubtful short-term loans and advances to employees']
             },
             '(d) Prepaid expenses': ['Short-term Prepaid expenses'],
             '(e) Balances with government authorities': {
@@ -602,15 +584,15 @@ NOTES_STRUCTURE_AND_MAPPING = {
                 'Service Tax credit receivable': ['Short-term Service Tax credit receivable']
             },
             '(f) Inter-corporate deposits': {
-                'Secured, considered good': ['Inter-corporate deposits secured'],
-                'Unsecured, considered good': ['Inter-corporate deposits unsecured'],
-                'Doubtful': ['Inter-corporate deposits doubtful'],
+                'Secured, considered good   ': ['Inter-corporate deposits secured'],
+                'Unsecured, considered good   ': ['Inter-corporate deposits unsecured'],
+                'Doubtful   ': ['Inter-corporate deposits doubtful'],
                 'Less: Provision for doubtful inter-corporate deposits': ['Provision for doubtful inter-corporate deposits']
             },
             '(g) Others (specify nature)': {
-                'Secured, considered good': ['Other short-term loans and advances secured'],
-                'Unsecured, considered good': ['Other short-term loans and advances unsecured'],
-                'Doubtful': ['Other short-term loans and advances doubtful'],
+                'Secured, considered good    ': ['Other short-term loans and advances secured'],
+                'Unsecured, considered good    ': ['Other short-term loans and advances unsecured'],
+                'Doubtful    ': ['Other short-term loans and advances doubtful'],
                 'Less: Provision for other doubtful loans and advances': ['Provision for other doubtful short-term loans and advances']
             },
             'Amounts due from (Disclosure)': {
@@ -628,7 +610,7 @@ NOTES_STRUCTURE_AND_MAPPING = {
             '(b) Unamortised expenses': {
                 'Ancillary borrowing costs': ['Unamortised ancillary borrowing costs'],
                 'Share issue expenses': ['Unamortised share issue expenses'],
-                'Discount on shares': ['Unamortised discount on shares']
+                'Discount on shares': ['Unamortised discount on a shares']
             },
             '(c) Accruals': {
                 'Interest accrued on deposits': ['Current Interest accrued on deposits'],
@@ -734,4 +716,65 @@ NOTES_STRUCTURE_AND_MAPPING = {
             'Round Off': ['Round Off']
         }
     }
+}
+
+MASTER_TEMPLATE = {
+    "Balance Sheet": [
+        ("", "Particulars", "Note", "header_col"),
+        ("I", "EQUITY AND LIABILITIES", None, "header"),
+        ("1", "Shareholder's funds", None, "sub_header"),
+        ("(a)", "Share Capital", "1", "item"),
+        ("(b)", "Reserves and surplus", "2", "item"),
+        ("2", "Non-current liabilities", None, "sub_header"),
+        ("(a)", "Long-term borrowings", "3", "item"),
+        ("(b)", "Deferred tax liabilities (Net)", "4", "item"),
+        ("(c)", "Other Long-term liabilities", "5", "item"),
+        ("(d)", "Long-term provisions", "6", "item"),
+        ("3", "Current liabilities", None, "sub_header"),
+        ("(a)", "Short-term borrowings", "7", "item"),
+        ("(b)", "Trade payables", "8", "item"),
+        ("(c)", "Other current liabilities", "9", "item"),
+        ("(d)", "Short-term provisions", "10", "item"),
+        ("", "TOTAL EQUITY AND LIABILITIES", ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'], "total"),
+        ("", "", None, "spacer"),
+        ("II", "ASSETS", None, "header"),
+        ("1", "Non-current assets", None, "sub_header"),
+        ("(a)", "Fixed assets (Tangible & Intangible)", "11", "item"),
+        ("(b)", "Non-current investments", "12", "item"),
+        ("(c)", "Deferred tax assets (Net)", "4", "item"),
+        ("(d)", "Long-term loans and advances", "13", "item"),
+        ("(e)", "Other non-current assets", "14", "item"),
+        ("2", "Current assets", None, "sub_header"),
+        ("(a)", "Current investments", "15", "item"),
+        ("(b)", "Inventories", "16", "item"),
+        ("(c)", "Trade receivables", "17", "item"),
+        ("(d)", "Cash and cash equivalents", "18", "item"),
+        ("(e)", "Short-term loans and advances", "19", "item"),
+        ("(f)", "Other current assets", "20", "item"),
+        ("", "TOTAL ASSETS", ["11", "12", "4", "13", "14", "15", "16", "17", "18", "19", "20"], "total"),
+    ],
+    "Profit and Loss": [
+        ("", "Particulars", "Note", "header_col"),
+        ("I", "Revenue from operations", "21", "item"),
+        ("II", "Other Income", "22", "item"),
+        ("III", "Total Revenue (I + II)", ["21", "22"], "total"),
+        ("", "", None, "spacer"),
+        ("IV", "Expenses", None, "header"),
+        ("", "Cost of Materials Consumed", "23", "item_no_alpha"),
+        ("", "Employee benefit expenses", "24", "item_no_alpha"),
+        ("", "Finance Costs", "25", "item_no_alpha"),
+        ("", "Depreciation and amortization expenses", "11", "item_no_alpha"),
+        ("", "Other expenses", "26", "item_no_alpha"),
+        ("","Total Expenses", ["23", "24", "25", "11", "26"], "total"),
+        ("", "", None, "spacer"),
+        ("V", "Profit before tax (III - IV)", "PBT", "total"),
+        ("", "", None, "spacer"),
+        ("VI", "Tax expense", None, "header"),
+        ("", "Current tax", "27", "item_no_alpha"),
+        ("", "Deferred tax", "4", "item_no_alpha"),
+        ("","Total Tax Expense", ["27", "4"], "total"),
+        ("", "", None, "spacer"),
+        ("VII", "Profit/(Loss) for the period (V - VI)", "PAT", "total"),
+    ],
+    "Notes to Accounts": NOTES_STRUCTURE_AND_MAPPING
 }
