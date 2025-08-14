@@ -78,7 +78,6 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
-
 def create_professional_pdf(kpis, ai_analysis, company_name):
     """Creates a professional PDF report with text analysis."""
     pdf = PDF()
@@ -95,9 +94,9 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
     
     for key, value in kpi_cy.items():
         text_to_write = ""
-        if key in ["Total Revenue", "Net Profit", "Total Assets"]:
+        if key in ["Total Revenue", "Net Profit", "Total Assets", "Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
             text_to_write = f"- {key}: INR {value:,.0f}"
-        elif key not in ["Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
+        else:
              text_to_write = f"- {key}: {value:.2f}"
         
         if text_to_write:
@@ -112,9 +111,8 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
     pdf.multi_cell(0, 6, analysis_text, 0, align='L')
     pdf.ln(10)
 
-    return bytes(pdf.output(dest='S').encode('latin-1'))
-
-
+    # THIS IS THE ONLY LINE THAT HAS CHANGED
+    return pdf.output(dest='S')
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
@@ -267,3 +265,4 @@ else:
         st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
+
