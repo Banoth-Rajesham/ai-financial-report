@@ -1,121 +1,145 @@
 # ==============================================================================
-# FILE: agents/agent_1_intake.py (DEFINITIVE UPDATE WITH T-FORMAT SUPPORT)
+# FILE: agents/agent_1_intake.py (FINAL, ROBUST VERSION)
 # ==============================================================================
 import pandas as pd
+import re
+
+def clean_numeric(series):
+    """A more robust function to clean and convert a column to numbers."""
+    if series is None:
+        return pd.Series(dtype='float64')
+    # Convert to string, remove currency symbols, commas, and handle parentheses for negatives
+    series_str = series.astype(str)
+    series_str = series_str.str.replace(r'[₹,]', '', regex=True)
+    series_str = series_str.str.strip()
+    # Handle accounting format for negatives, e.g., (500.00) -> -500.00
+    series_str = series_str.str.replace(r'^\((.*)\)$', r'-\1', regex=True)
+    # Convert to numeric, coercing errors to NaN, then fill NaN with 0
+    return pd.to_numeric(series_str, errors='coerce').fillna(0)
 
 def intelligent_data_intake_agent(file_object):
     """
-    AGENT 1: Reads Excel, intelligently detects if the format is T-account or
-    vertical, transforms T-accounts if necessary, and creates unique, contextual
-    keys for each data row (e.g., "Header|Particular").
+    AGENT 1: Reads Excel, robustly detects T-account or vertical format,
+    transforms T-accounts, and creates unique, contextual keys for each data row.
+    This version includes enhanced debugging and more flexible data detection.
     """
-    print("\n--- Agent 1 (Data Intake): Reading, parsing, and adding context... ---")
+    print("\n--- Agent 1 (Data Intake - Final Version): Reading and processing Excel file... ---")
     try:
         xls = pd.ExcelFile(file_object)
         all_data_rows = []
 
-        # Process every sheet to find financial data
         for sheet_name in xls.sheet_names:
-            print(f"--- Processing sheet: {sheet_name} ---")
+            print(f"\n--- Processing sheet: '{sheet_name}' ---")
             raw_df = pd.read_excel(xls, sheet_name=sheet_name, header=None).fillna('')
             if raw_df.empty:
+                print(f"Sheet '{sheet_name}' is empty. Skipping.")
                 continue
 
-            # --- Detect Format (T-Account vs. Vertical) ---
+            # --- Find Header Row and Detect Format ---
+            header_row_index = -1
             is_t_format = False
-            header_row_index = 0
-            # Heuristic: A T-account has distinct left/right headers in the same row
             for i, row in raw_df.head(15).iterrows():
-                row_str = ' '.join(str(c).lower() for c in row).strip()
-                t_format_keywords = (('liabilities' in row_str and 'assets' in row_str) or
-                                     ('debit' in row_str and 'credit' in row_str) or
-                                     ('dr.' in row_str and 'cr.' in row_str))
-                if t_format_keywords:
+                row_str = ' '.join(str(c).lower() for c in row if c).strip()
+                if ('liabilities' in row_str and 'assets' in row_str) or \
+                   ('debit' in row_str and 'credit' in row_str) or \
+                   (re.search(r'\bdr\.?\b', row_str) and re.search(r'\bcr\.?\b', row_str)):
                     is_t_format = True
                     header_row_index = i
-                    print(f"Detected T-format in sheet '{sheet_name}' at row {i}.")
+                    print(f"Detected T-format in '{sheet_name}' at row {header_row_index}.")
                     break
             
-            # Re-read the sheet with the correct header row
-            df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index).dropna(how='all', axis=1)
-            df.columns = [str(c) for c in df.columns] # Ensure column names are strings
+            if header_row_index == -1:
+                 for i, row in raw_df.head(15).iterrows():
+                    row_str = ' '.join(str(c).lower() for c in row if c).strip()
+                    if 'particular' in row_str and ('amount' in row_str or 'cy' in row_str or 'current' in row_str):
+                        header_row_index = i
+                        print(f"Detected Vertical format in '{sheet_name}' at row {header_row_index}.")
+                        break
+            
+            if header_row_index == -1:
+                print(f"Could not detect a valid header in '{sheet_name}'. Skipping sheet.")
+                continue
 
-            # --- Transform Data if T-Format ---
+            df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index).dropna(how='all').reset_index(drop=True)
+            df.columns = [str(c).strip() for c in df.columns]
+
+            # --- Process Data Based on Detected Format ---
             if is_t_format:
-                # Find the middle of the dataframe to split it
-                midpoint = len(df.columns) // 2
+                # Find the split point for the T-account
+                asset_col_index = -1
+                for i, col in enumerate(df.columns):
+                    if 'asset' in str(col).lower():
+                        asset_col_index = i
+                        break
                 
-                # Left side of the T-account (e.g., Liabilities or Debits)
-                left_df = df.iloc[:, :midpoint].copy()
-                left_header = str(left_df.columns[0]).strip()
-                left_df.columns = ['Particulars', 'Amount_CY'] + ['Amount_PY'] * (len(left_df.columns) - 2)
-                for _, row in left_df.iterrows():
-                    particular = str(row['Particulars']).strip()
-                    if particular:
-                         all_data_rows.append({
-                            'Particulars': f"{left_header}|{particular}",
-                            'Amount_CY': row.get('Amount_CY', 0),
-                            'Amount_PY': row.get('Amount_PY', 0)
-                        })
+                if asset_col_index == -1 or asset_col_index == 0:
+                    print(f"Could not determine T-account split for sheet '{sheet_name}'. Skipping.")
+                    continue
 
-                # Right side of the T-account (e.g., Assets or Credits)
-                right_df = df.iloc[:, midpoint:].copy()
-                right_header = str(right_df.columns[0]).strip()
-                right_df.columns = ['Particulars', 'Amount_CY'] + ['Amount_PY'] * (len(right_df.columns) - 2)
-                for _, row in right_df.iterrows():
-                    particular = str(row['Particulars']).strip()
-                    if particular:
-                        all_data_rows.append({
-                            'Particulars': f"{right_header}|{particular}",
-                            'Amount_CY': row.get('Amount_CY', 0),
-                            'Amount_PY': row.get('Amount_PY', 0)
-                        })
-            else: # --- Process Vertical Format ---
-                print(f"Detected Vertical format in sheet '{sheet_name}'.")
-                # Find the 'Particulars' and amount columns
-                particulars_col = None
-                cy_col, py_col = None, None
-                for col in df.columns:
-                    col_str = str(col).lower()
-                    if 'particular' in col_str and particulars_col is None: particulars_col = col
-                    if ('cy' in col_str or 'current' in col_str) and cy_col is None: cy_col = col
-                    if ('py' in col_str or 'previous' in col_str) and py_col is None: py_col = col
+                # Extract left side (Liabilities/Debits)
+                left_df = df.iloc[:, :asset_col_index].copy()
+                left_particulars = left_df.iloc[:, 0]
+                left_amounts_cy = clean_numeric(left_df.iloc[:, 1])
+                left_header = str(df.columns[0])
+
+                # Extract right side (Assets/Credits)
+                right_df = df.iloc[:, asset_col_index:].copy()
+                right_particulars = right_df.iloc[:, 0]
+                right_amounts_cy = clean_numeric(right_df.iloc[:, 1])
+                right_header = str(df.columns[asset_col_index])
+
+                # Combine into a single vertical list
+                for i, particular in enumerate(left_particulars):
+                    if pd.notna(particular) and str(particular).strip():
+                        all_data_rows.append({'Particulars': f"{left_header}|{str(particular).strip()}", 'Amount_CY': left_amounts_cy[i], 'Amount_PY': 0})
+                for i, particular in enumerate(right_particulars):
+                     if pd.notna(particular) and str(particular).strip():
+                        all_data_rows.append({'Particulars': f"{right_header}|{str(particular).strip()}", 'Amount_CY': right_amounts_cy[i], 'Amount_PY': 0})
+            
+            else: # Process Vertical Format
+                particulars_col = next((col for col in df.columns if 'particular' in str(col).lower()), None)
+                cy_col = next((col for col in df.columns if 'cy' in str(col).lower() or 'current' in str(col).lower()), None)
+                py_col = next((col for col in df.columns if 'py' in str(col).lower() or 'previous' in str(col).lower()), None)
 
                 if not particulars_col or not cy_col:
-                    print(f"Skipping sheet '{sheet_name}': Could not identify required columns.")
+                    print(f"Could not identify Particulars/CY columns in sheet '{sheet_name}'. Skipping.")
                     continue
+                
+                df[cy_col] = clean_numeric(df[cy_col])
+                if py_col: df[py_col] = clean_numeric(df[py_col])
 
                 current_header = ""
                 for _, row in df.iterrows():
                     particular = str(row[particulars_col]).strip()
-                    is_header = pd.isna(row[cy_col]) or row[cy_col] == ''
-                    
-                    if is_header and 'total' not in particular.lower():
+                    # A row is a header if its amount is 0 and it's not a total row
+                    is_header = row[cy_col] == 0 and 'total' not in particular.lower()
+
+                    if is_header:
                         current_header = particular
                         continue
                     
-                    if 'total' in particular.lower() or not particular:
+                    if not particular or 'total' in particular.lower():
                         continue
-                        
+
                     contextual_key = f"{current_header}|{particular}" if current_header else particular
                     all_data_rows.append({
                         'Particulars': contextual_key,
-                        'Amount_CY': row.get(cy_col, 0),
-                        'Amount_PY': row.get(py_col, 0) if py_col else 0
+                        'Amount_CY': row[cy_col],
+                        'Amount_PY': row.get(py_col, 0)
                     })
 
         if not all_data_rows:
-            print("❌ Intake FAILED: Could not extract any valid data rows from the Excel file.")
+            print("❌ Intake FAILED: No valid data rows could be extracted from the Excel file.")
+            st.error("Data Intake Failed: The agent could not find any recognizable financial data in the uploaded Excel file. Please check the file format.")
             return None
 
-        # --- Final Cleanup and Return ---
-        final_df = pd.DataFrame(all_data_rows)
-        final_df['Amount_CY'] = pd.to_numeric(final_df['Amount_CY'], errors='coerce').fillna(0)
-        final_df['Amount_PY'] = pd.to_numeric(final_df['Amount_PY'], errors='coerce').fillna(0)
-        
-        print(f"✅ Intake SUCCESS: Extracted and contextualized {len(final_df)} data rows from all sheets.")
+        final_df = pd.DataFrame(all_data_rows).fillna(0)
+        print(f"✅ Intake SUCCESS: Extracted and contextualized {len(final_df)} data rows.")
+        # For debugging, you can uncomment the next line to see the extracted data in the logs
+        # print(final_df.to_string())
         return final_df
 
     except Exception as e:
-        print(f"❌ Intake FAILED with exception: {e}")
+        print(f"❌ Intake FAILED with a critical exception: {e}")
+        st.error(f"A critical error occurred during file intake: {e}")
         return None
