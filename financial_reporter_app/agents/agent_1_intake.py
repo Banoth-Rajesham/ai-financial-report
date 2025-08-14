@@ -1,74 +1,119 @@
 # ==============================================================================
-# FILE: agents/agent_1_intake.py (DEFINITIVE UPDATE)
+# FILE: agents/agent_1_intake.py (DEFINITIVE UPDATE WITH T-FORMAT SUPPORT)
 # ==============================================================================
 import pandas as pd
 
 def intelligent_data_intake_agent(file_object):
     """
-    AGENT 1: Reads Excel, finds financial data, and creates unique, contextual
+    AGENT 1: Reads Excel, intelligently detects if the format is T-account or
+    vertical, transforms T-accounts if necessary, and creates unique, contextual
     keys for each data row (e.g., "Header|Particular").
     """
     print("\n--- Agent 1 (Data Intake): Reading, parsing, and adding context... ---")
     try:
         xls = pd.ExcelFile(file_object)
-        source_df = None
-        # Find the first sheet that looks like it contains financial notes
+        all_data_rows = []
+
+        # Process every sheet to find financial data
         for sheet_name in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
-            for i in range(df.shape[1] - 1): # Check for at least 2 columns
-                col1, col2 = df.iloc[:, i], df.iloc[:, i + 1]
-                # Heuristics to find the right columns
-                is_text_col = col1.apply(lambda x: isinstance(x, str)).sum() > 5
-                is_num_col = pd.to_numeric(col2, errors='coerce').notna().sum() > 3
-                if is_text_col and is_num_col:
-                    # Check if a third column exists for PY data
-                    if df.shape[1] > i + 2 and pd.to_numeric(df.iloc[:, i + 2], errors='coerce').notna().sum() > 3:
-                        source_df = df.iloc[:, [i, i + 1, i + 2]].copy()
-                        source_df.columns = ['Particulars', 'Amount_CY', 'Amount_PY']
-                    else: # Handle cases with only one amount column
-                        source_df = df.iloc[:, [i, i + 1]].copy()
-                        source_df.columns = ['Particulars', 'Amount_CY']
-                        source_df['Amount_PY'] = 0
-                    source_df.dropna(subset=['Particulars'], inplace=True)
-                    break
-            if source_df is not None:
-                break
-
-        if source_df is None:
-            print("❌ Intake FAILED: Could not find valid [Text, Number] columns.")
-            return None
-
-        # Convert amount columns to numeric, filling errors with NaN
-        source_df['Amount_CY'] = pd.to_numeric(source_df['Amount_CY'], errors='coerce')
-        source_df['Amount_PY'] = pd.to_numeric(source_df['Amount_PY'], errors='coerce')
-
-        contextual_rows = []
-        current_header = ""
-        for _, row in source_df.iterrows():
-            particular = str(row['Particulars']).strip()
-            # A row is a header if it has text but NO numbers for CY or PY.
-            is_header = pd.isna(row['Amount_CY']) and pd.isna(row['Amount_PY'])
-
-            if is_header and 'total' not in particular.lower():
-                current_header = particular
-                continue # Skip to next row after identifying a header
-
-            # Skip blank rows or rows that are just totals
-            if 'total' in particular.lower() or not particular:
+            print(f"--- Processing sheet: {sheet_name} ---")
+            raw_df = pd.read_excel(xls, sheet_name=sheet_name, header=None).fillna('')
+            if raw_df.empty:
                 continue
 
-            # Create a unique key using the last known header.
-            # This is the key that will be looked up by Agent 3.
-            contextual_key = f"{current_header}|{particular}" if current_header else particular
+            # --- Detect Format (T-Account vs. Vertical) ---
+            is_t_format = False
+            header_row_index = 0
+            # Heuristic: A T-account has distinct left/right headers in the same row
+            for i, row in raw_df.head(15).iterrows():
+                row_str = ' '.join(str(c).lower() for c in row).strip()
+                t_format_keywords = (('liabilities' in row_str and 'assets' in row_str) or
+                                     ('debit' in row_str and 'credit' in row_str) or
+                                     ('dr.' in row_str and 'cr.' in row_str))
+                if t_format_keywords:
+                    is_t_format = True
+                    header_row_index = i
+                    print(f"Detected T-format in sheet '{sheet_name}' at row {i}.")
+                    break
+            
+            # Re-read the sheet with the correct header row
+            df = pd.read_excel(xls, sheet_name=sheet_name, header=header_row_index).dropna(how='all', axis=1)
+            df.columns = [str(c) for c in df.columns] # Ensure column names are strings
 
-            contextual_rows.append({
-                'Particulars': contextual_key,
-                'Amount_CY': row['Amount_CY'] if pd.notna(row['Amount_CY']) else 0,
-                'Amount_PY': row['Amount_PY'] if pd.notna(row['Amount_PY']) else 0
-            })
+            # --- Transform Data if T-Format ---
+            if is_t_format:
+                # Find the middle of the dataframe to split it
+                midpoint = len(df.columns) // 2
+                
+                # Left side of the T-account (e.g., Liabilities or Debits)
+                left_df = df.iloc[:, :midpoint].copy()
+                left_header = str(left_df.columns[0]).strip()
+                left_df.columns = ['Particulars', 'Amount_CY'] + ['Amount_PY'] * (len(left_df.columns) - 2)
+                for _, row in left_df.iterrows():
+                    particular = str(row['Particulars']).strip()
+                    if particular:
+                         all_data_rows.append({
+                            'Particulars': f"{left_header}|{particular}",
+                            'Amount_CY': row.get('Amount_CY', 0),
+                            'Amount_PY': row.get('Amount_PY', 0)
+                        })
 
-        final_df = pd.DataFrame(contextual_rows)
-        print(f"✅ Intake SUCCESS: Extracted and contextualized {len(final_df)} data rows.")
+                # Right side of the T-account (e.g., Assets or Credits)
+                right_df = df.iloc[:, midpoint:].copy()
+                right_header = str(right_df.columns[0]).strip()
+                right_df.columns = ['Particulars', 'Amount_CY'] + ['Amount_PY'] * (len(right_df.columns) - 2)
+                for _, row in right_df.iterrows():
+                    particular = str(row['Particulars']).strip()
+                    if particular:
+                        all_data_rows.append({
+                            'Particulars': f"{right_header}|{particular}",
+                            'Amount_CY': row.get('Amount_CY', 0),
+                            'Amount_PY': row.get('Amount_PY', 0)
+                        })
+            else: # --- Process Vertical Format ---
+                print(f"Detected Vertical format in sheet '{sheet_name}'.")
+                # Find the 'Particulars' and amount columns
+                particulars_col = None
+                cy_col, py_col = None, None
+                for col in df.columns:
+                    col_str = str(col).lower()
+                    if 'particular' in col_str and particulars_col is None: particulars_col = col
+                    if ('cy' in col_str or 'current' in col_str) and cy_col is None: cy_col = col
+                    if ('py' in col_str or 'previous' in col_str) and py_col is None: py_col = col
+
+                if not particulars_col or not cy_col:
+                    print(f"Skipping sheet '{sheet_name}': Could not identify required columns.")
+                    continue
+
+                current_header = ""
+                for _, row in df.iterrows():
+                    particular = str(row[particulars_col]).strip()
+                    is_header = pd.isna(row[cy_col]) or row[cy_col] == ''
+                    
+                    if is_header and 'total' not in particular.lower():
+                        current_header = particular
+                        continue
+                    
+                    if 'total' in particular.lower() or not particular:
+                        continue
+                        
+                    contextual_key = f"{current_header}|{particular}" if current_header else particular
+                    all_data_rows.append({
+                        'Particulars': contextual_key,
+                        'Amount_CY': row.get(cy_col, 0),
+                        'Amount_PY': row.get(py_col, 0) if py_col else 0
+                    })
+
+        if not all_data_rows:
+            print("❌ Intake FAILED: Could not extract any valid data rows from the Excel file.")
+            return None
+
+        # --- Final Cleanup and Return ---
+        final_df = pd.DataFrame(all_data_rows)
+        final_df['Amount_CY'] = pd.to_numeric(final_df['Amount_CY'], errors='coerce').fillna(0)
+        final_df['Amount_PY'] = pd.to_numeric(final_df['Amount_PY'], errors='coerce').fillna(0)
+        
+        print(f"✅ Intake SUCCESS: Extracted and contextualized {len(final_df)} data rows from all sheets.")
         return final_df
 
     except Exception as e:
