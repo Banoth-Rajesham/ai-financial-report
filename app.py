@@ -112,7 +112,7 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
     pdf.ln(10)
 
     # THIS IS THE ONLY LINE THAT HAS CHANGED
-    return pdf.output(dest='S')
+    return bytes(pdf.output(dest='S'))
 # --- MAIN APP UI ---
 
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
@@ -265,4 +265,5 @@ else:
         st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
+
 
