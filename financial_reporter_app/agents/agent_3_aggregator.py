@@ -16,6 +16,7 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
     }
 
     def initialize_structure(template):
+        """Pre-builds the nested dictionary structure with zero values."""
         initialized = {}
         for key, value in template.items():
             initialized[key] = initialize_structure(value) if isinstance(value, dict) else {'CY': 0, 'PY': 0}
@@ -25,12 +26,12 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
         """Recursively traverses the template and populates data via direct lookup."""
         level_total_cy, level_total_py = 0, 0
         for key, value in template_node.items():
-            if isinstance(value, dict): # It's a header/section, recurse deeper.
+            if isinstance(value, dict): # It's a header/section, so we recurse deeper.
                 sub_total_cy, sub_total_py = process_level(data_node[key], value)
                 data_node[key]['total'] = {'CY': sub_total_cy, 'PY': sub_total_py}
                 level_total_cy += sub_total_cy
                 level_total_py += sub_total_py
-            else: # It's a leaf node with an alias list.
+            else: # It's a leaf node with a list of aliases.
                 item_total_cy, item_total_py = 0, 0
                 aliases_to_check = value if isinstance(value, list) else [value]
                 
