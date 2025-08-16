@@ -1,16 +1,15 @@
 # ==============================================================================
-# FILE: agents/agent_3_aggregator.py (DEFINITIVE, CONTEXT-AWARE VERSION)
-# This version uses a precise lookup to guarantee 100% accurate calculations.
+# FILE: agents/agent_3_aggregator.py (DEFINITIVE UPDATE)
 # ==============================================================================
 def hierarchical_aggregator_agent(source_df, notes_structure):
     """
-    AGENT 3: Uses the detailed config to perform a precise lookup against the
-    contextual data from Agent 1, ensuring every value is mapped correctly.
+    AGENT 3: Uses the explicit contextual aliases from the config to perform a
+    direct, fast, and accurate lookup against the data from Agent 1.
     """
-    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data via contextual lookup... ---")
+    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data via direct lookup... ---")
     
-    # Create a lookup dictionary for instantaneous access.
-    # The keys are the "Header|Particular" strings from Agent 1.
+    # Create a lookup dictionary for fast O(1) access.
+    # The keys are the unique contextual strings created by Agent 1.
     data_lookup = {
         row['Particulars'].lower().strip(): {'CY': row['Amount_CY'], 'PY': row['Amount_PY']}
         for _, row in source_df.iterrows()
@@ -24,7 +23,7 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
         return initialized
 
     def process_level(data_node, template_node):
-        """Recursively traverses the template and populates data via a direct, precise lookup."""
+        """Recursively traverses the template and populates data via direct lookup."""
         level_total_cy, level_total_py = 0, 0
         for key, value in template_node.items():
             if isinstance(value, dict): # It's a header/section, so we recurse deeper.
@@ -34,18 +33,15 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
                 level_total_py += sub_total_py
             else: # It's a leaf node with a list of aliases.
                 item_total_cy, item_total_py = 0, 0
-                aliases = value if isinstance(value, list) else [value]
+                aliases_to_check = value if isinstance(value, list) else [value]
                 
-                # Iterate through all aliases for the current item
-                for alias in aliases:
-                    # Prepare the alias for a direct, case-insensitive lookup
+                for alias in aliases_to_check:
+                    # Directly look up the alias (which is now the full contextual key)
                     search_key = alias.lower().strip()
-                    
-                    # This is the key logic: a direct, precise lookup in our dictionary.
-                    # It is much faster and more accurate than a keyword search.
                     if search_key in data_lookup:
-                        item_total_cy += data_lookup[search_key]['CY']
-                        item_total_py += data_lookup[search_key]['PY']
+                        matched_data = data_lookup[search_key]
+                        item_total_cy += matched_data['CY']
+                        item_total_py += matched_data['PY']
 
                 data_node[key] = {'CY': item_total_cy, 'PY': item_total_py}
                 level_total_cy += item_total_cy
@@ -60,8 +56,8 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
             aggregated_data[note_num] = {
                 'total': {'CY': note_total_cy, 'PY': note_total_py},
                 'sub_items': sub_items_result,
-                'title': note_data.get('title', '')
+                'title': note_data['title']
             }
 
-    print("✅ Aggregation SUCCESS: Contextual data fully processed and mapped.")
+    print("✅ Aggregation SUCCESS: Contextual data processed into hierarchical structure.")
     return aggregated_data
