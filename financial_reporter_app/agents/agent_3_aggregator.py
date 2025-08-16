@@ -1,71 +1,53 @@
 # ==============================================================================
-# FILE: agents/agent_3_aggregator.py (DEFINITIVE MASTER VERSION)
+# FILE: agents/agent_3_aggregator.py (DEFINITIVE, PROVEN VERSION)
 # ==============================================================================
 def hierarchical_aggregator_agent(source_df, notes_structure):
     """
-    AGENT 3: Uses the detailed aliases from the config to perform a fast and
-    accurate lookup against the contextual data from Agent 1.
+    AGENT 3: Uses the proven keyword search logic from the Colab script to
+    find and aggregate data based on the mapping structure.
     """
-    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data via direct lookup... ---")
-    
-    # Create a lookup dictionary from the context-aware keys for instant access
-    data_lookup = {
-        row['Particulars'].lower().strip(): {'CY': row['Amount_CY'], 'PY': row['Amount_PY']}
-        for _, row in source_df.iterrows()
-    }
+    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data... ---")
+    source_df['Particulars_clean'] = source_df['Particulars'].str.lower().str.strip()
 
-    def initialize_structure(template):
+    def initialize_structure(sub_items_template):
         initialized = {}
-        for key, value in template.items():
+        for key, value in sub_items_template.items():
             initialized[key] = initialize_structure(value) if isinstance(value, dict) else {'CY': 0, 'PY': 0}
         return initialized
 
-    def process_level(data_node, template_node, header_context=""):
-        level_total_cy, level_total_py = 0, 0
-        for key, value in template_node.items():
-            # The current path in the dictionary acts as our header context
-            current_context = f"{header_context}|{key}" if header_context else key
-            
-            if isinstance(value, dict): # It's a header/section, so we recurse deeper.
-                sub_total_cy, sub_total_py = process_level(data_node[key], value, current_context)
-                data_node[key]['total'] = {'CY': sub_total_cy, 'PY': sub_total_py}
-                level_total_cy += sub_total_cy
-                level_total_py += sub_total_py
-            else: # It's a leaf node with a list of aliases.
+    def match_and_aggregate(current_data, current_template, full_df):
+        total_cy, total_py = 0, 0
+        for key, template_value in current_template.items():
+            if isinstance(template_value, dict):
+                sub_total_cy, sub_total_py = match_and_aggregate(current_data[key], template_value, full_df)
+                current_data[key]['total'] = {'CY': sub_total_cy, 'PY': sub_total_py}
+                total_cy += sub_total_cy
+                total_py += sub_total_py
+            else:
                 item_total_cy, item_total_py = 0, 0
-                aliases = value if isinstance(value, list) else [value]
-                
-                for alias in aliases:
-                    # Construct the full contextual key to search for, e.g., "header|alias"
-                    search_key_contextual = f"{header_context}|{alias}".lower().strip()
-                    search_key_simple = alias.lower().strip()
+                keywords = [kw.lower().strip() for kw in (template_value if isinstance(template_value, list) else [template_value])]
+                pattern = '|'.join([r'\b' + kw.replace(r'(', r'\(').replace(r')', r'\)').replace('.', r'\.') + r'\b' for kw in keywords])
+                matched_rows = full_df[full_df['Particulars_clean'].str.contains(pattern, na=False, regex=True)]
 
-                    # First, try a direct match with the full context
-                    if search_key_contextual in data_lookup:
-                        item_total_cy += data_lookup[search_key_contextual]['CY']
-                        item_total_py += data_lookup[search_key_contextual]['PY']
-                    # If that fails, try matching the alias as a simple key (for top-level items)
-                    elif search_key_simple in data_lookup:
-                         item_total_cy += data_lookup[search_key_simple]['CY']
-                         item_total_py += data_lookup[search_key_simple]['PY']
+                if not matched_rows.empty:
+                    item_total_cy += matched_rows['Amount_CY'].sum()
+                    item_total_py += matched_rows['Amount_PY'].sum()
 
-                data_node[key] = {'CY': item_total_cy, 'PY': item_total_py}
-                level_total_cy += item_total_cy
-                level_total_py += item_total_py
-        return level_total_cy, level_total_py
+                current_data[key] = {'CY': item_total_cy, 'PY': item_total_py}
+                total_cy += item_total_cy
+                total_py += item_total_py
+        return total_cy, total_py
 
     aggregated_data = {}
     for note_num, note_data in notes_structure.items():
         if 'sub_items' in note_data:
             sub_items_result = initialize_structure(note_data['sub_items'])
-            # Pass the note title as the initial header context
-            note_title_context = note_data.get('title', '')
-            note_total_cy, note_total_py = process_level(sub_items_result, note_data['sub_items'])
+            note_total_cy, note_total_py = match_and_aggregate(sub_items_result, note_data['sub_items'], source_df)
+
             aggregated_data[note_num] = {
                 'total': {'CY': note_total_cy, 'PY': note_total_py},
                 'sub_items': sub_items_result,
-                'title': note_title_context
+                'title': note_data['title']
             }
-
-    print("✅ Aggregation SUCCESS: Contextual data fully processed.")
+    print("✅ Aggregation & Propagation SUCCESS: Data processed into hierarchical structure.")
     return aggregated_data
