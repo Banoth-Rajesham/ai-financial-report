@@ -1,6 +1,7 @@
 # ==============================================================================
-# FILE: agents/agent_5_reporter.py (DEFINITIVE, WITH PROFESSIONAL STYLING)
-# This version creates a visually appealing Excel report with colors and borders.
+# FILE: agents/agent_5_reporter.py (DEFINITIVE, FINAL, ERROR-FREE VERSION)
+# This agent is perfectly synchronized with the master config.py to produce
+# the exact styled output you have designed.
 # ==============================================================================
 import pandas as pd
 import io
@@ -9,233 +10,136 @@ from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def report_finalizer_agent(aggregated_data, company_name):
     """
-    AGENT 5: Takes final data and writes a complete, multi-sheet Excel report
-    with professional styling inspired by the Someka template.
+    AGENT 5: Takes the final data and writes a complete, multi-sheet Excel report
+    that is a perfect, styled replica of the master config blueprint.
     """
     print("\n--- Agent 5 (Report Finalizer): Generating final styled Excel report... ---")
     try:
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
-            
-            # --- DEFINE COLOR PALETTE AND STYLES ---
-            colors = {
-                'asset_bg': '#E2EFDA',
-                'lia_bg': '#FDE9D9',
-                'eq_bg': '#D9E1F2',
-                'total_bg_asset': '#C6E0B4',
-                'total_bg_lia': '#F8CBAD',
-                'total_bg_eq': '#B4C6E7',
-                'grand_total_bg': '#A9D08E',
-                'header_bg': '#44546A',
-                'header_font': '#FFFFFF',
-                'border_light': '#D0D0D0',
-                'border_dark': '#000000'
-            }
 
             # --- DEFINE CELL FORMATS ---
-            # Main Headers
-            fmt_header_assets = workbook.add_format({'bold': True, 'font_color': colors['header_font'], 'bg_color': colors['header_bg'], 'align': 'center', 'valign': 'vcenter', 'border': 1})
-            fmt_header_lia = workbook.add_format({'bold': True, 'font_color': colors['header_font'], 'bg_color': colors['header_bg'], 'align': 'center', 'valign': 'vcenter', 'border': 1})
-            fmt_header_eq = workbook.add_format({'bold': True, 'font_color': colors['header_font'], 'bg_color': colors['header_bg'], 'align': 'center', 'valign': 'vcenter', 'border': 1})
-            
-            # Sub-Header Formats
-            fmt_subheader_asset = workbook.add_format({'bold': True, 'bg_color': colors['asset_bg'], 'top': 1, 'bottom': 1, 'border_color': colors['border_dark']})
-            fmt_subheader_lia = workbook.add_format({'bold': True, 'bg_color': colors['lia_bg'], 'top': 1, 'bottom': 1, 'border_color': colors['border_dark']})
-            fmt_subheader_eq = workbook.add_format({'bold': True, 'bg_color': colors['eq_bg'], 'top': 1, 'bottom': 1, 'border_color': colors['border_dark']})
+            title_format = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter'})
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#DDEBF7', 'border': 1, 'align': 'center', 'valign': 'vcenter'})
+            sub_header_format = workbook.add_format({'bold': True})
+            total_format = workbook.add_format({'bold': True, 'top': 1})
+            item_format = workbook.add_format({}) # Basic format for items
+            num_format = workbook.add_format({'num_format': '#,##0.00'})
+            total_num_format = workbook.add_format({'bold': True, 'top': 1, 'num_format': '#,##0.00'})
 
-            # Data Row Formats
-            num_format = '#,##0'
-            fmt_data_asset = workbook.add_format({'bg_color': colors['asset_bg'], 'num_format': num_format})
-            fmt_data_lia = workbook.add_format({'bg_color': colors['lia_bg'], 'num_format': num_format})
-            fmt_data_eq = workbook.add_format({'bg_color': colors['eq_bg'], 'num_format': num_format})
+            # --- 1. RENDER THE MAIN SHEETS (BALANCE SHEET & P&L) ---
+            for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
+                worksheet = workbook.add_worksheet(sheet_name)
+                worksheet.set_column('A:A', 5)
+                worksheet.set_column('B:B', 65)
+                worksheet.set_column('C:C', 8)
+                worksheet.set_column('D:E', 20)
 
-            # Total Row Formats
-            fmt_total_asset = workbook.add_format({'bold': True, 'bg_color': colors['total_bg_asset'], 'num_format': num_format, 'top': 1, 'bottom': 1})
-            fmt_total_lia = workbook.add_format({'bold': True, 'bg_color': colors['total_bg_lia'], 'num_format': num_format, 'top': 1, 'bottom': 1})
-            fmt_total_eq = workbook.add_format({'bold': True, 'bg_color': colors['total_bg_eq'], 'num_format': num_format, 'top': 1, 'bottom': 1})
-            
-            # Grand Total Format
-            fmt_grand_total = workbook.add_format({'bold': True, 'bg_color': colors['grand_total_bg'], 'num_format': num_format, 'top': 1, 'bottom': 2})
+                # Write Titles
+                worksheet.merge_range('A1:E1', company_name, title_format)
+                worksheet.merge_range('A2:E2', sheet_name, title_format)
 
-            # --- 1. RENDER THE BALANCE SHEET ---
-            bs_sheet = workbook.add_worksheet("Balance Sheet")
-            bs_sheet.hide_gridlines(2)
-            bs_sheet.set_column('A:A', 25)
-            bs_sheet.set_column('B:C', 18)
-            bs_sheet.set_column('D:D', 5) # Spacer column
-            bs_sheet.set_column('E:E', 25)
-            bs_sheet.set_column('F:G', 18)
-            
-            # --- ASSETS SIDE ---
-            bs_sheet.merge_range('A1:C1', 'ASSETS', fmt_header_assets)
-            bs_sheet.write('A2', 'Line Item', bold_format)
-            bs_sheet.write('B2', 'Beginning Balance', bold_format)
-            bs_sheet.write('C2', 'End Balance', bold_format)
-            
-            # Get data from notes
-            get_total = lambda key, yr: aggregated_data.get(str(key), {}).get('total', {}).get(yr, 0)
+                row_num = 3 # Start writing from the 4th row
+                
+                # Helper to calculate totals based on note numbers from the template
+                def get_total_for_notes(note_list, year):
+                    if not isinstance(note_list, list): return 0
+                    return sum(aggregated_data.get(str(n), {}).get('total', {}).get(year, 0) for n in note_list)
 
-            # Current Assets
-            row = 2
-            bs_sheet.write(row, 0, 'Current Assets', fmt_subheader_asset)
-            bs_sheet.write(row, 1, None, fmt_subheader_asset)
-            bs_sheet.write(row, 2, None, fmt_subheader_asset)
-            row += 1
-            
-            # Cash and cash equivalents
-            bs_sheet.write(row, 0, 'Cash', fmt_data_asset)
-            bs_sheet.write(row, 1, get_total(18, 'PY'), fmt_data_asset)
-            bs_sheet.write(row, 2, get_total(18, 'CY'), fmt_data_asset)
-            row += 1
-            
-            # Trade Receivables
-            bs_sheet.write(row, 0, 'Trade Accounts Receivable', fmt_data_asset)
-            bs_sheet.write(row, 1, get_total(17, 'PY'), fmt_data_asset)
-            bs_sheet.write(row, 2, get_total(17, 'CY'), fmt_data_asset)
-            row += 1
-            
-            # Inventories
-            bs_sheet.write(row, 0, 'Inventories', fmt_data_asset)
-            bs_sheet.write(row, 1, get_total(16, 'PY'), fmt_data_asset)
-            bs_sheet.write(row, 2, get_total(16, 'CY'), fmt_data_asset)
-            row += 5 # Add empty rows
-            
-            # Total Current Assets
-            total_ca_py = get_total(18, 'PY') + get_total(17, 'PY') + get_total(16, 'PY')
-            total_ca_cy = get_total(18, 'CY') + get_total(17, 'CY') + get_total(16, 'CY')
-            bs_sheet.write(row, 0, 'Total Current Assets', fmt_total_asset)
-            bs_sheet.write(row, 1, total_ca_py, fmt_total_asset)
-            bs_sheet.write(row, 2, total_ca_cy, fmt_total_asset)
-            row += 1
+                for row_data in template:
+                    col_a, particulars, note, row_type = row_data
 
-            # Non-Current Assets
-            bs_sheet.write(row, 0, 'Non-Current Assets', fmt_subheader_asset)
-            bs_sheet.write(row, 1, None, fmt_subheader_asset)
-            bs_sheet.write(row, 2, None, fmt_subheader_asset)
-            row += 1
-            
-            # Fixed Assets
-            bs_sheet.write(row, 0, 'Property, Plant & Equipment', fmt_data_asset)
-            bs_sheet.write(row, 1, get_total(11, 'PY'), fmt_data_asset)
-            bs_sheet.write(row, 2, get_total(11, 'CY'), fmt_data_asset)
-            row += 1
-            
-            # Non-current Investments
-            bs_sheet.write(row, 0, 'Equity Investments', fmt_data_asset)
-            bs_sheet.write(row, 1, get_total(12, 'PY'), fmt_data_asset)
-            bs_sheet.write(row, 2, get_total(12, 'CY'), fmt_data_asset)
-            row += 1
-            
-            # Total Non-Current Assets
-            total_nca_py = get_total(11, 'PY') + get_total(12, 'PY')
-            total_nca_cy = get_total(11, 'CY') + get_total(12, 'CY')
-            bs_sheet.write(row, 0, 'Total Non-Current Assets', fmt_total_asset)
-            bs_sheet.write(row, 1, total_nca_py, fmt_total_asset)
-            bs_sheet.write(row, 2, total_nca_cy, fmt_total_asset)
-            row += 1
-            
-            # Total Assets
-            bs_sheet.write(row, 0, 'Total Assets', fmt_grand_total)
-            bs_sheet.write(row, 1, total_ca_py + total_nca_py, fmt_grand_total)
-            bs_sheet.write(row, 2, total_ca_cy + total_nca_cy, fmt_grand_total)
+                    if row_type == "header_col":
+                        worksheet.write('B3', particulars, header_format)
+                        worksheet.write('C3', note, header_format)
+                        worksheet.write('D3', "As at March 31, 2025", header_format)
+                        worksheet.write('E3', "As at March 31, 2024", header_format)
+                        continue
 
+                    cy_val, py_val = None, None
 
-            # --- LIABILITIES & EQUITY SIDE ---
-            bs_sheet.merge_range('E1:G1', 'LIABILITIES & EQUITY', fmt_header_lia)
-            bs_sheet.write('E2', 'Line Item', bold_format)
-            bs_sheet.write('F2', 'Beginning Balance', bold_format)
-            bs_sheet.write('G2', 'End Balance', bold_format)
-            
-            row = 2
-            # Current Liabilities
-            bs_sheet.write(row, 4, 'Current Liabilities', fmt_subheader_lia)
-            bs_sheet.write(row, 5, None, fmt_subheader_lia)
-            bs_sheet.write(row, 6, None, fmt_subheader_lia)
-            row += 1
-            
-            # Short-Term Debt
-            bs_sheet.write(row, 4, 'Short-Term Debt', fmt_data_lia)
-            bs_sheet.write(row, 5, get_total(7, 'PY'), fmt_data_lia)
-            bs_sheet.write(row, 6, get_total(7, 'CY'), fmt_data_lia)
-            row += 1
-            
-            # Trade Accounts Payable
-            bs_sheet.write(row, 4, 'Trade Accounts Payable', fmt_data_lia)
-            bs_sheet.write(row, 5, get_total(8, 'PY'), fmt_data_lia)
-            bs_sheet.write(row, 6, get_total(8, 'CY'), fmt_data_lia)
-            row += 1
-            
-            # Other Accrued Liabilities
-            bs_sheet.write(row, 4, 'Other Accrued Liabilities', fmt_data_lia)
-            bs_sheet.write(row, 5, get_total(9, 'PY'), fmt_data_lia)
-            bs_sheet.write(row, 6, get_total(9, 'CY'), fmt_data_lia)
-            row += 1
-            
-            # Total Current Liabilities
-            total_cl_py = get_total(7, 'PY') + get_total(8, 'PY') + get_total(9, 'PY')
-            total_cl_cy = get_total(7, 'CY') + get_total(8, 'CY') + get_total(9, 'CY')
-            bs_sheet.write(row, 4, 'Total Current Liabilities', fmt_total_lia)
-            bs_sheet.write(row, 5, total_cl_py, fmt_total_lia)
-            bs_sheet.write(row, 6, total_cl_cy, fmt_total_lia)
-            row += 1
-            
-            # Non-Current Liabilities
-            bs_sheet.write(row, 4, 'Non-Current Liabilities', fmt_subheader_lia)
-            bs_sheet.write(row, 5, None, fmt_subheader_lia)
-            bs_sheet.write(row, 6, None, fmt_subheader_lia)
-            row += 1
-            
-            # Long-Term Debt
-            bs_sheet.write(row, 4, 'Long-Term Debt', fmt_data_lia)
-            bs_sheet.write(row, 5, get_total(3, 'PY'), fmt_data_lia)
-            bs_sheet.write(row, 6, get_total(3, 'CY'), fmt_data_lia)
-            row += 1
-            
-            # Total Non-Current Liabilities
-            total_ncl_py = get_total(3, 'PY')
-            total_ncl_cy = get_total(3, 'CY')
-            bs_sheet.write(row, 4, 'Total Non-Current Liabilities', fmt_total_lia)
-            bs_sheet.write(row, 5, total_ncl_py, fmt_total_lia)
-            bs_sheet.write(row, 6, total_ncl_cy, fmt_total_lia)
-            row += 1
-            
-            # Total Liabilities
-            bs_sheet.write(row, 4, 'Total Liabilities', fmt_total_lia)
-            bs_sheet.write(row, 5, total_cl_py + total_ncl_py, fmt_total_lia)
-            bs_sheet.write(row, 6, total_cl_cy + total_ncl_cy, fmt_total_lia)
-            row += 1
-            
-            # Equity
-            bs_sheet.write(row, 4, 'EQUITY', fmt_subheader_eq)
-            bs_sheet.write(row, 5, None, fmt_subheader_eq)
-            bs_sheet.write(row, 6, None, fmt_subheader_eq)
-            row += 1
-            
-            # Common Shares
-            bs_sheet.write(row, 4, 'Common Shares', fmt_data_eq)
-            bs_sheet.write(row, 5, get_total(1, 'PY'), fmt_data_eq)
-            bs_sheet.write(row, 6, get_total(1, 'CY'), fmt_data_eq)
-            row += 1
-            
-            # Retained Earnings
-            bs_sheet.write(row, 4, 'Retained Earnings', fmt_data_eq)
-            bs_sheet.write(row, 5, get_total(2, 'PY'), fmt_data_eq)
-            bs_sheet.write(row, 6, get_total(2, 'CY'), fmt_data_eq)
-            row += 1
-            
-            # Total Equity
-            total_eq_py = get_total(1, 'PY') + get_total(2, 'PY')
-            total_eq_cy = get_total(1, 'CY') + get_total(2, 'CY')
-            bs_sheet.write(row, 4, 'Total Equity', fmt_total_eq)
-            bs_sheet.write(row, 5, total_eq_py, fmt_total_eq)
-            bs_sheet.write(row, 6, total_eq_cy, fmt_total_eq)
-            row += 1
+                    if row_type in ["item", "item_sub", "item_no_alpha"]:
+                        note_total = aggregated_data.get(str(note), {}).get('total', {})
+                        cy_val = note_total.get('CY', 0)
+                        py_val = note_total.get('PY', 0)
+                    
+                    elif row_type == "total":
+                        if note == 'PBT':
+                            rev_cy = get_total_for_notes(['21', '22'], 'CY')
+                            rev_py = get_total_for_notes(['21', '22'], 'PY')
+                            exp_cy = get_total_for_notes(['23', '24', '25', '11', '26'], 'CY')
+                            exp_py = get_total_for_notes(['23', '24', '25', '11', '26'], 'PY')
+                            cy_val = rev_cy - exp_cy
+                            py_val = rev_py - exp_py
+                        elif note == 'PAT':
+                             rev_cy = get_total_for_notes(['21', '22'], 'CY')
+                             rev_py = get_total_for_notes(['21', '22'], 'PY')
+                             exp_cy = get_total_for_notes(['23', '24', '25', '11', '26'], 'CY')
+                             exp_py = get_total_for_notes(['23', '24', '25', '11', '26'], 'PY')
+                             pbt_cy = rev_cy - exp_cy
+                             pbt_py = rev_py - exp_py
+                             tax_cy = get_total_for_notes(['4'], 'CY') # Simplified tax
+                             tax_py = get_total_for_notes(['4'], 'PY')
+                             cy_val = pbt_cy - tax_cy
+                             py_val = pbt_py - tax_py
+                        else:
+                            cy_val = get_total_for_notes(note, 'CY')
+                            py_val = get_total_for_notes(note, 'PY')
+                    
+                    # Write the row data based on its type
+                    if row_type in ["header", "sub_header", "item_no_note_sub"]:
+                        worksheet.write(row_num, 0, col_a, sub_header_format)
+                        worksheet.write(row_num, 1, particulars, sub_header_format)
+                    elif row_type == "total":
+                        worksheet.write(row_num, 1, particulars, total_format)
+                        worksheet.write(row_num, 3, cy_val, total_num_format)
+                        worksheet.write(row_num, 4, py_val, total_num_format)
+                    else: # item, item_sub, item_no_note, etc.
+                        worksheet.write(row_num, 0, col_a, item_format)
+                        worksheet.write(row_num, 1, particulars, item_format)
+                        worksheet.write_string(row_num, 2, str(note) if note else '', item_format)
+                        worksheet.write_number(row_num, 3, cy_val if cy_val is not None else 0, num_format)
+                        worksheet.write_number(row_num, 4, py_val if py_val is not None else 0, num_format)
+                    
+                    row_num += 1
 
-            # Total Liabilities & Equity
-            bs_sheet.write(row, 4, 'Total Liabilities & Equity', fmt_grand_total)
-            bs_sheet.write(row, 5, total_cl_py + total_ncl_py + total_eq_py, fmt_grand_total)
-            bs_sheet.write(row, 6, total_cl_cy + total_ncl_cy + total_eq_cy, fmt_grand_total)
+            # --- 2. RENDER THE NOTE SHEETS ---
+            for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.')[0])):
+                note_data = aggregated_data.get(note_num_str)
+                if not note_data or 'sub_items' not in note_data: continue
+
+                sheet_name = f"Note {note_num_str}"
+                worksheet = workbook.add_worksheet(sheet_name)
+                worksheet.set_column('A:A', 65)
+                worksheet.set_column('B:C', 20)
+
+                worksheet.merge_range('A1:C1', f"Note {note_num_str}: {note_data.get('title', '')}", title_format)
+                worksheet.write('A3', 'Particulars', header_format)
+                worksheet.write('B3', 'As at March 31, 2025', header_format)
+                worksheet.write('C3', 'As at March 31, 2024', header_format)
+
+                row_num = 3 # Start after header
+                
+                def write_note_level(items, indent_level=0):
+                    nonlocal row_num
+                    for key, value in items.items():
+                        prefix = "    " * indent_level
+                        if isinstance(value, dict) and 'CY' in value:
+                            worksheet.write(row_num, 0, f"{prefix}{key}", item_format)
+                            worksheet.write_number(row_num, 1, value.get('CY', 0), num_format)
+                            worksheet.write_number(row_num, 2, value.get('PY', 0), num_format)
+                            row_num += 1
+                        elif isinstance(value, dict):
+                            worksheet.write(row_num, 0, f"{prefix}{key}", sub_header_format)
+                            row_num += 1
+                            write_note_level(value, indent_level + 1)
+                
+                write_note_level(note_data['sub_items'])
+                
+                worksheet.write(row_num, 0, "Total", total_format)
+                worksheet.write_number(row_num, 1, note_data.get('total', {}).get('CY', 0), total_num_format)
+                worksheet.write_number(row_num, 2, note_data.get('total', {}).get('PY', 0), total_num_format)
 
         print("✅ Report Finalizer SUCCESS: Styled Excel file created in memory.")
         return output.getvalue()
