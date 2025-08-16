@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (DEFINITIVE, WITH CORRECT IMPORTS)
+# FILE: app.py (DEFINITIVE, FINAL VERSION WITH CORRECT IMPORTS FOR YOUR REPO)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -9,12 +9,12 @@ import io
 from fpdf import FPDF
 import os
 
-# --- REAL AGENT IMPORTS (CORRECTED FOR STREAMLIT DEPLOYMENT) ---
-from agents.agent_1_intake import intelligent_data_intake_agent
-from agents.agent_2_ai_mapping import ai_mapping_agent
-from agents.agent_3_aggregator import hierarchical_aggregator_agent
-from agents.agent_4_validator import data_validation_agent
-from agents.agent_5_reporter import report_finalizer_agent
+# --- REAL AGENT IMPORTS (CORRECTED FOR YOUR EXACT GITHUB STRUCTURE) ---
+from financial_reporter_app.agents.agent_1_intake import intelligent_data_intake_agent
+from financial_reporter_app.agents.agent_2_ai_mapping import ai_mapping_agent
+from financial_reporter_app.agents.agent_3_aggregator import hierarchical_aggregator_agent
+from financial_reporter_app.agents.agent_4_validator import data_validation_agent
+from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agent
 from config import NOTES_STRUCTURE_AND_MAPPING, MASTER_TEMPLATE
 
 
@@ -38,7 +38,7 @@ def calculate_kpis(agg_data):
         get = lambda key, y=year: agg_data.get(str(key), {}).get('total', {}).get(y, 0)
 
         total_revenue = get('21') + get('22')
-        depreciation = agg_data.get('11', {}).get('sub_items', {}).get('Depreciation', {}).get(year, 0)
+        depreciation = agg_data.get('11', {}).get('sub_items', {}).get('Depreciation', {}).get(year, 0) if isinstance(agg_data.get('11', {}).get('sub_items'), dict) else 0
         total_expenses = get('23') + get('24') + get('25') + get('26') + depreciation
         net_profit = total_revenue - total_expenses
         
@@ -212,9 +212,9 @@ else:
     kpis = st.session_state.kpis
     kpi_cy, kpi_py = kpis['CY'], kpis['PY']
 
-    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py.get('Total Revenue') else 0
-    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py.get('Net Profit') else 0
-    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py.get('Total Assets') else 0
+    rev_growth = ((kpi_cy['Total Revenue'] - kpi_py['Total Revenue']) / kpi_py['Total Revenue']) * 100 if kpi_py.get('Total Revenue', 0) > 0 else 0
+    profit_growth = ((kpi_cy['Net Profit'] - kpi_py['Net Profit']) / kpi_py['Net Profit']) * 100 if kpi_py.get('Net Profit', 0) > 0 else 0
+    assets_growth = ((kpi_cy['Total Assets'] - kpi_py['Total Assets']) / kpi_py['Total Assets']) * 100 if kpi_py.get('Total Assets', 0) > 0 else 0
     dte_change = kpi_cy.get('Debt-to-Equity', 0) - kpi_py.get('Debt-to-Equity', 0)
 
     st.markdown(f"""
