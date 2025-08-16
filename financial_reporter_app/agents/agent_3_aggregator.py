@@ -1,20 +1,26 @@
 # ==============================================================================
-# FILE: agents/agent_3_aggregator.py (CORRECTED TO SUPPORT DETAILED CONFIG)
+# FILE: agents/agent_3_aggregator.py (DEFINITIVE CORRECTION)
 # ==============================================================================
 import pandas as pd
 
 def hierarchical_aggregator_agent(source_df, notes_structure):
     """
-    AGENT 3: Uses the detailed aliases from the config to perform a flexible and
-    accurate keyword search against the raw data from Agent 1.
+    AGENT 3: Uses the explicit contextual aliases from the config to perform a
+    flexible search against the contextual data from Agent 1, ensuring accurate
+    and detailed data aggregation.
     """
-    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data via detailed alias search... ---")
-
-    # Prepare the source dataframe by cleaning the 'Particulars' column for searching
-    source_df['Particulars_clean'] = source_df['Particulars'].str.lower().str.strip()
+    print("\n--- Agent 3 (Hierarchical Aggregator): Processing data via contextual search... ---")
     
-    # Create a copy to prevent modification issues during iteration
-    data_to_search = source_df.copy()
+    # Create a lookup dictionary from the source dataframe for fast access.
+    # The keys are the unique contextual strings created by Agent 1 (e.g., "Header|Particular").
+    # We clean them for reliable matching.
+    data_lookup = {
+        row['Particulars'].lower().strip(): {'CY': row['Amount_CY'], 'PY': row['Amount_PY']}
+        for _, row in source_df.iterrows()
+    }
+    
+    # Get a list of all available contextual keys from the source data
+    available_data_keys = list(data_lookup.keys())
 
     def initialize_structure(template):
         """Pre-builds the nested dictionary structure with zero values."""
@@ -24,7 +30,10 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
         return initialized
 
     def process_level(data_node, template_node):
-        """Recursively traverses the template and populates data via keyword search."""
+        """
+        Recursively traverses the template, searches for aliases within the
+        contextual keys, and aggregates the data.
+        """
         level_total_cy, level_total_py = 0, 0
         for key, value in template_node.items():
             if isinstance(value, dict):  # It's a header/section, so we recurse deeper.
@@ -36,15 +45,15 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
                 item_total_cy, item_total_py = 0, 0
                 aliases_to_check = value if isinstance(value, list) else [value]
                 
-                # Build a precise regex pattern from the aliases to search the dataframe
-                # Using word boundaries (\b) prevents partial matches (e.g., 'rent' matching 'current')
-                pattern = '|'.join([r'\b' + kw.lower().strip().replace(r'(', r'\(').replace(r')', r'\)').replace('.', r'\.') + r'\b' for kw in aliases_to_check])
-                
-                matched_rows = data_to_search[data_to_search['Particulars_clean'].str.contains(pattern, na=False, regex=True)]
-
-                if not matched_rows.empty:
-                    item_total_cy += matched_rows['Amount_CY'].sum()
-                    item_total_py += matched_rows['Amount_PY'].sum()
+                # This is the crucial logic: Search for aliases within the available data keys
+                for alias in aliases_to_check:
+                    search_term = alias.lower().strip()
+                    for data_key in available_data_keys:
+                        # If the alias is found within the contextual key, it's a match
+                        if search_term in data_key:
+                            matched_data = data_lookup[data_key]
+                            item_total_cy += matched_data.get('CY', 0)
+                            item_total_py += matched_data.get('PY', 0)
 
                 data_node[key] = {'CY': item_total_cy, 'PY': item_total_py}
                 level_total_cy += item_total_cy
@@ -62,5 +71,5 @@ def hierarchical_aggregator_agent(source_df, notes_structure):
                 'title': note_data['title']
             }
 
-    print("✅ Aggregation SUCCESS: Detailed alias search and data processing complete.")
+    print("✅ Aggregation SUCCESS: Contextual data processed into detailed hierarchical structure.")
     return aggregated_data
