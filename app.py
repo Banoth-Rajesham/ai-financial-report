@@ -195,4 +195,5 @@ else:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
     with col4:
         st.subheader("AI-Generated Insights")
-        st.markdown(ai_analysis)```
+        st.markdown(ai_analysis)
+
