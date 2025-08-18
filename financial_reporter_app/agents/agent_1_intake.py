@@ -1,19 +1,18 @@
 # ==============================================================================
-# FILE: agents/agent_1_intake.py (DEFINITIVE, CONTEXT-AWARE VERSION)
-# This version is required to work with the master config.py file.
+# FILE: agents/agent_1_intake.py (DEFINITIVE, WITH PY DATA DETECTION)
 # ==============================================================================
 import pandas as pd
 
 def intelligent_data_intake_agent(file_object):
     """
-    AGENT 1: Reads Excel, intelligently finds financial data sections, and creates
-    unique, contextual keys for each data row (e.g., "Header|Particular") to
-    ensure 100% accurate mapping with the detailed config.
+    AGENT 1: Reads Excel, creates contextual keys, AND detects if Previous Year
+    data is missing to ensure full Schedule III compliance.
     """
     print("\n--- Agent 1 (Data Intake): Reading, parsing, and adding context... ---")
     try:
         xls = pd.ExcelFile(file_object)
         all_contextual_rows = []
+        py_column_found = False # Flag to track if we find a PY column
 
         for sheet_name in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet_name, header=None)
@@ -24,11 +23,11 @@ def intelligent_data_intake_agent(file_object):
 
                 if is_text_col and is_num_col:
                     temp_df = None
-                    # Check for a third column for PY data
                     if df.shape[1] > i + 2 and pd.to_numeric(df.iloc[:, i + 2], errors='coerce').notna().sum() > 3:
                         temp_df = df.iloc[:, [i, i + 1, i + 2]].copy()
                         temp_df.columns = ['Particulars', 'Amount_CY', 'Amount_PY']
-                    else: # Handle cases with only one amount column
+                        py_column_found = True # We found a PY column!
+                    else:
                         temp_df = df.iloc[:, [i, i + 1]].copy()
                         temp_df.columns = ['Particulars', 'Amount_CY']
                         temp_df['Amount_PY'] = 0
@@ -40,17 +39,12 @@ def intelligent_data_intake_agent(file_object):
                     current_header = ""
                     for _, row in temp_df.iterrows():
                         particular = str(row['Particulars']).strip()
-                        # A row is a header if it has text but NO numbers. This is the key logic.
                         is_header = pd.isna(row['Amount_CY']) and pd.isna(row['Amount_PY'])
-
                         if is_header and 'total' not in particular.lower():
                             current_header = particular
                             continue
-                        
                         if not particular or 'total' in particular.lower():
                             continue
-
-                        # Create the crucial "Header|Particular" key.
                         contextual_key = f"{current_header}|{particular}" if current_header else particular
                         all_contextual_rows.append({
                             'Particulars': contextual_key,
@@ -60,13 +54,19 @@ def intelligent_data_intake_agent(file_object):
         
         if not all_contextual_rows:
             print("❌ Intake FAILED: Could not extract any valid contextual data.")
-            return None
+            return None, None
 
-        # Consolidate and remove any duplicates
         final_df = pd.DataFrame(all_contextual_rows).drop_duplicates()
+        
+        # --- NEW: Generate the warning if no PY column was ever found ---
+        intake_warning = None
+        if not py_column_found:
+            intake_warning = "⚠️ **Previous Year's data not found.** For full Schedule III compliance and accurate comparisons, please upload an Excel file that includes columns for both the current and previous year."
+            print(intake_warning)
+
         print(f"✅ Intake SUCCESS: Extracted and contextualized {len(final_df)} data rows.")
-        return final_df
+        return final_df, intake_warning
 
     except Exception as e:
         print(f"❌ Intake FAILED with exception: {e}")
-        return None
+        return None, None
