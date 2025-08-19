@@ -8,7 +8,7 @@ from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def report_finalizer_agent(aggregated_data, company_name):
     """
-    AGENT 5: Takes the final data and writes a complete, multi-sheet Excel report
+    AGENT 5: Takes final data and writes a complete, multi-sheet Excel report
     with professional styling inspired by the Abrikam Group income statement.
     """
     print("\n--- Agent 5 (Report Finalizer): Generating final styled Excel report... ---")
@@ -25,18 +25,19 @@ def report_finalizer_agent(aggregated_data, company_name):
                 'header_bg': '#F2F2F2', 'dark_grey': '#595959'
             }
             
-            # --- DEFINE PROFESSIONAL CELL FORMATS ---
+            # --- DEFINE ALL CELL FORMATS AT THE TOP LEVEL ---
             num_format_rupee = '_("₹"* #,##0_);_("₹"* (#,##0);_("-"??_);_(@_)'
             fmt_title = workbook.add_format({'bold': True, 'font_size': 20, 'align': 'center'})
             fmt_subtitle = workbook.add_format({'italic': True, 'font_size': 12, 'align': 'center'})
             fmt_header = workbook.add_format({'bold': True, 'bg_color': colors['header_bg'], 'align': 'center', 'bottom': 2, 'bottom_color': colors['dark_grey']})
+            bold_format = workbook.add_format({'bold': True})
 
             # Section headers
             fmt_sec_asset = workbook.add_format({'bold': True, 'font_color': colors['green_line'], 'bottom': 1, 'bottom_color': colors['green_line']})
             fmt_sec_lia_eq = workbook.add_format({'bold': True, 'font_color': colors['blue_line'], 'bottom': 1, 'bottom_color': colors['blue_line']})
             fmt_sec_exp = workbook.add_format({'bold': True, 'font_color': colors['red_line'], 'top': 1, 'top_color': colors['red_line']})
             
-            # Data formats with thin bottom border
+            # Data formats
             fmt_data_green = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['green_line']})
             fmt_data_red = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['red_line']})
             fmt_data_blue = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['blue_line']})
@@ -46,6 +47,7 @@ def report_finalizer_agent(aggregated_data, company_name):
             fmt_total_lia_eq = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'bottom': 1, 'num_format': num_format_rupee})
             fmt_total_exp = workbook.add_format({'bold': True, 'bg_color': colors['red_total'], 'font_color': colors['red_line'], 'top': 1, 'bottom': 1, 'num_format': num_format_rupee})
             fmt_net_income = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'bottom': 6, 'num_format': num_format_rupee})
+            fmt_grand_total = workbook.add_format({'bold': True, 'top': 1, 'bottom': 1, 'num_format': num_format_rupee}) # Generic total for notes
 
             # --- 1. RENDER P&L and Balance Sheet ---
             for sheet_name in ["Profit and Loss", "Balance Sheet"]:
@@ -72,10 +74,9 @@ def report_finalizer_agent(aggregated_data, company_name):
                     if row_type in ["item", "item_sub", "item_no_alpha"]:
                         note_total = aggregated_data.get(str(note), {}).get('total', {})
                         cy_val, py_val = note_total.get('CY', 0), note_total.get('PY', 0)
-                    elif row_type == "total":
-                        if isinstance(note, list):
-                            cy_val = sum(aggregated_data.get(str(n), {}).get('total', {}).get('CY', 0) for n in note)
-                            py_val = sum(aggregated_data.get(str(n), {}).get('total', {}).get('PY', 0) for n in note)
+                    elif row_type == "total" and isinstance(note, list):
+                        cy_val = sum(aggregated_data.get(str(n), {}).get('total', {}).get('CY', 0) for n in note)
+                        py_val = sum(aggregated_data.get(str(n), {}).get('total', {}).get('PY', 0) for n in note)
                     
                     if row_type in ["header", "sub_header"]:
                         fmt_to_use = fmt_sec_asset if is_asset else (fmt_sec_exp if is_exp else fmt_sec_lia_eq)
