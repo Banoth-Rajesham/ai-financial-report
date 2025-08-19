@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: app.py (FINAL, WITH TITLE ADDED)
+# FILE: app.py (FINAL, WITH TITLE ADDED + PY UPLOAD FLOW)
 # ==============================================================================
 import streamlit as st
 import pandas as pd
@@ -16,7 +16,6 @@ from financial_reporter_app.agents.agent_3_aggregator import hierarchical_aggreg
 from financial_reporter_app.agents.agent_4_validator import data_validation_agent
 from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agent
 from config import NOTES_STRUCTURE_AND_MAPPING
-
 
 # --- HELPER FUNCTIONS (for UI and PDF Generation) ---
 
@@ -78,6 +77,7 @@ class PDF(FPDF):
         self.set_y(-15)
         self.set_font('Arial', 'I', 8)
         self.cell(0, 10, f'Page {self.page_no()}', 0, 0, 'C')
+
 def create_professional_pdf(kpis, ai_analysis, company_name):
     """Creates a professional PDF report with text analysis."""
     pdf = PDF()
@@ -97,7 +97,7 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
         if key in ["Total Revenue", "Net Profit", "Total Assets", "Current Assets", "Fixed Assets", "Investments", "Other Assets"]:
             text_to_write = f"- {key}: INR {value:,.0f}"
         else:
-             text_to_write = f"- {key}: {value:.2f}"
+            text_to_write = f"- {key}: {value:.2f}"
         
         if text_to_write:
             pdf.cell(0, 8, text_to_write, ln=1, align='L')
@@ -113,12 +113,34 @@ def create_professional_pdf(kpis, ai_analysis, company_name):
 
     # THIS IS THE ONLY LINE THAT HAS CHANGED
     return bytes(pdf.output(dest='S'))
-# --- MAIN APP UI ---
 
+# ================== NEW CACHED PIPELINE FUNCTION ==================
+# Cache heavy processing to avoid recomputation after idle.
+@st.cache_data(show_spinner="Running full analysis pipeline...")
+def run_full_pipeline(source_df, company_name_for_cache):
+    """
+    Runs the computationally expensive agents on a finalized dataframe
+    (having 'Particulars', 'Amount_CY', 'Amount_PY') and caches the results.
+    """
+    refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
+    aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
+    if not aggregated_data:
+        return None, None, ["Pipeline Failed: Aggregation."]
+    warnings = data_validation_agent(aggregated_data)
+    excel_report_bytes = report_finalizer_agent(aggregated_data, company_name_for_cache)
+    if excel_report_bytes is None:
+        return None, None, ["Pipeline Failed: Report Finalizer."]
+    return aggregated_data, excel_report_bytes, warnings
+# ==================================================================
+
+# --- MAIN APP UI ---
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
-# Initialize session state variables
+# Initialize session state variables (expanded for PY flow)
 if 'report_generated' not in st.session_state: st.session_state.report_generated = False
+if 'awaiting_py_upload' not in st.session_state: st.session_state.awaiting_py_upload = False
+if 'cy_df' not in st.session_state: st.session_state.cy_df = None
+if 'final_df' not in st.session_state: st.session_state.final_df = None
 if 'excel_report_bytes' not in st.session_state: st.session_state.excel_report_bytes = None
 if 'aggregated_data' not in st.session_state: st.session_state.aggregated_data = None
 if 'kpis' not in st.session_state: st.session_state.kpis = None
@@ -165,36 +187,96 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-
-# --- SIDEBAR UI CONTROLS ---
+# ================== SIDEBAR UI CONTROLS (MODIFIED FOR PY FLOW) ==================
 with st.sidebar:
     st.header("Upload & Process")
-    uploaded_file = st.file_uploader("Upload Financial Data", type=["xlsx", "xls"])
     company_name = st.text_input("Enter Company Name", st.session_state.company_name)
 
-    if st.button("Generate Dashboard", type="primary", use_container_width=True):
-        if uploaded_file and company_name:
-            with st.spinner("Executing financial agent pipeline... Please wait."):
-                source_df = intelligent_data_intake_agent(uploaded_file)
-                if source_df is None: st.error("Pipeline Failed: Data Intake."); st.stop()
-                refined_mapping = ai_mapping_agent(source_df['Particulars'].unique().tolist(), NOTES_STRUCTURE_AND_MAPPING)
-                aggregated_data = hierarchical_aggregator_agent(source_df, refined_mapping)
-                if not aggregated_data: st.error("Pipeline Failed: Aggregation."); st.stop()
-                warnings = data_validation_agent(aggregated_data)
-                excel_report_bytes = report_finalizer_agent(aggregated_data, company_name)
-                if excel_report_bytes is None: st.error("Pipeline Failed: Report Finalizer."); st.stop()
+    if st.session_state.awaiting_py_upload:
+        st.warning("Previous Year (PY) data not found in the first file. Please upload the PY file.")
+        py_file = st.file_uploader("Upload Previous Year's Data for Schedule III compliance", type=["xlsx", "xls"], key="py_uploader")
+        
+        if st.button("Combine and Generate", type="primary", use_container_width=True):
+            if py_file and st.session_state.cy_df is not None:
+                with st.spinner("Processing and merging files..."):
+                    # Agent 1 returns a standardized dataframe; we only need the dataframe here.
+                    py_df, _ = intelligent_data_intake_agent(io.BytesIO(py_file.getvalue()))
+                    cy_df = st.session_state.cy_df
 
-            st.session_state.update(
-                report_generated=True, aggregated_data=aggregated_data, company_name=company_name,
-                excel_report_bytes=excel_report_bytes, kpis=calculate_kpis(aggregated_data)
-            )
-            st.rerun()
-        else:
-            st.warning("Please upload a file and enter a company name.")
+                    if py_df is not None:
+                        # Merge CY and PY using 'Particulars'; PY-only file has figures in its 'Amount_CY' column.
+                        merged_df = pd.merge(
+                            cy_df[['Particulars', 'Amount_CY']],
+                            py_df[['Particulars', 'Amount_CY']],
+                            on='Particulars', how='outer'
+                        ).rename(columns={'Amount_CY_x': 'Amount_CY', 'Amount_CY_y': 'Amount_PY'}).fillna(0)
 
-# --- MAIN DASHBOARD DISPLAY ---
+                        st.session_state.final_df = merged_df
+                        st.session_state.awaiting_py_upload = False
+                        st.rerun()
+                    else:
+                        st.error("Could not process the Previous Year file.")
+            else:
+                st.error("Please upload the Previous Year file to proceed.")
+    else:
+        uploaded_file = st.file_uploader("Upload Financial Data (CY or CY+PY)", type=["xlsx", "xls"], key="cy_uploader")
+
+        if st.button("Generate Dashboard", type="primary", use_container_width=True):
+            if uploaded_file and company_name:
+                with st.spinner("Processing file..."):
+                    # UPDATED: Agent 1 returns (source_df, has_py)
+                    source_df, has_py = intelligent_data_intake_agent(io.BytesIO(uploaded_file.getvalue()))
+
+                if source_df is None:
+                    st.error("Pipeline Failed: Could not read the uploaded file.")
+                elif has_py:
+                    # PY already present in uploaded file → proceed directly
+                    st.session_state.final_df = source_df
+                    st.session_state.company_name = company_name
+                    st.rerun()
+                else:
+                    # No PY present → store CY and prompt for PY
+                    st.session_state.cy_df = source_df
+                    st.session_state.company_name = company_name
+                    st.session_state.awaiting_py_upload = True
+                    st.rerun()
+            else:
+                st.warning("Please upload a file and enter a company name.")
+# ===============================================================================
+
+# ================== MAIN DASHBOARD PIPELINE & DISPLAY TRIGGER ==================
+# Run heavy pipeline only once we have a finalized dataframe (CY+PY)
+if st.session_state.final_df is not None and not st.session_state.awaiting_py_upload:
+    final_df = st.session_state.final_df
+    company_name = st.session_state.company_name
+
+    aggregated_data, excel_report_bytes, warnings = run_full_pipeline(final_df, company_name)
+
+    if aggregated_data is None:
+        st.error(warnings[0] if warnings else "Pipeline Failed.")
+    else:
+        # Surface any validation warnings
+        for w in warnings:
+            st.warning(w)
+
+        # Update state for display and downloads
+        st.session_state.update(
+            report_generated=True,
+            aggregated_data=aggregated_data,
+            excel_report_bytes=excel_report_bytes,
+            kpis=calculate_kpis(aggregated_data)
+        )
+        # Reset temp dataframes to clean state
+        st.session_state.final_df = None
+        st.session_state.cy_df = None
+        st.rerun()
+# ===============================================================================
+
+# --- MAIN DASHBOARD DISPLAY (UNCHANGED) ---
 if not st.session_state.report_generated:
-    st.markdown("<div class='main-title'><h1>Schedule III Financial Dashboard</h1><p>AI-powered analysis from any Excel format</p></div>", unsafe_allow_html=True)
+    # Hide title while waiting for PY to avoid confusion
+    if not st.session_state.awaiting_py_upload:
+        st.markdown("<div class='main-title'><h1>Schedule III Financial Dashboard</h1><p>AI-powered analysis from any Excel format</p></div>", unsafe_allow_html=True)
 else:
     # --- THIS IS THE NEW CODE YOU REQUESTED ---
     st.markdown("<div class='main-title'><h1>Schedule III Financial Dashboard</h1></div>", unsafe_allow_html=True)
@@ -222,7 +304,14 @@ else:
     with col1:
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
         months = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar']
-        revenue_df = pd.DataFrame({'Month': months * 2, 'Year': ['Previous Year'] * 12 + ['Current Year'] * 12, 'Revenue': np.concatenate([np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12), np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)])})
+        revenue_df = pd.DataFrame({
+            'Month': months * 2,
+            'Year': ['Previous Year'] * 12 + ['Current Year'] * 12,
+            'Revenue': np.concatenate([
+                np.linspace(kpi_py['Total Revenue']*0.07, kpi_py['Total Revenue']*0.09, 12),
+                np.linspace(kpi_cy['Total Revenue']*0.07, kpi_cy['Total Revenue']*0.09, 12)
+            ])
+        })
         fig_revenue = px.area(revenue_df, x='Month', y='Revenue', color='Year', title="<b>Revenue Trend</b>")
         fig_revenue.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0', legend=dict(yanchor="top", y=0.99, xanchor="left", x=0.01))
         st.plotly_chart(fig_revenue, use_container_width=True)
@@ -237,7 +326,10 @@ else:
 
     with col2:
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        asset_df = pd.DataFrame({ 'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'], 'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']] }).query("Value > 0")
+        asset_df = pd.DataFrame({
+            'Asset Type': ['Current Assets', 'Fixed Assets', 'Investments', 'Other Assets'],
+            'Value': [kpi_cy['Current Assets'], kpi_cy['Fixed Assets'], kpi_cy['Investments'], kpi_cy['Other Assets']]
+        }).query("Value > 0")
         fig_asset = px.pie(asset_df, names='Asset Type', values='Value', title="<b>Asset Distribution</b>")
         fig_asset.update_layout(paper_bgcolor='rgba(0,0,0,0)', font_color='#e0e0e0')
         st.plotly_chart(fig_asset, use_container_width=True)
@@ -257,7 +349,6 @@ else:
     st.subheader("Download Reports")
     
     ai_analysis = generate_ai_analysis(kpis)
-    
     pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
     
     d_col1, d_col2 = st.columns(2)
@@ -265,4 +356,3 @@ else:
         st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
-
