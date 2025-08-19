@@ -29,7 +29,7 @@ def report_finalizer_agent(aggregated_data, company_name):
             }
 
             # --- DEFINE CELL FORMATS ---
-            num_format_rupee = '_("₹"* #,##0.00_);_("₹"* (#,##0.00);_("-"??_);_(@_)'
+            num_format_rupee = '_("₹"* #,##0.00_);_("₹"* (#,##0.00);_("0.00"??_);_(@_)'
             fmt_title = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter', 'bg_color': colors['title_bg'], 'font_color': colors['title_font']})
             fmt_header = workbook.add_format({'bold': True, 'bg_color': colors['header_bg'], 'border': 1, 'border_color': colors['border'], 'align': 'center', 'valign': 'vcenter'})
             
@@ -121,3 +121,4 @@ def report_finalizer_agent(aggregated_data, company_name):
         print(f"❌ Report Finalizer FAILED with exception: {e}")
         traceback.print_exc()
         return None
+
