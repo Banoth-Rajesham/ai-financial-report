@@ -1,5 +1,5 @@
 # ==============================================================================
-# FILE: agents/agent_5_reporter.py (DEFINITIVE, FINAL VERSION WITH STYLING)
+# FILE: agents/agent_5_reporter.py (DEFINITIVE, FINAL VERSION WITH ABRIKAM STYLING)
 # ==============================================================================
 import pandas as pd
 import io
@@ -10,7 +10,7 @@ def report_finalizer_agent(aggregated_data, company_name):
     """
     AGENT 5: Takes the final data and writes a complete, multi-sheet Excel report
     that is a perfect, styled replica of the master config blueprint, using the
-    Rainbow Pastels color scheme.
+    professional Abrikam Group color scheme.
     """
     print("\n--- Agent 5 (Report Finalizer): Generating final styled Excel report... ---")
     try:
@@ -18,120 +18,114 @@ def report_finalizer_agent(aggregated_data, company_name):
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
 
-            # --- DEFINE RAINBOW PASTEL COLOR PALETTE ---
+            # --- DEFINE ABRIKAM COLOR PALETTE ---
             colors = {
-                'pink': '#FF9AA2', 'light_pink': '#FFB7B2', 'peach': '#FFDAC1',
-                'green': '#E2F0CB', 'teal': '#B5EAD7', 'lavender': '#C7CEEA',
-                'white': '#FFFFFF', 'dark_grey': '#595959'
+                'green_bg': '#E2EFDA', 'green_total': '#C6E0B4', 'green_line': '#70AD47',
+                'red_bg': '#FDE9D9', 'red_total': '#F8CBAD', 'red_line': '#FF0000',
+                'blue_bg': '#DDEBF7', 'blue_total': '#B4C6E7', 'blue_line': '#4472C4',
+                'header_bg': '#F2F2F2', 'dark_grey': '#595959'
             }
 
-            # --- DEFINE CELL FORMATS ---
-            fmt_title = workbook.add_format({'bold': True, 'font_size': 16, 'align': 'center', 'valign': 'vcenter', 'font_color': colors['dark_grey']})
-            fmt_header = workbook.add_format({'bold': True, 'font_size': 11, 'bg_color': colors['pink'], 'font_color': colors['white'], 'border': 1, 'align': 'center', 'valign': 'vcenter'})
-            fmt_subheader = workbook.add_format({'bold': True, 'font_size': 11, 'bg_color': colors['light_pink'], 'font_color': colors['dark_grey']})
+            # --- DEFINE PROFESSIONAL CELL FORMATS ---
+            num_format_rupee = '_("₹"* #,##0_);_("₹"* (#,##0);_("-"??_);_(@_)'
+            fmt_title = workbook.add_format({'bold': True, 'font_size': 20, 'align': 'center'})
+            fmt_subtitle = workbook.add_format({'italic': True, 'font_size': 12, 'align': 'center'})
+            fmt_header = workbook.add_format({'bold': True, 'bg_color': colors['header_bg'], 'align': 'center', 'bottom': 2, 'bottom_color': colors['dark_grey']})
+
+            # Section headers
+            fmt_sec_rev = workbook.add_format({'bold': True, 'font_color': colors['green_line'], 'bottom': 1, 'bottom_color': colors['green_line']})
+            fmt_sec_exp = workbook.add_format({'bold': True, 'font_color': colors['red_line'], 'top': 1, 'top_color': colors['red_line']})
+            fmt_sec_net = workbook.add_format({'bold': True, 'font_color': colors['blue_line'], 'top': 1, 'top_color': colors['blue_line']})
+
+            # Data formats with color
+            fmt_data_green = workbook.add_format({'num_format': num_format_rupee, 'bg_color': colors['green_bg']})
+            fmt_data_red = workbook.add_format({'num_format': num_format_rupee, 'bg_color': colors['red_bg']})
+            fmt_data_blue = workbook.add_format({'num_format': num_format_rupee, 'bg_color': colors['blue_bg']})
             
-            # Create formats for each color category
-            fmt_data_eq = workbook.add_format({'bg_color': colors['lavender'], 'num_format': '#,##0.00'})
-            fmt_data_lia = workbook.add_format({'bg_color': colors['peach'], 'num_format': '#,##0.00'})
-            fmt_data_asset = workbook.add_format({'bg_color': colors['green'], 'num_format': '#,##0.00'})
-            
-            fmt_total = workbook.add_format({'bold': True, 'top': 1, 'num_format': '#,##0.00'})
-            fmt_grand_total = workbook.add_format({'bold': True, 'bg_color': colors['teal'], 'font_color': colors['dark_grey'], 'top': 1, 'bottom': 2, 'num_format': '#,##0.00'})
+            # Total formats
+            fmt_total_rev = workbook.add_format({'bold': True, 'bg_color': colors['green_total'], 'font_color': colors['green_line'], 'top': 1, 'bottom': 1, 'top_color': colors['green_line'], 'bottom_color': colors['green_line'], 'num_format': num_format_rupee})
+            fmt_total_exp = workbook.add_format({'bold': True, 'bg_color': colors['red_total'], 'font_color': colors['red_line'], 'top': 1, 'bottom': 1, 'top_color': colors['red_line'], 'bottom_color': colors['red_line'], 'num_format': num_format_rupee})
+            fmt_net_income = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'top_color': colors['blue_line'], 'bottom': 6, 'bottom_color': colors['blue_line'], 'num_format': num_format_rupee})
+
 
             # --- 1. RENDER THE MAIN SHEETS (BALANCE SHEET & P&L) ---
             for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
                 worksheet = workbook.add_worksheet(sheet_name)
+                worksheet.hide_gridlines(2)
                 worksheet.set_column('A:A', 5); worksheet.set_column('B:B', 65); worksheet.set_column('C:C', 8); worksheet.set_column('D:E', 20)
-                worksheet.merge_range('A1:E1', f"{company_name} - {sheet_name}", fmt_title)
+                worksheet.merge_range('A1:E1', company_name, fmt_title)
+                worksheet.merge_range('A2:E2', f"Consolidated {sheet_name}", fmt_subtitle)
 
                 row_num = 3
-                current_format = fmt_data_eq # Default format
+                get_total = lambda note_list, year: sum(aggregated_data.get(str(n), {}).get('total', {}).get(year, 0) for n in note_list) if isinstance(note_list, list) else 0
 
-                # Helper to calculate totals based on note numbers
-                def get_total_for_notes(note_list, year):
-                    if not isinstance(note_list, list): return 0
-                    return sum(aggregated_data.get(str(n), {}).get('total', {}).get(year, 0) for n in note_list)
-
-                for row_data in template:
-                    col_a, particulars, note, row_type = row_data
-                    
+                for col_a, particulars, note, row_type in template:
                     if row_type == "header_col":
-                        worksheet.write('B2', particulars, fmt_header); worksheet.write('C2', note, fmt_header)
-                        worksheet.write('D2', "As at March 31, 2025", fmt_header); worksheet.write('E2', "As at March 31, 2024", fmt_header)
+                        worksheet.write('B3', particulars, fmt_header); worksheet.write('C3', note, fmt_header)
+                        worksheet.write('D3', "Amount (CY)", fmt_header); worksheet.write('E3', "Amount (PY)", fmt_header)
                         continue
 
-                    # This logic determines which color to use based on the section
-                    if row_type == 'header':
-                        if "EQUITY" in particulars: current_format = fmt_data_eq
-                        if "ASSETS" in particulars: current_format = fmt_data_asset
-                        if "Expenses" in particulars: current_format = fmt_data_lia
-                    if row_type == 'sub_header':
-                        if "liabilities" in particulars.lower(): current_format = fmt_data_lia
-
-                    cy_val, py_val = None, None
+                    cy_val, py_val = 0, 0
                     if row_type in ["item", "item_sub", "item_no_alpha"]:
                         note_total = aggregated_data.get(str(note), {}).get('total', {})
                         cy_val, py_val = note_total.get('CY', 0), note_total.get('PY', 0)
                     elif row_type == "total":
-                        if note == 'PBT':
-                            rev_cy = get_total_for_notes(['21', '22'], 'CY'); rev_py = get_total_for_notes(['21', '22'], 'PY')
-                            exp_cy = get_total_for_notes(['23', '24', '25', '11', '26'], 'CY'); exp_py = get_total_for_notes(['23', '24', '25', '11', '26'], 'PY')
-                            cy_val = rev_cy - exp_cy; py_val = rev_py - exp_py
-                        elif note == 'PAT':
-                            rev_cy = get_total_for_notes(['21', '22'], 'CY'); rev_py = get_total_for_notes(['21', '22'], 'PY')
-                            exp_cy = get_total_for_notes(['23', '24', '25', '11', '26'], 'CY'); exp_py = get_total_for_notes(['23', '24', '25', '11', '26'], 'PY')
-                            pbt_cy, pbt_py = rev_cy - exp_cy, rev_py - exp_py
-                            tax_cy, tax_py = get_total_for_notes(['4'], 'CY'), get_total_for_notes(['4'], 'PY')
-                            cy_val = pbt_cy - tax_cy; py_val = pbt_py - tax_py
-                        else:
-                            cy_val, py_val = get_total_for_notes(note, 'CY'), get_total_for_notes(note, 'PY')
+                        # (Calculation logic from your code is preserved)
+                        if note == 'PBT': cy_val, py_val = get_total(['21','22'],'CY') - get_total(['23','24','25','11','26'],'CY'), get_total(['21','22'],'PY') - get_total(['23','24','25','11','26'],'PY')
+                        elif note == 'PAT': cy_val, py_val = (get_total(['21','22'],'CY') - get_total(['23','24','25','11','26'],'CY')) - get_total(['4'],'CY'), (get_total(['21','22'],'PY') - get_total(['23','24','25','11','26'],'PY')) - get_total(['4'],'PY')
+                        else: cy_val, py_val = get_total(note, 'CY'), get_total(note, 'PY')
+
+                    # Determine format based on row
+                    is_rev_asset = any(s in particulars for s in ['Revenue', 'Income', 'ASSETS'])
+                    is_exp_lia = any(s in particulars for s in ['Expenses', 'Costs', 'LIABILITIES'])
+                    is_net_eq = any(s in particulars for s in ['Profit', 'Net Income', 'EQUITY'])
+
+                    fmt_data = fmt_data_green if is_rev_asset else (fmt_data_red if is_exp_lia else (fmt_data_blue if is_net_eq else workbook.add_format({'num_format': num_format_rupee})))
                     
                     if row_type in ["header", "sub_header"]:
-                        worksheet.write(row_num, 0, col_a, fmt_subheader); worksheet.write(row_num, 1, particulars, fmt_subheader)
+                        worksheet.write(row_num, 0, col_a); worksheet.write(row_num, 1, particulars, fmt_sec_rev if is_rev_asset else (fmt_sec_exp if is_exp_lia else (fmt_sec_net if is_net_eq else workbook.add_format({'bold': True}))))
                     elif row_type == "total":
-                        worksheet.write(row_num, 1, particulars, fmt_grand_total)
-                        worksheet.write_number(row_num, 3, cy_val, fmt_grand_total); worksheet.write_number(row_num, 4, py_val, fmt_grand_total)
-                    elif cy_val is not None:
-                        worksheet.write(row_num, 0, col_a, current_format); worksheet.write(row_num, 1, particulars, current_format)
-                        worksheet.write_string(row_num, 2, str(note) if note else '', current_format)
-                        worksheet.write_number(row_num, 3, cy_val, current_format); worksheet.write_number(row_num, 4, py_val, current_format)
+                        fmt_to_use = fmt_total_rev if is_rev_asset else (fmt_total_exp if is_exp_lia else (fmt_net_income if is_net_eq else fmt_grand_total))
+                        worksheet.write(row_num, 1, particulars, fmt_to_use)
+                        worksheet.write_number(row_num, 3, cy_val, fmt_to_use); worksheet.write_number(row_num, 4, py_val, fmt_to_use)
+                    elif row_type not in ["spacer", "item_no_note_sub"]:
+                        worksheet.write(row_num, 0, col_a, fmt_data); worksheet.write(row_num, 1, particulars, fmt_data)
+                        worksheet.write_string(row_num, 2, str(note) if note else '', fmt_data)
+                        worksheet.write_number(row_num, 3, cy_val, fmt_data); worksheet.write_number(row_num, 4, py_val, fmt_data)
                     row_num += 1
 
-            # --- 2. RENDER THE NOTE SHEETS ---
+            # --- 2. RENDER THE NOTE SHEETS (WITH STYLING) ---
             for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.')[0])):
                 note_data = aggregated_data.get(note_num_str)
                 if not note_data or 'sub_items' not in note_data: continue
 
-                # Determine the color for the note based on its type
                 note_num_int = int(note_num_str)
-                if 1 <= note_num_int <= 10: note_format = fmt_data_lia # Liabilities/Equity
-                elif 11 <= note_num_int <= 20: note_format = fmt_data_asset # Assets
-                else: note_format = fmt_data_eq # P&L
+                if 1 <= note_num_int <= 10: note_format, note_total_format = fmt_data_blue, fmt_total_exp # Equity/Liabilities
+                elif 11 <= note_num_int <= 20: note_format, note_total_format = fmt_data_green, fmt_total_rev # Assets
+                else: note_format, note_total_format = fmt_data_red, fmt_total_exp # P&L
 
                 sheet_name = f"Note {note_num_str}"; worksheet = workbook.add_worksheet(sheet_name)
-                worksheet.set_column('A:A', 65); worksheet.set_column('B:C', 20)
                 worksheet.merge_range('A1:C1', f"Note {note_num_str}: {note_data.get('title', '')}", fmt_title)
-                worksheet.write('A3', 'Particulars', fmt_header); worksheet.write('B3', 'As at March 31, 2025', fmt_header); worksheet.write('C3', 'As at March 31, 2024', fmt_header)
-                row_num = 3
+                worksheet.write_row('A3', ['Particulars', 'Amount (CY)', 'Amount (PY)'], fmt_header)
+                worksheet.set_column('A:A', 65); worksheet.set_column('B:C', 20)
                 
+                row_num = 3
                 def write_note_level(items, indent_level=0):
                     nonlocal row_num
                     for key, value in items.items():
-                        prefix = "    " * indent_level
                         if isinstance(value, dict) and 'CY' in value:
-                            worksheet.write(row_num, 0, f"{prefix}{key}", note_format)
+                            worksheet.write(row_num, 0, "    " * indent_level + key, note_format)
                             worksheet.write_number(row_num, 1, value.get('CY', 0), note_format)
                             worksheet.write_number(row_num, 2, value.get('PY', 0), note_format)
                             row_num += 1
                         elif isinstance(value, dict):
-                            worksheet.write(row_num, 0, f"{prefix}{key}", fmt_subheader)
-                            row_num += 1
-                            write_note_level(value, indent_level + 1)
+                            worksheet.write(row_num, 0, "    " * indent_level + key, fmt_subheader)
+                            row_num += 1; write_note_level(value, indent_level + 1)
                 
                 write_note_level(note_data['sub_items'])
-                worksheet.write(row_num, 0, "Total", fmt_total)
-                worksheet.write_number(row_num, 1, note_data.get('total', {}).get('CY', 0), fmt_total)
-                worksheet.write_number(row_num, 2, note_data.get('total', {}).get('PY', 0), fmt_total)
+                worksheet.write(row_num, 0, "Total", note_total_format)
+                worksheet.write_number(row_num, 1, note_data.get('total', {}).get('CY', 0), note_total_format)
+                worksheet.write_number(row_num, 2, note_data.get('total', {}).get('PY', 0), note_total_format)
 
         print("✅ Report Finalizer SUCCESS: Styled Excel file created in memory.")
         return output.getvalue()
