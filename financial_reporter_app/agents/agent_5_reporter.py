@@ -22,32 +22,31 @@ def report_finalizer_agent(aggregated_data, company_name):
                 'green_bg': '#E2EFDA', 'green_total': '#C6E0B4', 'green_line': '#70AD47',
                 'red_bg': '#FDE9D9', 'red_total': '#F8CBAD', 'red_line': '#FF0000',
                 'blue_bg': '#DDEBF7', 'blue_total': '#B4C6E7', 'blue_line': '#4472C4',
-                'header_bg': '#F2F2F2', 'dark_grey': '#595959'
+                'header_bg': '#F2F2F2', 'dark_grey': '#595959', 'light_grey_line': '#D0D0D0'
             }
             
-            # --- DEFINE ALL CELL FORMATS AT THE TOP LEVEL ---
+            # --- DEFINE PROFESSIONAL CELL FORMATS ---
             num_format_rupee = '_("₹"* #,##0_);_("₹"* (#,##0);_("-"??_);_(@_)'
-            fmt_title = workbook.add_format({'bold': True, 'font_size': 20, 'align': 'center'})
-            fmt_subtitle = workbook.add_format({'italic': True, 'font_size': 12, 'align': 'center'})
+            fmt_title = workbook.add_format({'bold': True, 'font_size': 20, 'align': 'center', 'bottom': 6, 'bottom_color': colors['dark_grey']})
+            fmt_subtitle = workbook.add_format({'italic': True, 'font_size': 12, 'align': 'center', 'bottom': 1, 'bottom_color': colors['dark_grey']})
             fmt_header = workbook.add_format({'bold': True, 'bg_color': colors['header_bg'], 'align': 'center', 'bottom': 2, 'bottom_color': colors['dark_grey']})
             bold_format = workbook.add_format({'bold': True})
 
-            # Section headers
+            # Section headers with colored text and lines
             fmt_sec_asset = workbook.add_format({'bold': True, 'font_color': colors['green_line'], 'bottom': 1, 'bottom_color': colors['green_line']})
             fmt_sec_lia_eq = workbook.add_format({'bold': True, 'font_color': colors['blue_line'], 'bottom': 1, 'bottom_color': colors['blue_line']})
             fmt_sec_exp = workbook.add_format({'bold': True, 'font_color': colors['red_line'], 'top': 1, 'top_color': colors['red_line']})
             
-            # Data formats
-            fmt_data_green = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['green_line']})
-            fmt_data_red = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['red_line']})
-            fmt_data_blue = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['blue_line']})
+            # Data formats with thin grey bottom border
+            fmt_data_green = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['light_grey_line']})
+            fmt_data_red = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['light_grey_line']})
+            fmt_data_blue = workbook.add_format({'num_format': num_format_rupee, 'bottom': 1, 'bottom_color': colors['light_grey_line']})
             
-            # Total formats
+            # Total formats with colored backgrounds and borders
             fmt_total_asset = workbook.add_format({'bold': True, 'bg_color': colors['green_total'], 'font_color': colors['green_line'], 'top': 1, 'bottom': 1, 'num_format': num_format_rupee})
             fmt_total_lia_eq = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'bottom': 1, 'num_format': num_format_rupee})
             fmt_total_exp = workbook.add_format({'bold': True, 'bg_color': colors['red_total'], 'font_color': colors['red_line'], 'top': 1, 'bottom': 1, 'num_format': num_format_rupee})
-            fmt_net_income = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'bottom': 6, 'num_format': num_format_rupee})
-            fmt_grand_total = workbook.add_format({'bold': True, 'top': 1, 'bottom': 1, 'num_format': num_format_rupee}) # Generic total for notes
+            fmt_net_income = workbook.add_format({'bold': True, 'bg_color': colors['blue_total'], 'font_color': colors['blue_line'], 'top': 1, 'bottom': 6, 'bottom_color': colors['blue_line'], 'num_format': num_format_rupee})
 
             # --- 1. RENDER P&L and Balance Sheet ---
             for sheet_name in ["Profit and Loss", "Balance Sheet"]:
@@ -67,7 +66,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                         continue
 
                     is_asset = any(s in particulars for s in ['ASSETS', 'Fixed assets', 'Current assets', 'Revenue'])
-                    is_lia_eq = any(s in particulars for s in ['EQUITY', 'LIABILITIES', 'Profit', 'Net Income'])
+                    is_lia_eq = any(s in particulars for s in ['EQUITY', 'LIABILITIES', 'Shareholder', 'Profit', 'Net Income'])
                     is_exp = any(s in particulars for s in ['Expenses'])
                     
                     cy_val, py_val = 0, 0
@@ -85,7 +84,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                         fmt_to_use = fmt_total_asset if is_asset else (fmt_total_exp if is_exp else (fmt_net_income if is_lia_eq else workbook.add_format()))
                         worksheet.write(row_num, 1, particulars, fmt_to_use)
                         worksheet.write_number(row_num, 3, cy_val, fmt_to_use); worksheet.write_number(row_num, 4, py_val, fmt_to_use)
-                    elif row_type not in ["spacer", "item_no_note_sub"]:
+                    elif row_type not in ["spacer", "item_no_note_sub", "item_no_note"]:
                         fmt_data = fmt_data_green if is_asset else (fmt_data_red if is_exp else fmt_data_blue)
                         worksheet.write(row_num, 0, col_a, fmt_data); worksheet.write(row_num, 1, particulars, fmt_data)
                         worksheet.write_string(row_num, 2, str(note) if note else '', fmt_data)
@@ -106,6 +105,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                 worksheet.merge_range('A1:C1', f"Note {note_num_str}: {note_data.get('title', '')}", fmt_title)
                 worksheet.write_row('A3', ['Particulars', 'Amount (CY)', 'Amount (PY)'], fmt_header)
                 worksheet.set_column('A:A', 65); worksheet.set_column('B:C', 20)
+                worksheet.hide_gridlines(2)
                 
                 row_num = 3
                 def write_note_level(items, indent_level=0):
@@ -117,7 +117,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                             worksheet.write_number(row_num, 2, value.get('PY', 0), fmt_note)
                             row_num += 1
                         elif isinstance(value, dict):
-                            worksheet.write(row_num, 0, "    " * indent_level + key, fmt_subheader)
+                            worksheet.write(row_num, 0, "    " * indent_level + key, bold_format)
                             row_num += 1; write_note_level(value, indent_level + 1)
                 
                 write_note_level(note_data['sub_items'])
