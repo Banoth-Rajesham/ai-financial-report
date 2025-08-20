@@ -108,7 +108,7 @@ def create_professional_pdf(kpis: dict, ai_analysis: str, company_name: str) -> 
     analysis_text = str(ai_analysis).replace("**", "").replace("*", "  - ")
     pdf.multi_cell(0, 6, analysis_text, 0, align="L")
     pdf.ln(4)
-    return pdf.output(dest="S").encode("latin-1")
+    return pdf.output(dest="S")
 
 # --------------------------------------------------------------------------
 # Cached full pipeline
@@ -283,3 +283,4 @@ if st.session_state.report_generated:
         swot_pdf.set_font("Arial",size=10)
         for i in items: swot_pdf.multi_cell(0,8,f"- {i}")
     sw
+
