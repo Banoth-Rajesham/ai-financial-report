@@ -138,7 +138,7 @@ def create_professional_pdf(kpis: dict, ai_analysis: str, company_name: str) -> 
     pdf.ln(4)
 
     # FPDF returns a string; encode to bytes. latin-1 is the safe default.
-    return bytes(pdf.output(dest="S"))
+    return pdf.output(dest="S")
 
 
 
@@ -495,4 +495,5 @@ else:
             file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
             use_container_width=True,
         )
+
 
