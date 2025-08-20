@@ -349,31 +349,31 @@ else:
     st.subheader("Download Reports")
 
  # --- Generate AI analysis ---
-ai_analysis = generate_ai_analysis(kpis)
+    ai_analysis = generate_ai_analysis(kpis)
 
 # ================== ADD SWOT INTERPRETATION FOR PDF ==================
 # Create a human-readable SWOT section to append to the AI analysis
-strengths = ["Strong Profitability", "Balanced Financial Structure"]
-weaknesses = ["High Short-term Liabilities"]
-opportunities = ["Expansion Potential", "Raise Growth Capital"]
-threats = ["Market Competition", "Economic Headwinds"]
+    strengths = ["Strong Profitability", "Balanced Financial Structure"]
+    weaknesses = ["High Short-term Liabilities"]
+    opportunities = ["Expansion Potential", "Raise Growth Capital"]
+    threats = ["Market Competition", "Economic Headwinds"]
 
-swot_interpretation = ""
+    swot_interpretation = ""
 
-if strengths:
-    swot_interpretation += "Strengths:\n" + "\n".join(f"- {s}" for s in strengths) + "\n\n"
-if weaknesses:
-    swot_interpretation += "Weaknesses:\n" + "\n".join(f"- {w}" for w in weaknesses) + "\n\n"
-if opportunities:
-    swot_interpretation += "Opportunities:\n" + "\n".join(f"- {o}" for o in opportunities) + "\n\n"
-if threats:
-    swot_interpretation += "Threats:\n" + "\n".join(f"- {t}" for t in threats) + "\n\n"
+    if strengths:
+       swot_interpretation += "Strengths:\n" + "\n".join(f"- {s}" for s in strengths) + "\n\n"
+   if weaknesses:
+       swot_interpretation += "Weaknesses:\n" + "\n".join(f"- {w}" for w in weaknesses) + "\n\n"
+   if opportunities:
+       swot_interpretation += "Opportunities:\n" + "\n".join(f"- {o}" for o in opportunities) + "\n\n"
+   if threats:
+      swot_interpretation += "Threats:\n" + "\n".join(f"- {t}" for t in threats) + "\n\n"
 
 # Append SWOT section to AI analysis
-ai_analysis += f"\n\nSWOT Analysis Interpretation:\n{swot_interpretation}"
+   ai_analysis += f"\n\nSWOT Analysis Interpretation:\n{swot_interpretation}"
 # =====================================================================
 
-pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
+   pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
 
 
     
@@ -385,5 +385,6 @@ pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_
         st.download_button("📄 Download PDF with Insights", pdf_bytes, f"{st.session_state.company_name}_Insights.pdf", use_container_width=True, type="primary")
     with d_col2:
         st.download_button("💹 Download Processed Data (Excel)", st.session_state.excel_report_bytes, f"{st.session_state.company_name}_Processed_Data.xlsx", use_container_width=True)
+
 
 
