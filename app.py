@@ -1,6 +1,7 @@
 # ==============================================================================
 # FILE: app.py (FINAL — corrected & runnable)
 # ==============================================================================
+
 import io
 import os
 import numpy as np
@@ -17,14 +18,23 @@ from financial_reporter_app.agents.agent_4_validator import data_validation_agen
 from financial_reporter_app.agents.agent_5_reporter import report_finalizer_agent
 from config import NOTES_STRUCTURE_AND_MAPPING
 
+
 # ------------------------------------------------------------------------------
 # STREAMLIT PAGE CONFIG — must be set before other Streamlit calls
 # ------------------------------------------------------------------------------
 st.set_page_config(page_title="Financial Dashboard", page_icon="📈", layout="wide")
 
+
 # ------------------------------------------------------------------------------
 # Helper functions
 # ------------------------------------------------------------------------------
+
+# ==============================================================================
+# Function: calculate_kpis
+# Purpose : Compute core Schedule-III style KPIs for CY and PY from aggregated data.
+# Inputs  : agg_data (dict) -> { note_no: {"total": {"CY": float, "PY": float}, ...}, ... }
+# Returns : dict -> {"CY": {...kpis}, "PY": {...kpis}}
+# ==============================================================================
 def calculate_kpis(agg_data: dict) -> dict:
     """
     Calculates an expanded set of KPIs from the aggregated structure:
@@ -34,11 +44,10 @@ def calculate_kpis(agg_data: dict) -> dict:
     for year in ["CY", "PY"]:
         get = lambda key, y=year: agg_data.get(str(key), {}).get("total", {}).get(y, 0.0)
 
-        # Basic Schedule III-style groups (adjust numbers to your mapping)
         # Revenue: 21 (Revenue from Operations) + 22 (Other Income)
         total_revenue = get(21) + get(22)
 
-        # Example inventory change (if 16 is inventories): change only affects CY calc
+        # Inventory change (if 16 is inventories): affects only CY calc
         change_in_inv = get(16, "PY") - get(16, "CY") if year == "CY" else 0.0
 
         # Depreciation from note 11 sub-item (optional; fallback to 0)
@@ -67,8 +76,8 @@ def calculate_kpis(agg_data: dict) -> dict:
             "Total Assets": float(total_assets),
             "Debt-to-Equity": (total_debt / total_equity) if total_equity else 0.0,
             "Current Ratio": (current_assets / current_liabilities) if current_liabilities else 0.0,
-            "Profit Margin": ((net_profit / total_revenue) * 100.0) if total_revenue else 0.0,
-            "ROA": ((net_profit / total_assets) * 100.0) if total_assets else 0.0,
+            "Profit Margin": ((net_profit / total_revenue) * 100.0) if total_revenue else 0.0,  # in %
+            "ROA": ((net_profit / total_assets) * 100.0) if total_assets else 0.0,              # in %
             "Current Assets": float(current_assets),
             "Fixed Assets": float(get("11")),
             "Investments": float(get("12")),
@@ -77,6 +86,12 @@ def calculate_kpis(agg_data: dict) -> dict:
     return kpis
 
 
+# ==============================================================================
+# Function: generate_ai_analysis
+# Purpose : Create a short narrative from KPIs (using CY figures).
+# Inputs  : kpis (dict) from calculate_kpis
+# Returns : str (markdown)
+# ==============================================================================
 def generate_ai_analysis(kpis: dict) -> str:
     """Simple narrative from KPIs."""
     kpi_cy = kpis["CY"]
@@ -92,7 +107,11 @@ def generate_ai_analysis(kpis: dict) -> str:
     )
 
 
-class PDF(FPDF):
+# ==============================================================================
+# Class: ReportPDF
+# Purpose : Base PDF with header & footer for the insights report
+# ==============================================================================
+class ReportPDF(FPDF):
     """Custom PDF with header & footer."""
     def header(self):
         self.set_font("Arial", "B", 16)
@@ -105,9 +124,15 @@ class PDF(FPDF):
         self.cell(0, 10, f"Page {self.page_no()}", 0, 0, "C")
 
 
+# ==============================================================================
+# Function: create_professional_pdf
+# Purpose : Build the insights PDF (KPIs + narrative) and return bytes
+# Inputs  : kpis (dict), ai_analysis (str), company_name (str)
+# Returns : bytes (PDF)
+# ==============================================================================
 def create_professional_pdf(kpis: dict, ai_analysis: str, company_name: str) -> bytes:
     """Create a simple textual PDF. Returns bytes for st.download_button."""
-    pdf = PDF()
+    pdf = ReportPDF()
     pdf.add_page()
 
     pdf.set_font("Arial", "B", 20)
@@ -137,16 +162,20 @@ def create_professional_pdf(kpis: dict, ai_analysis: str, company_name: str) -> 
     pdf.multi_cell(0, 6, analysis_text, 0, align="L")
     pdf.ln(4)
 
-    # FPDF returns a string; encode to bytes. latin-1 is the safe default.
-    # Option 2 (explicit conversion)
-    return bytes(pdf.output(dest="S"))
-
-
+    # FPDF returns a string; encode to bytes (latin-1 safe)
+    return pdf.output(dest="S").encode("latin-1")
 
 
 # ------------------------------------------------------------------------------
 # Cache the heavy pipeline
 # ------------------------------------------------------------------------------
+
+# ==============================================================================
+# Function: run_full_pipeline
+# Purpose : Execute agents on normalized DF and cache outputs.
+# Inputs  : source_df (DataFrame), company_name_for_cache (str)
+# Returns : (aggregated_data: dict, excel_report_bytes: bytes, warnings: list[str])
+# ==============================================================================
 @st.cache_data(show_spinner="Running full analysis pipeline...")
 def run_full_pipeline(source_df: pd.DataFrame, company_name_for_cache: str):
     """
@@ -189,8 +218,9 @@ if "kpis" not in st.session_state:
 if "company_name" not in st.session_state:
     st.session_state.company_name = "My Company Inc."
 
+
 # ------------------------------------------------------------------------------
-# Styles
+# Styles (restored full UI)
 # ------------------------------------------------------------------------------
 st.markdown(
     """
@@ -234,6 +264,7 @@ st.markdown(
 """,
     unsafe_allow_html=True,
 )
+
 
 # ------------------------------------------------------------------------------
 # Sidebar (CY & PY upload flow)
@@ -306,6 +337,7 @@ with st.sidebar:
             else:
                 st.warning("Please upload a file and enter a company name.")
 
+
 # ------------------------------------------------------------------------------
 # Main pipeline trigger
 # ------------------------------------------------------------------------------
@@ -331,6 +363,7 @@ if st.session_state.final_df is not None and not st.session_state.awaiting_py_up
         st.session_state.final_df = None
         st.session_state.cy_df = None
         st.rerun()
+
 
 # ------------------------------------------------------------------------------
 # Main dashboard display
@@ -477,144 +510,145 @@ else:
 
     st.write("---")
     st.subheader("Download Reports")
-# ====================================================================================
-# SWOT ANALYSIS BLOCK (SAFE, FINAL VERSION)
-# ====================================================================================
 
-strengths, weaknesses, opportunities, threats = [], [], [], []
+    # ==============================================================================
+    # SWOT ANALYSIS BLOCK (fixed to use CY/PY keys)
+    # ==============================================================================
+    strengths, weaknesses, opportunities, threats = [], [], [], []
 
-# --- Strengths ---
-current_ratio = kpis.get("Current Ratio")
-if current_ratio is not None and current_ratio > 1.5:
-    strengths.append(f"Current Ratio {current_ratio:.2f} indicates strong liquidity.")
+    current_ratio = kpi_cy.get("Current Ratio")
+    debt_equity = kpi_cy.get("Debt-to-Equity")
+    profit_margin = kpi_cy.get("Profit Margin")
+    roa = kpi_cy.get("ROA")
+    asset_turnover = (kpi_cy["Total Revenue"] / kpi_cy["Total Assets"]) if kpi_cy.get("Total Assets") else 0.0
 
-debt_equity_ratio = kpis.get("Debt-to-Equity Ratio")
-if debt_equity_ratio is not None and debt_equity_ratio < 1:
-    strengths.append(f"Debt-to-Equity Ratio {debt_equity_ratio:.2f} indicates low leverage.")
+    # --- Strengths ---
+    if current_ratio is not None and current_ratio > 1.5:
+        strengths.append(f"Current Ratio {current_ratio:.2f} indicates strong liquidity.")
+    if debt_equity is not None and debt_equity < 1:
+        strengths.append(f"Debt-to-Equity {debt_equity:.2f} indicates low leverage.")
+    if profit_margin is not None and profit_margin > 15:
+        strengths.append(f"Profit Margin {profit_margin:.2f}% shows healthy profitability.")
+    if roa is not None and roa > 10:
+        strengths.append(f"ROA {roa:.2f}% suggests efficient asset utilization.")
+    if asset_turnover and asset_turnover > 1:
+        strengths.append(f"Asset Turnover {asset_turnover:.2f} indicates solid revenue per asset.")
 
-net_profit_margin = kpis.get("Net Profit Margin")
-if net_profit_margin is not None and net_profit_margin > 0.15:
-    strengths.append(f"Net Profit Margin {net_profit_margin:.2%} shows healthy profitability.")
+    if not strengths:
+        strengths.append("No significant strengths identified.")
 
-if not strengths:
-    strengths.append("No significant strengths identified.")
+    # --- Weaknesses ---
+    if current_ratio is not None and current_ratio < 1:
+        weaknesses.append(f"Current Ratio {current_ratio:.2f} suggests liquidity risk.")
+    if debt_equity is not None and debt_equity > 2:
+        weaknesses.append(f"High Debt-to-Equity ({debt_equity:.2f}) indicates heavy leverage.")
+    if profit_margin is not None and profit_margin < 5:
+        weaknesses.append(f"Profit Margin {profit_margin:.2f}% is very low.")
+    if not weaknesses:
+        weaknesses.append("No major weaknesses identified.")
 
-# --- Weaknesses ---
-if current_ratio is not None and current_ratio < 1:
-    weaknesses.append(f"Current Ratio {current_ratio:.2f} suggests liquidity risk.")
+    # --- Opportunities ---
+    if profit_margin is not None and profit_margin < 20:
+        opportunities.append("Scope to expand margins via pricing, mix and cost optimization.")
+    if asset_turnover and asset_turnover < 2:
+        opportunities.append("Improve asset utilization via capacity fill and working-capital discipline.")
+    opportunities.append("Evaluate growth in new geographies/segments to diversify revenue.")
+    if not opportunities:
+        opportunities.append("No clear opportunities identified.")
 
-if debt_equity_ratio is not None and debt_equity_ratio > 2:
-    weaknesses.append(f"High Debt-to-Equity Ratio ({debt_equity_ratio:.2f}) indicates heavy leverage.")
+    # --- Threats ---
+    if (kpi_py.get("Profit Margin") or 0) and profit_margin < (kpi_py.get("Profit Margin") or 0):
+        threats.append("Profit margin declined vs PY; watch pricing and input costs.")
+    if (kpi_py.get("Debt-to-Equity") or 0) and (debt_equity - (kpi_py.get("Debt-to-Equity") or 0)) > 0.2:
+        threats.append("Leverage increased vs PY; monitor debt servicing and covenants.")
+    if not threats:
+        threats.append("No immediate threats identified.")
 
-if net_profit_margin is not None and net_profit_margin < 0.05:
-    weaknesses.append(f"Net Profit Margin {net_profit_margin:.2%} is very low.")
+    # ------------------------------------------------------------------------------
+    # OUTPUT: SWOT EXCEL + SWOT PDF
+    # ------------------------------------------------------------------------------
+    swot_df = pd.DataFrame({
+        "Strengths": strengths,
+        "Weaknesses": weaknesses,
+        "Opportunities": opportunities,
+        "Threats": threats
+    })
 
-if not weaknesses:
-    weaknesses.append("No major weaknesses identified.")
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+        swot_df.to_excel(writer, sheet_name="SWOT Analysis", index=False)
 
-# --- Opportunities ---
-roa = kpis.get("Return on Assets")
-if roa is not None and roa > 0.1:
-    opportunities.append(f"ROA {roa:.2%} suggests efficient asset utilization.")
+    st.download_button(
+        label="📥 Download SWOT Analysis (Excel)",
+        data=excel_buffer.getvalue(),
+        file_name="SWOT_Analysis.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        use_container_width=True,
+    )
 
-asset_turnover = kpis.get("Asset Turnover")
-if asset_turnover is not None and asset_turnover > 1:
-    opportunities.append(f"Asset Turnover {asset_turnover:.2f} indicates strong revenue generation from assets.")
+    # ==============================================================================
+    # Class: SwotPDF
+    # Purpose : PDF generator for SWOT section
+    # ==============================================================================
+    class SwotPDF(FPDF):
+        def header(self):
+            self.set_font("Arial", "B", 12)
+            self.cell(0, 10, "SWOT Analysis", ln=True, align="C")
 
-if not opportunities:
-    opportunities.append("No clear opportunities identified.")
+    # Build SWOT PDF
+    swot_pdf = SwotPDF()
+    swot_pdf.add_page()
+    swot_pdf.set_font("Arial", size=10)
 
-# --- Threats ---
-inventory_turnover = kpis.get("Inventory Turnover")
-if inventory_turnover is not None and inventory_turnover < 2:
-    threats.append(f"Low Inventory Turnover ({inventory_turnover:.2f}) may indicate overstocking or slow sales.")
+    # Strengths
+    swot_pdf.set_font("Arial", "B", 11)
+    swot_pdf.cell(0, 10, "Strengths:", ln=True)
+    swot_pdf.set_font("Arial", size=10)
+    for s in strengths:
+        swot_pdf.multi_cell(0, 8, f"- {s}")
 
-if not threats:
-    threats.append("No immediate threats identified.")
+    # Weaknesses
+    swot_pdf.set_font("Arial", "B", 11)
+    swot_pdf.cell(0, 10, "Weaknesses:", ln=True)
+    swot_pdf.set_font("Arial", size=10)
+    for w in weaknesses:
+        swot_pdf.multi_cell(0, 8, f"- {w}")
 
-# ====================================================================================
-# OUTPUT: EXCEL + PDF
-# ====================================================================================
+    # Opportunities
+    swot_pdf.set_font("Arial", "B", 11)
+    swot_pdf.cell(0, 10, "Opportunities:", ln=True)
+    swot_pdf.set_font("Arial", size=10)
+    for o in opportunities:
+        swot_pdf.multi_cell(0, 8, f"- {o}")
 
-# --- Export SWOT to Excel ---
-swot_df = pd.DataFrame({
-    "Strengths": strengths,
-    "Weaknesses": weaknesses,
-    "Opportunities": opportunities,
-    "Threats": threats
-})
+    # Threats
+    swot_pdf.set_font("Arial", "B", 11)
+    swot_pdf.cell(0, 10, "Threats:", ln=True)
+    swot_pdf.set_font("Arial", size=10)
+    for t in threats:
+        swot_pdf.multi_cell(0, 8, f"- {t}")
 
-excel_buffer = io.BytesIO()
-with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-    swot_df.to_excel(writer, sheet_name="SWOT Analysis", index=False)
+    swot_pdf_bytes = swot_pdf.output(dest="S").encode("latin-1")
 
-# Streamlit download button
-st.download_button(
-    label="📥 Download SWOT Analysis (Excel)",
-    data=excel_buffer.getvalue(),
-    file_name="SWOT_Analysis.xlsx",
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    st.download_button(
+        label="📄 Download SWOT Analysis (PDF)",
+        data=swot_pdf_bytes,
+        file_name="SWOT_Analysis.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
 
-# --- Export SWOT to PDF ---
-from fpdf import FPDF
-
-class PDF(FPDF):
-    def header(self):
-        self.set_font("Arial", "B", 12)
-        self.cell(0, 10, "SWOT Analysis", ln=True, align="C")
-
-pdf = PDF()
-pdf.add_page()
-pdf.set_font("Arial", size=10)
-
-# Strengths
-pdf.set_font("Arial", "B", 11)
-pdf.cell(0, 10, "Strengths:", ln=True)
-pdf.set_font("Arial", size=10)
-for s in strengths:
-    pdf.multi_cell(0, 8, f"- {s}")
-
-# Weaknesses
-pdf.set_font("Arial", "B", 11)
-pdf.cell(0, 10, "Weaknesses:", ln=True)
-pdf.set_font("Arial", size=10)
-for w in weaknesses:
-    pdf.multi_cell(0, 8, f"- {w}")
-
-# Opportunities
-pdf.set_font("Arial", "B", 11)
-pdf.cell(0, 10, "Opportunities:", ln=True)
-pdf.set_font("Arial", size=10)
-for o in opportunities:
-    pdf.multi_cell(0, 8, f"- {o}")
-
-# Threats
-pdf.set_font("Arial", "B", 11)
-pdf.cell(0, 10, "Threats:", ln=True)
-pdf.set_font("Arial", size=10)
-for t in threats:
-    pdf.multi_cell(0, 8, f"- {t}")
-
-# Return PDF as bytes for download
-pdf_bytes = bytes(pdf.output(dest="S").encode("latin-1"))
-
-st.download_button(
-    label="📄 Download SWOT Analysis (PDF)",
-    data=pdf_bytes,
-    file_name="SWOT_Analysis.pdf",
-    mime="application/pdf"
-)
-
-
+    # ------------------------------------------------------------------------------
+    # Insights PDF + Processed Excel (from agents)
+    # ------------------------------------------------------------------------------
     ai_analysis = generate_ai_analysis(kpis)
-    pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
+    insights_pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
 
     d_col1, d_col2 = st.columns(2)
     with d_col1:
         st.download_button(
             "📄 Download PDF with Insights",
-            data=pdf_bytes,
+            data=insights_pdf_bytes,
             file_name=f"{st.session_state.company_name}_Insights.pdf",
             use_container_width=True,
             type="primary",
@@ -626,8 +660,3 @@ st.download_button(
             file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
             use_container_width=True,
         )
-
-
-
-
-
