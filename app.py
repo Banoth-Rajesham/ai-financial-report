@@ -477,70 +477,134 @@ else:
 
     st.write("---")
     st.subheader("Download Reports")
-
-    # ================== Intelligent SWOT Analysis ==================
-st.markdown("### 📊 Intelligent SWOT Analysis: Based on Your Financials")
-
-# Define benchmark values (you can fine-tune)
-benchmarks = {
-    "Current Ratio": 2.0,
-    "Profit Margin": 0.05,
-    "ROA": 0.05,
-    "Debt-to-Equity": 1.0
-}
+# ====================================================================================
+# SWOT ANALYSIS BLOCK (SAFE, FINAL VERSION)
+# ====================================================================================
 
 strengths, weaknesses, opportunities, threats = [], [], [], []
 
-# Current Ratio
-if kpis.get("Current Ratio", 0) >= benchmarks["Current Ratio"]:
-    strengths.append(f"Current Ratio {kpis['Current Ratio']:.2f} indicates strong liquidity.")
-else:
-    weaknesses.append(f"Current Ratio {kpis['Current Ratio']:.2f} suggests liquidity risk.")
+# --- Strengths ---
+current_ratio = kpis.get("Current Ratio")
+if current_ratio is not None and current_ratio > 1.5:
+    strengths.append(f"Current Ratio {current_ratio:.2f} indicates strong liquidity.")
 
-# Profit Margin
-if kpis.get("Profit Margin", 0) >= benchmarks["Profit Margin"]:
-    strengths.append(f"Profit Margin {kpis['Profit Margin']:.2%} shows efficient profitability.")
-else:
-    weaknesses.append(f"Profit Margin {kpis['Profit Margin']:.2%} is below benchmark, cost control needed.")
+debt_equity_ratio = kpis.get("Debt-to-Equity Ratio")
+if debt_equity_ratio is not None and debt_equity_ratio < 1:
+    strengths.append(f"Debt-to-Equity Ratio {debt_equity_ratio:.2f} indicates low leverage.")
 
-# ROA
-if kpis.get("ROA", 0) >= benchmarks["ROA"]:
-    strengths.append(f"ROA {kpis['ROA']:.2%} reflects effective asset utilization.")
-else:
-    weaknesses.append(f"ROA {kpis['ROA']:.2%} indicates inefficient asset use.")
+net_profit_margin = kpis.get("Net Profit Margin")
+if net_profit_margin is not None and net_profit_margin > 0.15:
+    strengths.append(f"Net Profit Margin {net_profit_margin:.2%} shows healthy profitability.")
 
-# Debt-to-Equity
-if kpis.get("Debt-to-Equity", 0) <= benchmarks["Debt-to-Equity"]:
-    strengths.append(f"Debt-to-Equity {kpis['Debt-to-Equity']:.2f} indicates manageable leverage.")
-else:
-    threats.append(f"High Debt-to-Equity {kpis['Debt-to-Equity']:.2f} may signal financial risk.")
+if not strengths:
+    strengths.append("No significant strengths identified.")
 
-# General opportunities & threats (data-driven optional extras)
-if kpis.get("Profit Margin", 0) < 0:
-    threats.append("Sustained losses may impact long-term viability.")
-else:
-    opportunities.append("Scope to further increase profitability through expansion or efficiency.")
+# --- Weaknesses ---
+if current_ratio is not None and current_ratio < 1:
+    weaknesses.append(f"Current Ratio {current_ratio:.2f} suggests liquidity risk.")
 
-if kpis.get("Current Ratio", 0) > 3:
-    opportunities.append("Excess liquidity can be invested for higher returns.")
+if debt_equity_ratio is not None and debt_equity_ratio > 2:
+    weaknesses.append(f"High Debt-to-Equity Ratio ({debt_equity_ratio:.2f}) indicates heavy leverage.")
 
-# Display in 4 columns
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.markdown("**Strengths**")
-    for s in strengths: st.markdown(f"- {s}")
+if net_profit_margin is not None and net_profit_margin < 0.05:
+    weaknesses.append(f"Net Profit Margin {net_profit_margin:.2%} is very low.")
 
-with col2:
-    st.markdown("**Weaknesses**")
-    for w in weaknesses: st.markdown(f"- {w}")
+if not weaknesses:
+    weaknesses.append("No major weaknesses identified.")
 
-with col3:
-    st.markdown("**Opportunities**")
-    for o in opportunities: st.markdown(f"- {o}")
+# --- Opportunities ---
+roa = kpis.get("Return on Assets")
+if roa is not None and roa > 0.1:
+    opportunities.append(f"ROA {roa:.2%} suggests efficient asset utilization.")
 
-with col4:
-    st.markdown("**Threats**")
-    for t in threats: st.markdown(f"- {t}")
+asset_turnover = kpis.get("Asset Turnover")
+if asset_turnover is not None and asset_turnover > 1:
+    opportunities.append(f"Asset Turnover {asset_turnover:.2f} indicates strong revenue generation from assets.")
+
+if not opportunities:
+    opportunities.append("No clear opportunities identified.")
+
+# --- Threats ---
+inventory_turnover = kpis.get("Inventory Turnover")
+if inventory_turnover is not None and inventory_turnover < 2:
+    threats.append(f"Low Inventory Turnover ({inventory_turnover:.2f}) may indicate overstocking or slow sales.")
+
+if not threats:
+    threats.append("No immediate threats identified.")
+
+# ====================================================================================
+# OUTPUT: EXCEL + PDF
+# ====================================================================================
+
+# --- Export SWOT to Excel ---
+swot_df = pd.DataFrame({
+    "Strengths": strengths,
+    "Weaknesses": weaknesses,
+    "Opportunities": opportunities,
+    "Threats": threats
+})
+
+excel_buffer = io.BytesIO()
+with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+    swot_df.to_excel(writer, sheet_name="SWOT Analysis", index=False)
+
+# Streamlit download button
+st.download_button(
+    label="📥 Download SWOT Analysis (Excel)",
+    data=excel_buffer.getvalue(),
+    file_name="SWOT_Analysis.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
+
+# --- Export SWOT to PDF ---
+from fpdf import FPDF
+
+class PDF(FPDF):
+    def header(self):
+        self.set_font("Arial", "B", 12)
+        self.cell(0, 10, "SWOT Analysis", ln=True, align="C")
+
+pdf = PDF()
+pdf.add_page()
+pdf.set_font("Arial", size=10)
+
+# Strengths
+pdf.set_font("Arial", "B", 11)
+pdf.cell(0, 10, "Strengths:", ln=True)
+pdf.set_font("Arial", size=10)
+for s in strengths:
+    pdf.multi_cell(0, 8, f"- {s}")
+
+# Weaknesses
+pdf.set_font("Arial", "B", 11)
+pdf.cell(0, 10, "Weaknesses:", ln=True)
+pdf.set_font("Arial", size=10)
+for w in weaknesses:
+    pdf.multi_cell(0, 8, f"- {w}")
+
+# Opportunities
+pdf.set_font("Arial", "B", 11)
+pdf.cell(0, 10, "Opportunities:", ln=True)
+pdf.set_font("Arial", size=10)
+for o in opportunities:
+    pdf.multi_cell(0, 8, f"- {o}")
+
+# Threats
+pdf.set_font("Arial", "B", 11)
+pdf.cell(0, 10, "Threats:", ln=True)
+pdf.set_font("Arial", size=10)
+for t in threats:
+    pdf.multi_cell(0, 8, f"- {t}")
+
+# Return PDF as bytes for download
+pdf_bytes = bytes(pdf.output(dest="S").encode("latin-1"))
+
+st.download_button(
+    label="📄 Download SWOT Analysis (PDF)",
+    data=pdf_bytes,
+    file_name="SWOT_Analysis.pdf",
+    mime="application/pdf"
+)
 
 
     ai_analysis = generate_ai_analysis(kpis)
@@ -562,6 +626,7 @@ with col4:
             file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
             use_container_width=True,
         )
+
 
 
 
