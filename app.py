@@ -567,24 +567,42 @@ else:
     # ------------------------------------------------------------------------------
     # OUTPUT: SWOT EXCEL + SWOT PDF
     # ------------------------------------------------------------------------------
-    swot_df = pd.DataFrame({
-        "Strengths": strengths,
-        "Weaknesses": weaknesses,
-        "Opportunities": opportunities,
-        "Threats": threats
-    })
+   # ------------------------------------------------------------------------------
+# OUTPUT: SWOT EXCEL + SWOT PDF
+# ------------------------------------------------------------------------------
 
-    excel_buffer = io.BytesIO()
-    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
-        swot_df.to_excel(writer, sheet_name="SWOT Analysis", index=False)
+# ------------------------------------------------------------------------------
+# OUTPUT: SWOT EXCEL + SWOT PDF
+# ------------------------------------------------------------------------------
 
-    st.download_button(
-        label="📥 Download SWOT Analysis (Excel)",
-        data=excel_buffer.getvalue(),
-        file_name="SWOT_Analysis.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
-    )
+# --- Fix: Make sure all lists are same length ---
+max_len = max(len(strengths), len(weaknesses), len(opportunities), len(threats))
+
+strengths += [""] * (max_len - len(strengths))
+weaknesses += [""] * (max_len - len(weaknesses))
+opportunities += [""] * (max_len - len(opportunities))
+threats += [""] * (max_len - len(threats))
+
+# --- Now safe to create DataFrame ---
+swot_df = pd.DataFrame({
+    "Strengths": strengths,
+    "Weaknesses": weaknesses,
+    "Opportunities": opportunities,
+    "Threats": threats
+})
+
+excel_buffer = io.BytesIO()
+with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+    swot_df.to_excel(writer, sheet_name="SWOT Analysis", index=False)
+
+st.download_button(
+    label="📥 Download SWOT Analysis (Excel)",
+    data=excel_buffer.getvalue(),
+    file_name="SWOT_Analysis.xlsx",
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    use_container_width=True,
+)
+
 
     # ==============================================================================
     # Class: SwotPDF
@@ -660,3 +678,4 @@ else:
             file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
             use_container_width=True,
         )
+
