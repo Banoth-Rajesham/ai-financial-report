@@ -478,6 +478,71 @@ else:
     st.write("---")
     st.subheader("Download Reports")
 
+    # ================== Intelligent SWOT Analysis ==================
+st.markdown("### 📊 Intelligent SWOT Analysis: Based on Your Financials")
+
+# Define benchmark values (you can fine-tune)
+benchmarks = {
+    "Current Ratio": 2.0,
+    "Profit Margin": 0.05,
+    "ROA": 0.05,
+    "Debt-to-Equity": 1.0
+}
+
+strengths, weaknesses, opportunities, threats = [], [], [], []
+
+# Current Ratio
+if kpis.get("Current Ratio", 0) >= benchmarks["Current Ratio"]:
+    strengths.append(f"Current Ratio {kpis['Current Ratio']:.2f} indicates strong liquidity.")
+else:
+    weaknesses.append(f"Current Ratio {kpis['Current Ratio']:.2f} suggests liquidity risk.")
+
+# Profit Margin
+if kpis.get("Profit Margin", 0) >= benchmarks["Profit Margin"]:
+    strengths.append(f"Profit Margin {kpis['Profit Margin']:.2%} shows efficient profitability.")
+else:
+    weaknesses.append(f"Profit Margin {kpis['Profit Margin']:.2%} is below benchmark, cost control needed.")
+
+# ROA
+if kpis.get("ROA", 0) >= benchmarks["ROA"]:
+    strengths.append(f"ROA {kpis['ROA']:.2%} reflects effective asset utilization.")
+else:
+    weaknesses.append(f"ROA {kpis['ROA']:.2%} indicates inefficient asset use.")
+
+# Debt-to-Equity
+if kpis.get("Debt-to-Equity", 0) <= benchmarks["Debt-to-Equity"]:
+    strengths.append(f"Debt-to-Equity {kpis['Debt-to-Equity']:.2f} indicates manageable leverage.")
+else:
+    threats.append(f"High Debt-to-Equity {kpis['Debt-to-Equity']:.2f} may signal financial risk.")
+
+# General opportunities & threats (data-driven optional extras)
+if kpis.get("Profit Margin", 0) < 0:
+    threats.append("Sustained losses may impact long-term viability.")
+else:
+    opportunities.append("Scope to further increase profitability through expansion or efficiency.")
+
+if kpis.get("Current Ratio", 0) > 3:
+    opportunities.append("Excess liquidity can be invested for higher returns.")
+
+# Display in 4 columns
+col1, col2, col3, col4 = st.columns(4)
+with col1:
+    st.markdown("**Strengths**")
+    for s in strengths: st.markdown(f"- {s}")
+
+with col2:
+    st.markdown("**Weaknesses**")
+    for w in weaknesses: st.markdown(f"- {w}")
+
+with col3:
+    st.markdown("**Opportunities**")
+    for o in opportunities: st.markdown(f"- {o}")
+
+with col4:
+    st.markdown("**Threats**")
+    for t in threats: st.markdown(f"- {t}")
+
+
     ai_analysis = generate_ai_analysis(kpis)
     pdf_bytes = create_professional_pdf(kpis, ai_analysis, st.session_state.company_name)
 
@@ -497,6 +562,7 @@ else:
             file_name=f"{st.session_state.company_name}_Processed_Data.xlsx",
             use_container_width=True,
         )
+
 
 
 
