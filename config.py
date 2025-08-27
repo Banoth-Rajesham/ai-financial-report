@@ -5,53 +5,75 @@
 # ==============================================================================
 
 NOTES_STRUCTURE_AND_MAPPING = {
-    # ==============================================================================
+    # =======================================================================
     # CONFIGURATION FOR NOTE 1: SHARE CAPITAL
-    # ==============================================================================
+    # =======================================================================
     '1': {
         'title': 'Share Capital',
         'sub_items': {
+            # Share Capital Table (Main Block)
             'Authorised share capital': {
-                'No.of shares 10000 ,Equity shares of Rs. 10 each.': [
-                    'Authorised share capital|No.of shares 10000 ,Equity shares of Rs. 10 each.',
+                'No.of shares 10000 Equity shares of Rs. 10 each': [
+                    'Authorised share capital|No.of shares 10000 Equity shares of Rs. 10 each',
                     'authorised share capital'
                 ]
             },
             'Issued, subscribed and fully paid up capital': {
-                'No.of shares 10000 Equity shares of Rs. 10 each.': [
-                    'Issued, subscribed and fully paid up capital|No.of shares 10000 Equity shares of Rs. 10 each.',
+                'No.of shares 10000 Equity shares of Rs. 10 each': [
+                    'Issued, subscribed and fully paid up capital|No.of shares 10000 Equity shares of Rs. 10 each',
                     'Share Capital', 'Equity Capital', 'Paid-up Capital'
                 ]
             },
             'Issued, subscribed and Partly up capital': {
-                'No.of shares 10000 equity shares of Rs.10 each fully paid up.': [
-                    'Issued, subscribed and Partly up capital|No.of shares 10000 equity shares of Rs.10 each fully paid up.'
+                'No.of shares 10000 equity shares of Rs. 10 each fully paid up': [
+                    'Issued, subscribed and Partly up capital|No.of shares 10000 equity shares of Rs. 10 each fully paid up.'
                 ]
             },
+            'Total': [
+                'Total Share Capital', 'Total Equity Capital'
+            ],
+            # 1.1 Reconciliation of Number of Shares (Section)
             '1.1 Reconciliation of number of shares': {
                 'Equity shares': {
-                    'No.of shares 10000 Equity shares of Rs. 10 each.': ['Equity shares|No.of shares 10000 Equity shares of Rs. 10 each.']
+                    'No.of shares 10000 Equity shares of Rs. 10 each': [
+                        'Equity shares|No.of shares 10000 Equity shares of Rs. 10 each'
+                    ]
                 },
-                'Add: Additions to share capital on account of fresh issue or bonus issue etc.,': [
-                    'Add: Additions to share capital on account of fresh issue or bonus issue etc.,',
+                'Add: Additions to share capital on account of fresh issue or bonus issue etc.': [
+                    'Add: Additions to share capital on account of fresh issue or bonus issue etc.',
                     'additions to share capital'
                 ],
-                'Ded: Deductions from share capital on account of shares bought back, redemption etc.,': [
-                    'Ded: Deductions from share capital on account of shares bought back, redemption etc.,',
+                'Ded: Deductions from share capital on account of shares bought back, redemption etc.': [
+                    'Ded: Deductions from share capital on account of shares bought back, redemption etc.',
                     'deductions from share capital'
                 ],
                 'Balance at the end of the year': {
-                    'No. of shares 10,000 shares of ` 10 each': ['Balance at the end of the year|No. of shares 10,000 shares of ` 10 each']
+                    'No. of shares 10,000 shares of Rs. 10 each': [
+                        'Balance at the end of the year|No. of shares 10,000 shares of Rs. 10 each'
+                    ]
                 }
             },
+            # 1.2 Details of Shareholders Holding >5% (Section)
             '1.2 Details of share held by shareholders holding more than 5% of the aggregate shares in the company': {
-                'M A Waheed Khan': ['M A Waheed Khan'],
-                'M A Qhuddus Khan': ['M A Qhuddus Khan'],
-                'M A Khadir Khan Asif': ['M A Khadir Khan Asif'],
-                'M A Rauf Khan': ['M A Rauf Khan']
+                'M A Waheed Khan': [
+                    'Shareholder|M A Waheed Khan'
+                ],
+                'M A Qhuddus Khan': [
+                    'Shareholder|M A Qhuddus Khan'
+                ],
+                'M A Khadir Khan Asif': [
+                    'Shareholder|M A Khadir Khan Asif'
+                ],
+                'M A Rauf Khan': [
+                    'Shareholder|M A Rauf Khan'
+                ],
+                'Total': [
+                    'Total shareholder percentage|shareholders >5%'
+                ]
             }
         }
     },
+    # ... other notes unchange
 
     # ==============================================================================
     # CONFIGURATION FOR NOTE 2: RESERVE AND SURPLUS
@@ -1184,3 +1206,4 @@ MASTER_TEMPLATE = {
         ("8", "Earnings per equity share", None, "item_no_note"),
     ]
 }
+
