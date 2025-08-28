@@ -32,6 +32,7 @@ def report_finalizer_agent(aggregated_data, company_name):
             }
 
             num_format_rupee = '\_("₹"* #,##0.00_);\_("₹"* (#,##0.00);\_("0.00"??_);\_(@\_)'
+            num_format_pct = '0.00"%"'
 
             fmt_title = workbook.add_format({
                 'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
@@ -56,6 +57,9 @@ def report_finalizer_agent(aggregated_data, company_name):
             fmt_item_text = workbook.add_format({'border': 1, 'border_color': colors['border']})
             fmt_item_num = workbook.add_format({
                 'border': 1, 'border_color': colors['border'], 'num_format': num_format_rupee
+            })
+            fmt_item_pct = workbook.add_format({
+                'border': 1, 'border_color': colors['border'], 'num_format': num_format_pct
             })
             fmt_total_text = workbook.add_format({
                 'bold': True, 'bg_color': colors['total_bg'], 'border': 1,
@@ -145,11 +149,12 @@ def report_finalizer_agent(aggregated_data, company_name):
                 row_num = 3
 
                 # helpers for sectioned Note 1
-                def _w_kv(label, cy, py):
+                def _w_kv(label, cy, py, is_pct=False):
                     nonlocal row_num
+                    fmt_val = fmt_item_pct if is_pct else fmt_item_num
                     worksheet.write(row_num, 0, label, fmt_item_text)
-                    worksheet.write_number(row_num, 1, cy or 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, py or 0, fmt_item_num)
+                    worksheet.write_number(row_num, 1, cy or 0, fmt_val)
+                    worksheet.write_number(row_num, 2, py or 0, fmt_val)
                     row_num += 1
 
                 def _sp(rows=1):
@@ -161,73 +166,71 @@ def report_finalizer_agent(aggregated_data, company_name):
                     worksheet.merge_range(row_num, 0, row_num, 2, title, fmt_subheader)
                     row_num += 1
 
-                def _cy_py(d):
-                    if isinstance(d, dict) and ('CY' in d or 'PY' in d):
+                def _cy_py(d, key1=None, key2=None):
+                    if isinstance(d, dict):
+                        if key1 and key2:
+                            return d.get(key1, 0), d.get(key2, 0)
                         return d.get('CY', 0), d.get('PY', 0)
                     return 0, 0
                 
-                # --- The Corrected _render_note1 function ---
+                # --- The CORRECTED _render_note1 function ---
                 def _render_note1(n1):
                     nonlocal row_num
                     si = n1.get('sub_items', {})
                     
-                    # 1. Authorised Share Capital Section
+                    # 1. Main Share Capital Table
                     _w_sec("Particulars")
                     
                     # Authorised share capital
-                    label_auth = 'Authorised share capital'
-                    cy_auth, py_auth = _cy_py(si.get(label_auth, {}))
-                    worksheet.write(row_num, 0, f"{label_auth}\n(No. of shares 18000 Equity shares of Rs. 10 each.)", fmt_item_text)
-                    worksheet.write_number(row_num, 1, cy_auth, fmt_item_num)
-                    worksheet.write_number(row_num, 2, py_auth, fmt_item_num)
-                    row_num += 1
-                    
+                    auth_data = si.get('Authorised share capital', {})
+                    auth_shares_key = 'No.of shares 10000 Equity shares of Rs. 10 each'
+                    cy_auth, py_auth = _cy_py(auth_data.get(auth_shares_key, {}))
+                    _w_kv(f"Authorised share capital\n(No. of shares 10000 Equity shares of Rs. 10 each.)", cy_auth, py_auth)
+
                     # Issued, subscribed and fully paid up capital
-                    label_issued = 'Issued, subscribed and fully paid up capital'
-                    cy_issued, py_issued = _cy_py(si.get(label_issued, {}))
-                    worksheet.write(row_num, 0, f"{label_issued}\n(No. of shares 18000 Equity shares of Rs. 10 each.)", fmt_item_text)
-                    worksheet.write_number(row_num, 1, cy_issued, fmt_item_num)
-                    worksheet.write_number(row_num, 2, py_issued, fmt_item_num)
-                    row_num += 1
+                    issued_data = si.get('Issued, subscribed and fully paid up capital', {})
+                    issued_shares_key = 'No.of shares 10000 Equity shares of Rs. 10 each'
+                    cy_issued, py_issued = _cy_py(issued_data.get(issued_shares_key, {}))
+                    _w_kv(f"Issued, subscribed and fully paid up capital\n(No. of shares 10000 Equity shares of Rs. 10 each.)", cy_issued, py_issued)
 
                     # Issued, subscribed and Partly up capital
-                    worksheet.write(row_num, 0, "Issued, subscribed and Partly up capital", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
+                    partly_data = si.get('Issued, subscribed and Partly up capital', {})
+                    partly_shares_key = 'No.of shares 10000 equity shares of Rs. 10 each fully paid up'
+                    cy_partly, py_partly = _cy_py(partly_data.get(partly_shares_key, {}))
+                    _w_kv("Issued, subscribed and Partly up capital", cy_partly, py_partly)
+
                     # Total for this section
-                    cy_total_1 = cy_auth + cy_issued
-                    py_total_1 = py_auth + py_issued
+                    cy_total_1 = cy_auth + cy_issued + cy_partly
+                    py_total_1 = py_auth + py_issued + py_partly
                     worksheet.write(row_num, 0, "Total", fmt_total_text)
                     worksheet.write_number(row_num, 1, cy_total_1, fmt_total_num)
                     worksheet.write_number(row_num, 2, py_total_1, fmt_total_num)
                     row_num += 1
                     _sp(1)
 
-                    # 2. Reconciliation of number of shares Section
+                    # 2. Reconciliation of Number of Shares Section
                     _w_sec("1.1 Reconciliation of number of shares")
                     recon = si.get('1.1 Reconciliation of number of shares', {})
                     
                     # Equity shares
-                    label_equity = 'Equity shares'
-                    cy_equity, py_equity = _cy_py(recon.get(label_equity, {}))
-                    _w_kv(f"No. of shares 10000 Equity shares of Rs. 10 each.", cy_equity, py_equity)
+                    recon_equity_key = 'Equity shares'
+                    cy_equity, py_equity = _cy_py(recon.get(recon_equity_key, {}).get('No.of shares 10000 Equity shares of Rs. 10 each', {}))
+                    _w_kv("No. of shares 10000 Equity shares of Rs. 10 each.", cy_equity, py_equity)
                     
                     # Additions
-                    label_add = 'Add: Additions to share capital on account of fresh issue or bonus issue etc.,'
-                    cy_add, py_add = _cy_py(recon.get(label_add, {}))
-                    _w_kv(label_add, cy_add, py_add)
+                    additions_key = 'Add: Additions to share capital on account of fresh issue or bonus issue etc.'
+                    cy_add, py_add = _cy_py(recon.get(additions_key, {}))
+                    _w_kv(additions_key, cy_add, py_add)
                     
                     # Deductions
-                    label_ded = 'Ded: Deductions from share capital on account of shares bought back, redemption etc.,'
-                    cy_ded, py_ded = _cy_py(recon.get(label_ded, {}))
-                    _w_kv(label_ded, cy_ded, py_ded)
+                    deductions_key = 'Ded: Deductions from share capital on account of shares bought back, redemption etc.'
+                    cy_ded, py_ded = _cy_py(recon.get(deductions_key, {}))
+                    _w_kv(deductions_key, cy_ded, py_ded)
                     
                     # Balance at the end of the year
-                    label_balance = 'Balance at the end of the year'
-                    cy_balance, py_balance = _cy_py(recon.get(label_balance, {}))
-                    _w_kv(f"{label_balance}\nNo. of shares 18,000 shares of 10 each", cy_balance, py_balance)
+                    balance_key = 'Balance at the end of the year'
+                    cy_balance, py_balance = _cy_py(recon.get(balance_key, {}).get('No. of shares 10,000 shares of Rs. 10 each', {}))
+                    _w_kv(f"Balance at the end of the year", cy_balance, py_balance)
                     _sp(1)
 
                     # 3. Shareholders holding >5% Section
@@ -238,17 +241,21 @@ def report_finalizer_agent(aggregated_data, company_name):
                     row_num += 1
 
                     sh = si.get('1.2 Details of share held by shareholders holding more than 5% of the aggregate shares in the company', {})
-                    for name in ['M A Waheed Khan', 'M A Qhuddus Khan', 'M A Khadir Khan Asif', 'M A Rauf Khan']:
-                        row = sh.get(name, {})
-                        shares = (row.get('CY', 0) if isinstance(row, dict) and 'CY' in row else 0)
-                        pct = (row.get('PY', 0) if isinstance(row, dict) and 'PY' in row else 0)
-                        worksheet.write(row_num, 0, name, fmt_item_text)
-                        worksheet.write_number(row_num, 1, shares, fmt_item_num)
-                        worksheet.write_number(row_num, 2, pct, fmt_item_num)
-                        row_num += 1
+                    
+                    shareholder_names = [k for k in sh.keys() if k not in ['Total']]
+                    for name in shareholder_names:
+                        shareholder_data = sh.get(name, {})
+                        shares_cy, shares_py = _cy_py(shareholder_data, 'CY', 'PY')
+                        # Note: The data structure from your images shows a percentage for the total,
+                        # but your mapping has a single key per shareholder. Assuming the number of shares and percentage
+                        # are derived differently or have separate keys in `aggregated_data`.
+                        # This section is written to handle a simplified data structure.
+                        _w_kv(name, shares_cy, shares_py)
+                        
+                    _sp(1)
 
                 # choose renderer robustly
-                if note_num_str.strip().split()[-1] == '1':
+                if note_num_str.strip() == '1':
                     _render_note1(note_data)
                 else:
                     _write_note_level(note_data['sub_items'])
