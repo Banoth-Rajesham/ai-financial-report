@@ -204,7 +204,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     worksheet.write_number(row_num, 2, py_total_1, fmt_total_num)
                     row_num += 1
                     _sp(1)
-                
+
                     # 2. Reconciliation of number of shares Section
                     _w_sec("1.1 Reconciliation of number of shares")
                     recon = si.get('1.1 Reconciliation of number of shares', {})
@@ -229,7 +229,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     cy_balance, py_balance = _cy_py(recon.get(label_balance, {}))
                     _w_kv(f"{label_balance}\nNo. of shares 18,000 shares of 10 each", cy_balance, py_balance)
                     _sp(1)
-                
+
                     # 3. Shareholders holding >5% Section
                     _w_sec("1.2 Details of shares held by shareholders holding more than 5% of the aggregate shares in the company")
                     worksheet.write(row_num, 0, "Name of the shareholders", fmt_header)
