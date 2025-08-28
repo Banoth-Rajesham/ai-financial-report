@@ -1,7 +1,6 @@
 # ==============================================================================
 # CONFIG.PY - NOTES STRUCTURE AND MAPPING
-# This file is built sequentially.
-# Current progress: Note 1, Note 2, Note 3, Note 4
+# This file is built to contain only the configuration for Note 1.
 # ==============================================================================
 
 NOTES_STRUCTURE_AND_MAPPING = {
@@ -73,7 +72,7 @@ NOTES_STRUCTURE_AND_MAPPING = {
             }
         }
     },
-    # ... other notes unchange
+
 
     # ==============================================================================
     # CONFIGURATION FOR NOTE 2: RESERVE AND SURPLUS
@@ -1206,4 +1205,5 @@ MASTER_TEMPLATE = {
         ("8", "Earnings per equity share", None, "item_no_note"),
     ]
 }
+
 
