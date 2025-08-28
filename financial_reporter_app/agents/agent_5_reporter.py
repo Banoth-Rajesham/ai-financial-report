@@ -29,7 +29,7 @@ def report_finalizer_agent(aggregated_data, company_name):
             }
 
             # --- DEFINE CELL FORMATS ---
-            num_format_rupee = '_("₹"* #,##0.00_);_("₹"* (#,##0.00);_("0.00"??_);_(@_)'
+            num_format_rupee = r'_("₹"* #,##0.00_);_("₹"* (#,##0.00);_("0.00"??_);_(@_)'
             num_format_pct = '0.00"%"'
             
             fmt_title = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter', 'bg_color': colors['title_bg'], 'font_color': colors['title_font']})
@@ -94,6 +94,145 @@ def report_finalizer_agent(aggregated_data, company_name):
                     row_num += 1
 
             # --- 2. RENDER THE NOTE SHEETS ---
+            
+            # Moved `write_note_level` to a higher scope
+            def write_note_level(items, indent_level=0):
+                nonlocal row_num
+                for key, value in items.items():
+                    prefix = "    " * indent_level
+                    if isinstance(value, dict) and 'CY' in value:
+                        worksheet.write(row_num, 0, f"{prefix}{key}", fmt_item_text)
+                        worksheet.write_number(row_num, 1, value.get('CY', 0), fmt_item_num)
+                        worksheet.write_number(row_num, 2, value.get('PY', 0), fmt_item_num)
+                        row_num += 1
+                    elif isinstance(value, dict):
+                        worksheet.write(row_num, 0, f"{prefix}{key}", fmt_subheader)
+                        row_num += 1
+                        write_note_level(value, indent_level + 1)
+
+            # Custom renderer for Note 1 to match the specific layout
+            def _render_note1(n1):
+                nonlocal row_num
+                
+                # Main headers for Note 1
+                worksheet.write('A3', 'Particulars', fmt_header)
+                worksheet.write('B3', 'As at March 31, 2025', fmt_header)
+                worksheet.write('C3', 'As at March 31, 2024', fmt_header)
+                row_num = 4
+                
+                # Block 1: Share Capital
+                worksheet.write(row_num, 0, '1. Share Capital', fmt_subheader)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, 'Authorised share capital', fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, 'No of shares 10000, Equity shares of Rs.10 each.', fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, 'Issued, subscribed and fully paid up capital', fmt_item_text)
+                worksheet.write_number(row_num, 1, 500000.00, fmt_item_num)
+                worksheet.write_number(row_num, 2, 500000.00, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, 'No of shares 10000 Equity shares of Rs.10 each.', fmt_item_text)
+                worksheet.write_number(row_num, 1, 500000.00, fmt_item_num)
+                worksheet.write_number(row_num, 2, 500000.00, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, 'Issued, subscribed and Partly up capital', fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, 'No of shares 10000 equity shares of Rs.10 each fully paid up.', fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, "Total", fmt_total_text)
+                worksheet.write_number(row_num, 1, 500000.00, fmt_total_num)
+                worksheet.write_number(row_num, 2, 500000.00, fmt_total_num)
+                row_num += 1
+                row_num += 1 # Spacer row
+                
+                # Block 1.1: Reconciliation
+                worksheet.write(row_num, 0, "1.1 Reconciliation of number of shares", fmt_subheader)
+                row_num += 1
+
+                worksheet.write(row_num, 0, "Equity shares", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, "No of shares 10000 Equity shares of Rs. 10 each.", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, "Add: Additions to share capital on account of fresh issue or bonus issue etc.", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, "Ded: Deductions from share capital on account of shares bought back, redemption etc.", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, "Balance at the end of the year", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+                
+                worksheet.write(row_num, 0, "No. of shares 10,000 shares of 10 each", fmt_item_text)
+                worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                worksheet.write_number(row_num, 2, 0, fmt_item_num)
+                row_num += 1
+
+                worksheet.write(row_num, 0, "", fmt_total_text)
+                worksheet.write_number(row_num, 1, 0, fmt_total_num)
+                worksheet.write_number(row_num, 2, 0, fmt_total_num)
+                row_num += 1
+                row_num += 1 # Spacer row
+
+                # Block 1.2: Shareholders >5%
+                worksheet.merge_range(row_num, 0, row_num, 2, "1.2 Details of shares held by shareholders holding more than 5% of the aggregate shares in the company", fmt_subheader)
+                row_num += 1
+                
+                # Multi-level headers for 5% table
+                worksheet.merge_range(row_num, 0, row_num + 1, 0, "Name of the shareholders", fmt_header)
+                worksheet.merge_range(row_num, 1, row_num, 2, "As at March 31, 2025", fmt_header)
+                worksheet.merge_range(row_num, 3, row_num, 4, "As at March 31, 2024", fmt_header)
+                row_num += 1
+                
+                worksheet.write(row_num, 1, "Number of shares", fmt_header)
+                worksheet.write(row_num, 2, "Percentage of share holding", fmt_header)
+                worksheet.write(row_num, 3, "Number of shares", fmt_header)
+                worksheet.write(row_num, 4, "Percentage of share holding", fmt_header)
+                row_num += 1
+
+                shareholders = ["M A Waheed Khan", "M A Qhuddus Khan", "M A Khadir Khan Asif", "M A Rauf Khan"]
+                for name in shareholders:
+                    worksheet.write(row_num, 0, name, fmt_item_text)
+                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
+                    worksheet.write_number(row_num, 2, 0, fmt_item_pct)
+                    worksheet.write_number(row_num, 3, 0, fmt_item_num)
+                    worksheet.write_number(row_num, 4, 0, fmt_item_pct)
+                    row_num += 1
+                
+                # Bottom summary row for 5% table
+                worksheet.write(row_num, 0, "Total", fmt_total_text)
+                worksheet.write_number(row_num, 1, 0, fmt_total_num)
+                worksheet.write_number(row_num, 2, 0, fmt_total_pct)
+                worksheet.write_number(row_num, 3, 0, fmt_total_num)
+                worksheet.write_number(row_num, 4, 0, fmt_total_pct)
+                row_num += 1
+
             for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.')[0])):
                 note_data = aggregated_data.get(note_num_str)
                 if not note_data or 'sub_items' not in note_data: continue
@@ -103,143 +242,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                 worksheet.merge_range('A1:C1', f"Note {note_num_str}: {note_data.get('title', '')}", fmt_title)
                 
                 row_num = 3
-                def write_note_level(items, indent_level=0):
-                    nonlocal row_num
-                    for key, value in items.items():
-                        prefix = "    " * indent_level
-                        if isinstance(value, dict) and 'CY' in value:
-                            worksheet.write(row_num, 0, f"{prefix}{key}", fmt_item_text)
-                            worksheet.write_number(row_num, 1, value.get('CY', 0), fmt_item_num)
-                            worksheet.write_number(row_num, 2, value.get('PY', 0), fmt_item_num)
-                            row_num += 1
-                        elif isinstance(value, dict):
-                            worksheet.write(row_num, 0, f"{prefix}{key}", fmt_subheader)
-                            row_num += 1
-                            write_note_level(value, indent_level + 1)
-
-                # Custom renderer for Note 1 to match the specific layout
-                def _render_note1(n1):
-                    nonlocal row_num
-                    
-                    # Main headers for Note 1
-                    worksheet.write('A3', 'Particulars', fmt_header)
-                    worksheet.write('B3', 'As at March 31, 2025', fmt_header)
-                    worksheet.write('C3', 'As at March 31, 2024', fmt_header)
-                    row_num = 4
-                    
-                    # Block 1: Share Capital
-                    worksheet.write(row_num, 0, '1. Share Capital', fmt_subheader)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, 'Authorised share capital', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, 'No of shares 10000, Equity shares of Rs.10 each.', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, 'Issued, subscribed and fully paid up capital', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 500000.00, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 500000.00, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, 'No of shares 10000 Equity shares of Rs.10 each.', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 500000.00, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 500000.00, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, 'Issued, subscribed and Partly up capital', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, 'No of shares 10000 equity shares of Rs.10 each fully paid up.', fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, "Total", fmt_total_text)
-                    worksheet.write_number(row_num, 1, 500000.00, fmt_total_num)
-                    worksheet.write_number(row_num, 2, 500000.00, fmt_total_num)
-                    row_num += 1
-                    row_num += 1 # Spacer row
-                    
-                    # Block 1.1: Reconciliation
-                    worksheet.write(row_num, 0, "1.1 Reconciliation of number of shares", fmt_subheader)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, "Equity shares", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, "No of shares 10000 Equity shares of Rs. 10 each.", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, "Add: Additions to share capital on account of fresh issue or bonus issue etc.", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, "Ded: Deductions from share capital on account of shares bought back, redemption etc.", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, "Balance at the end of the year", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 0, "No. of shares 10,000 shares of 10 each", fmt_item_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_item_num)
-                    row_num += 1
-
-                    worksheet.write(row_num, 0, "", fmt_total_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_total_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_total_num)
-                    row_num += 1
-                    row_num += 1 # Spacer row
-
-                    # Block 1.2: Shareholders >5%
-                    worksheet.merge_range(row_num, 0, row_num, 2, "1.2 Details of shares held by shareholders holding more than 5% of the aggregate shares in the company", fmt_subheader)
-                    row_num += 1
-                    
-                    # Multi-level headers for 5% table
-                    worksheet.merge_range(row_num, 0, row_num + 2, 0, "Name of the shareholders", fmt_header)
-                    worksheet.merge_range(row_num, 1, row_num, 2, "As at March 31, 2025", fmt_header)
-                    worksheet.merge_range(row_num, 3, row_num, 4, "As at March 31, 2024", fmt_header)
-                    row_num += 1
-                    
-                    worksheet.write(row_num, 1, "Number of shares", fmt_header)
-                    worksheet.write(row_num, 2, "Percentage of share holding", fmt_header)
-                    worksheet.write(row_num, 3, "Number of shares", fmt_header)
-                    worksheet.write(row_num, 4, "Percentage of share holding", fmt_header)
-                    row_num += 1
-
-                    shareholders = ["M A Waheed Khan", "M A Qhuddus Khan", "M A Khadir Khan Asif", "M A Rauf Khan"]
-                    for name in shareholders:
-                        worksheet.write(row_num, 0, name, fmt_item_text)
-                        worksheet.write_number(row_num, 1, 0, fmt_item_num)
-                        worksheet.write_number(row_num, 2, 0, fmt_item_pct)
-                        worksheet.write_number(row_num, 3, 0, fmt_item_num)
-                        worksheet.write_number(row_num, 4, 0, fmt_item_pct)
-                        row_num += 1
-                    
-                    # Bottom summary row for 5% table
-                    worksheet.write(row_num, 0, "Total", fmt_total_text)
-                    worksheet.write_number(row_num, 1, 0, fmt_total_num)
-                    worksheet.write_number(row_num, 2, 0, fmt_total_pct)
-                    worksheet.write_number(row_num, 3, 0, fmt_total_num)
-                    worksheet.write_number(row_num, 4, 0, fmt_total_pct)
-                    row_num += 1
-
+                
                 # Choose renderer
                 if note_num_str.strip() == '1':
                     _render_note1(note_data)
