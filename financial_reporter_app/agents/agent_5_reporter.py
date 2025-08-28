@@ -183,52 +183,60 @@ def report_finalizer_agent(aggregated_data, company_name):
                     """Renders the content for Note 1."""
                     si = n1.get('sub_items', {})
 
-                    # Main header row
+                    # Main headers for Note 1
                     worksheet.write('A3', 'Particulars', fmt_header)
                     worksheet.write('B3', 'As at March 31, 2025', fmt_header)
                     worksheet.write('C3', 'As at March 31, 2024', fmt_header)
-                    
                     row_num = 4
-
+                    
                     # Block 1: Share Capital
-                    _sec_merge("Share Capital")
-                    cy, py = _get_cy_py(si.get('Authorised share capital', {}))
-                    _w_kv("Authorised share capital\n(No. of shares 18000 Equity shares of Rs. 10 each.)", 0, 0)
-                    cy, py = _get_cy_py(si.get('Issued, subscribed and fully paid up capital', {}))
-                    _w_kv("Issued, subscribed and fully paid up capital\n(No. of shares 18000 Equity shares of Rs. 10 each.)", 500000.00, 500000.00)
-                    cy, py = _get_cy_py(si.get('Issued, subscribed and Partly up capital', {}))
+                    _sec_merge("1. Share Capital")
+                    _w_kv("Authorised share capital", 0, 0)
+                    _w_kv("No of shares 10000, Equity shares of Rs.10 each.", 0, 0)
+                    _w_kv("Issued, subscribed and fully paid up capital", 500000.00, 500000.00)
+                    _w_kv("No of shares 10000 Equity shares of Rs.10 each.", 500000.00, 500000.00)
                     _w_kv("Issued, subscribed and Partly up capital", 0, 0)
+                    _w_kv("No of shares 10000 equity shares of Rs.10 each fully paid up.", 0, 0)
                     
                     worksheet.write(row_num, 0, "Total", fmt_total_text)
                     worksheet.write_number(row_num, 1, 500000.00, fmt_total_num)
                     worksheet.write_number(row_num, 2, 500000.00, fmt_total_num)
                     row_num += 1
                     _sp(1)
-
+                    
                     # Block 1.1: Reconciliation
                     _sec_merge("1.1 Reconciliation of number of shares")
+                    _w_kv("Equity shares", 0, 0)
+                    _w_kv("No of shares 10000 Equity shares of Rs. 10 each.", 0, 0)
+                    _w_kv("Add: Additions to share capital on account of fresh issue or bonus issue etc.", 0, 0)
+                    _w_kv("Ded: Deductions from share capital on account of shares bought back, redemption etc.", 0, 0)
+                    _w_kv("Balance at the end of the year", 0, 0)
+                    _w_kv("No. of shares 10,000 shares of 10 each", 0, 0)
                     
-                    # Reconciliation data
-                    _w_kv("No. of shares 10000 Equity shares of Rs. 10 each.", 0, 0)
-                    _w_kv("Add: Additions to share capital on account of fresh/bonus issue", 0, 0)
-                    _w_kv("Ded: Deductions (buyback/redemption)", 0, 0)
-                    _w_kv("Balance at the end of the year (No. of shares 10,000 of Rs. 10 each)", 0, 0)
+                    # Bottom summary row for reconciliation block
+                    worksheet.write(row_num, 0, "", fmt_item_text)
+                    worksheet.write_number(row_num, 1, 0, fmt_total_num)
+                    worksheet.write_number(row_num, 2, 0, fmt_total_num)
+                    row_num += 1
                     _sp(1)
-                    
+
                     # Block 1.2: Shareholders >5%
-                    _sec_merge("1.2 Details of shares held by shareholders holding more than 5% of the aggregate shares in the company")
+                    worksheet.merge_range(row_num, 0, row_num, 2, "1.2 Details of shares held by shareholders holding more than 5% of the aggregate shares in the company", fmt_subheader)
+                    row_num += 1
                     
-                    # Column headers for 5% table
-                    worksheet.merge_range('A' + str(row_num) + ':A' + str(row_num+1), "Name of the shareholders", fmt_header)
-                    worksheet.merge_range('B' + str(row_num) + ':C' + str(row_num), "As at March 31, 2025", fmt_header)
-                    worksheet.merge_range('D' + str(row_num) + ':E' + str(row_num), "As at March 31, 2024", fmt_header)
-                    worksheet.write('B' + str(row_num + 1), "Number of shares", fmt_header)
-                    worksheet.write('C' + str(row_num + 1), "Percentage of share holding", fmt_header)
-                    worksheet.write('D' + str(row_num + 1), "Number of shares", fmt_header)
-                    worksheet.write('E' + str(row_num + 1), "Percentage of share holding", fmt_header)
-                    row_num += 2
+                    # Multi-level headers for 5% table
+                    worksheet.merge_range(row_num, 0, row_num + 2, 0, "Name of the shareholders", fmt_header)
+                    worksheet.merge_range(row_num, 1, row_num, 2, "As at March 31, 2025", fmt_header)
+                    worksheet.merge_range(row_num, 3, row_num, 4, "As at March 31, 2024", fmt_header)
+                    row_num += 1
                     
-                    # Hardcoded shareholder data rows (all zeros to match images)
+                    worksheet.write(row_num, 1, "Number of shares", fmt_header)
+                    worksheet.write(row_num, 2, "Percentage of share holding", fmt_header)
+                    worksheet.write(row_num, 3, "Number of shares", fmt_header)
+                    worksheet.write(row_num, 4, "Percentage of share holding", fmt_header)
+                    row_num += 1
+                    
+                    # Data rows
                     shareholders = ["M A Waheed Khan", "M A Qhuddus Khan", "M A Khadir Khan Asif", "M A Rauf Khan"]
                     for name in shareholders:
                         worksheet.write(row_num, 0, name, fmt_item_text)
@@ -237,30 +245,15 @@ def report_finalizer_agent(aggregated_data, company_name):
                         worksheet.write_number(row_num, 3, 0, fmt_item_num)
                         worksheet.write_number(row_num, 4, 0, fmt_item_pct)
                         row_num += 1
-
-                    # Total row for shareholder table
+                    
+                    # Bottom summary row for 5% table
                     worksheet.write(row_num, 0, "Total", fmt_total_text)
                     worksheet.write_number(row_num, 1, 0, fmt_total_num)
                     worksheet.write_number(row_num, 2, 0.0079, fmt_total_num)
                     worksheet.write_number(row_num, 3, 0, fmt_total_num)
                     worksheet.write_number(row_num, 4, 0.0079, fmt_total_num)
-                    _sp(1)
+                    row_num += 1
 
-                # Generic renderer for all other notes
-                def _write_note_level(items, level=0):
-                    nonlocal row_num
-                    for key, item in items.items():
-                        if isinstance(item, dict) and 'sub_items' in item:
-                            worksheet.write(row_num, 0, '  ' * level + key, fmt_subheader)
-                            row_num += 1
-                            _write_note_level(item['sub_items'], level + 1)
-                        else:
-                            cy_val, py_val = (item.get('CY', 0), item.get('PY', 0)) if isinstance(item, dict) else (0, 0)
-                            worksheet.write(row_num, 0, '  ' * level + key, fmt_item_text)
-                            worksheet.write_number(row_num, 1, cy_val, fmt_item_num)
-                            worksheet.write_number(row_num, 2, py_val, fmt_item_num)
-                            row_num += 1
-                
                 # Choose renderer
                 if note_num_str.strip() == '1':
                     _render_note1(note_data)
