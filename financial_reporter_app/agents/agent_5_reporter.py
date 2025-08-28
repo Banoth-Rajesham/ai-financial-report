@@ -5,7 +5,7 @@
 import pandas as pd
 import io
 import traceback
-from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING  # repo config [unchanged]
+from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 
 def report_finalizer_agent(aggregated_data, company_name):
     """
@@ -19,7 +19,7 @@ def report_finalizer_agent(aggregated_data, company_name):
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
 
-            # --- Colors and formats (unchanged across app) ---
+            # --- Colors and formats (unchanged semantics) ---
             colors = {
                 'title_bg': '#2F5496', 'title_font': '#FFFFFF',
                 'header_bg': '#DDEBF7',
@@ -127,7 +127,7 @@ def report_finalizer_agent(aggregated_data, company_name):
                     row_num += 1
 
             # --- 2) Note sheets: Note 1 sectioned, others generic ---
-            for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.'))):
+            for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.')[0])):
                 note_data = aggregated_data.get(note_num_str)
                 if not note_data or 'sub_items' not in note_data:
                     continue
@@ -143,56 +143,56 @@ def report_finalizer_agent(aggregated_data, company_name):
 
                 row_num = 3
 
-                # helpers
-                def write_kv_row(label, cy, py):
+                # helpers for sectioned Note 1
+                def _w_kv(label, cy, py):
                     nonlocal row_num
                     worksheet.write(row_num, 0, label, fmt_item_text)
                     worksheet.write_number(row_num, 1, cy or 0, fmt_item_num)
                     worksheet.write_number(row_num, 2, py or 0, fmt_item_num)
                     row_num += 1
 
-                def write_spacer(rows=1):
+                def _sp(rows=1):
                     nonlocal row_num
                     row_num += rows
 
-                def write_section_title(title):
+                def _w_sec(title):
                     nonlocal row_num
                     worksheet.merge_range(row_num, 0, row_num, 2, title, fmt_subheader)
                     row_num += 1
 
-                def render_note1(n1):
+                def _cy_py(d):
+                    if isinstance(d, dict) and ('CY' in d or 'PY' in d):
+                        return d.get('CY', 0), d.get('PY', 0)
+                    return 0, 0
+
+                def _render_note1(n1):
                     si = n1.get('sub_items', {})
 
-                    def get_cy_py(block):
-                        if isinstance(block, dict) and 'CY' in block:
-                            return block.get('CY', 0), block.get('PY', 0)
-                        return None, None
-
                     # A) Main Share Capital
-                    write_section_title("Particulars")
-                    cy, py = get_cy_py(si.get('Authorised share capital', {}))
-                    write_kv_row("Authorised share capital", cy, py)
-                    cy, py = get_cy_py(si.get('Issued, subscribed and fully paid up capital', {}))
-                    write_kv_row("Issued, subscribed and fully paid up capital", cy, py)
-                    cy, py = get_cy_py(si.get('Issued, subscribed and Partly up capital', {}))
-                    write_kv_row("Issued, subscribed and Partly up capital", cy, py)
-                    write_spacer(1)
+                    _w_sec("Particulars")
+                    cy, py = _cy_py(si.get('Authorised share capital', {}))
+                    _w_kv("Authorised share capital", cy, py)
+                    cy, py = _cy_py(si.get('Issued, subscribed and fully paid up capital', {}))
+                    _w_kv("Issued, subscribed and fully paid up capital", cy, py)
+                    cy, py = _cy_py(si.get('Issued, subscribed and Partly up capital', {}))
+                    _w_kv("Issued, subscribed and Partly up capital", cy, py)
+                    _sp(1)
 
-                    # B) 1.1 Reconciliation
-                    write_section_title("1.1 Reconciliation of number of shares")
+                    # B) 1.1 Reconciliation of number of shares
+                    _w_sec("1.1 Reconciliation of number of shares")
                     recon = si.get('1.1 Reconciliation of number of shares', {})
-                    cy, py = get_cy_py(recon.get('Equity shares', {}))
-                    write_kv_row("Equity shares (No. of shares 10,000 of Rs. 10 each)", cy, py)
-                    cy, py = get_cy_py(recon.get('Add: Additions to share capital on account of fresh issue or bonus issue etc.,', {}))
-                    write_kv_row("Add: Additions to share capital on account of fresh/bonus issue", cy, py)
-                    cy, py = get_cy_py(recon.get('Ded: Deductions from share capital on account of shares bought back, redemption etc.,', {}))
-                    write_kv_row("Ded: Deductions (buyback/redemption)", cy, py)
-                    cy, py = get_cy_py(recon.get('Balance at the end of the year', {}))
-                    write_kv_row("Balance at the end of the year (No. of shares 10,000 of Rs. 10 each)", cy, py)
-                    write_spacer(1)
+                    cy, py = _cy_py(recon.get('Equity shares', {}))
+                    _w_kv("Equity shares (No. of shares 10,000 of Rs. 10 each)", cy, py)
+                    cy, py = _cy_py(recon.get('Add: Additions to share capital on account of fresh issue or bonus issue etc.,', {}))
+                    _w_kv("Add: Additions to share capital on account of fresh/bonus issue", cy, py)
+                    cy, py = _cy_py(recon.get('Ded: Deductions from share capital on account of shares bought back, redemption etc.,', {}))
+                    _w_kv("Ded: Deductions (buyback/redemption)", cy, py)
+                    cy, py = _cy_py(recon.get('Balance at the end of the year', {}))
+                    _w_kv("Balance at the end of the year (No. of shares 10,000 of Rs. 10 each)", cy, py)
+                    _sp(1)
 
-                    # C) 1.2 Shareholders >5%
-                    write_section_title("1.2 Details of shareholders holding more than 5%")
+                    # C) 1.2 Shareholders holding >5%
+                    _w_sec("1.2 Details of shareholders holding more than 5%")
                     worksheet.write(row_num, 0, "Name of the shareholders", fmt_header)
                     worksheet.write(row_num, 1, "Number of shares", fmt_header)
                     worksheet.write(row_num, 2, "Percentage of share holding", fmt_header)
@@ -208,7 +208,8 @@ def report_finalizer_agent(aggregated_data, company_name):
                         worksheet.write_number(row_num, 2, pct, fmt_item_num)
                         row_num += 1
 
-                def write_note_level(items, indent_level=0):
+                # generic recursive fallback for other notes
+                def _write_note_level(items, indent_level=0):
                     nonlocal row_num
                     for key, value in items.items():
                         prefix = "    " * indent_level
@@ -220,13 +221,13 @@ def report_finalizer_agent(aggregated_data, company_name):
                         elif isinstance(value, dict):
                             worksheet.write(row_num, 0, f"{prefix}{key}", fmt_subheader)
                             row_num += 1
-                            write_note_level(value, indent_level + 1)
+                            _write_note_level(value, indent_level + 1)
 
-                # choose renderer
-                if note_num_str == '1':
-                    render_note1(note_data)
+                # choose renderer robustly
+                if note_num_str.strip().split()[-1] == '1':
+                    _render_note1(note_data)
                 else:
-                    write_note_level(note_data['sub_items'])
+                    _write_note_level(note_data['sub_items'])
 
                 # total row
                 worksheet.write(row_num, 0, "Total", fmt_total_text)
