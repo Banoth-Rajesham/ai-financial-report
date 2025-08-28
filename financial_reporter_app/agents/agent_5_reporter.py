@@ -1,6 +1,7 @@
 # ==============================================================================
-# FILE: agents/agent_5_reporter.py (DEFINITIVE, FINAL VERSION WITH "My Company Inc." STYLING)
+# FILE: agents/agent_5_reporter.py (FINAL with sectioned Note 1 rendering)
 # ==============================================================================
+
 import pandas as pd
 import io
 import traceback
@@ -9,7 +10,9 @@ from config import MASTER_TEMPLATE, NOTES_STRUCTURE_AND_MAPPING
 def report_finalizer_agent(aggregated_data, company_name):
     """
     AGENT 5: Takes final data and writes a complete, multi-sheet Excel report
-    with the professional styling from the "My Company Inc." example.
+    with professional styling. Balance Sheet & P&L remain unchanged. Note sheets
+    now render Note 1 with sectioned blocks per the template; other notes use
+    the generic recursive renderer.
     """
     print("\n--- Agent 5 (Report Finalizer): Generating final styled Excel report... ---")
     try:
@@ -17,7 +20,7 @@ def report_finalizer_agent(aggregated_data, company_name):
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
             workbook = writer.book
 
-            # --- DEFINE "My Company Inc." COLOR PALETTE ---
+            # --- COLOR PALETTE ---
             colors = {
                 'title_bg': '#2F5496', 'title_font': '#FFFFFF',
                 'header_bg': '#DDEBF7',
@@ -28,73 +31,196 @@ def report_finalizer_agent(aggregated_data, company_name):
                 'border': '#000000'
             }
 
-            # --- DEFINE CELL FORMATS ---
-            num_format_rupee = '_("₹"* #,##0.00_);_("₹"* (#,##0.00);_("0.00"??_);_(@_)'
-            fmt_title = workbook.add_format({'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter', 'bg_color': colors['title_bg'], 'font_color': colors['title_font']})
-            fmt_header = workbook.add_format({'bold': True, 'bg_color': colors['header_bg'], 'border': 1, 'border_color': colors['border'], 'align': 'center', 'valign': 'vcenter'})
-            
-            fmt_sec_header_lia_eq = workbook.add_format({'bold': True, 'bg_color': colors['lia_eq_header_bg'], 'border': 1, 'border_color': colors['border']})
-            fmt_sec_header_asset = workbook.add_format({'bold': True, 'bg_color': colors['asset_header_bg'], 'border': 1, 'border_color': colors['border']})
-            fmt_subheader = workbook.add_format({'bg_color': colors['subheader_bg'], 'border': 1, 'border_color': colors['border']})
-
+            # --- FORMATS ---
+            num_format_rupee = '\_("₹"* #,##0.00_);\_("₹"* (#,##0.00);\_("0.00"??_);\_(@\_)'
+            fmt_title = workbook.add_format({
+                'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
+                'bg_color': colors['title_bg'], 'font_color': colors['title_font']
+            })
+            fmt_header = workbook.add_format({
+                'bold': True, 'bg_color': colors['header_bg'], 'border': 1,
+                'border_color': colors['border'], 'align': 'center', 'valign': 'vcenter'
+            })
+            fmt_sec_header_lia_eq = workbook.add_format({
+                'bold': True, 'bg_color': colors['lia_eq_header_bg'], 'border': 1,
+                'border_color': colors['border']
+            })
+            fmt_sec_header_asset = workbook.add_format({
+                'bold': True, 'bg_color': colors['asset_header_bg'], 'border': 1,
+                'border_color': colors['border']
+            })
+            fmt_subheader = workbook.add_format({
+                'bg_color': colors['subheader_bg'], 'border': 1,
+                'border_color': colors['border']
+            })
             fmt_item_text = workbook.add_format({'border': 1, 'border_color': colors['border']})
-            fmt_item_num = workbook.add_format({'border': 1, 'border_color': colors['border'], 'num_format': num_format_rupee})
-            
-            fmt_total_text = workbook.add_format({'bold': True, 'bg_color': colors['total_bg'], 'border': 1, 'border_color': colors['border']})
-            fmt_total_num = workbook.add_format({'bold': True, 'bg_color': colors['total_bg'], 'border': 1, 'border_color': colors['border'], 'num_format': num_format_rupee})
-            
-            # --- 1. RENDER THE MAIN SHEETS (BALANCE SHEET & P&L) ---
-            for sheet_name, template in [("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]), ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])]:
+            fmt_item_num = workbook.add_format({
+                'border': 1, 'border_color': colors['border'], 'num_format': num_format_rupee
+            })
+            fmt_total_text = workbook.add_format({
+                'bold': True, 'bg_color': colors['total_bg'], 'border': 1,
+                'border_color': colors['border']
+            })
+            fmt_total_num = workbook.add_format({
+                'bold': True, 'bg_color': colors['total_bg'], 'border': 1,
+                'border_color': colors['border'], 'num_format': num_format_rupee
+            })
+
+            # --- 1) MAIN SHEETS: BALANCE SHEET & P&L ---
+            for sheet_name, template in [
+                ("Balance Sheet", MASTER_TEMPLATE["Balance Sheet"]),
+                ("Profit and Loss", MASTER_TEMPLATE["Profit and Loss"])
+            ]:
                 worksheet = workbook.add_worksheet(sheet_name)
-                worksheet.set_column('A:A', 5); worksheet.set_column('B:B', 65); worksheet.set_column('C:C', 8); worksheet.set_column('D:E', 20)
+                worksheet.set_column('A:A', 5)
+                worksheet.set_column('B:B', 65)
+                worksheet.set_column('C:C', 8)
+                worksheet.set_column('D:E', 20)
 
                 worksheet.merge_range('A1:E1', f"{company_name} - {sheet_name}", fmt_title)
-                row_num = 3 # Start table on row 4, leaving row 2 blank for spacing
+                row_num = 3  # start table at row 4
 
-                get_total = lambda note_list, year: sum(aggregated_data.get(str(n), {}).get('total', {}).get(year, 0) for n in note_list) if isinstance(note_list, list) else 0
+                # helper to compute totals across notes
+                get_total = lambda note_list, year: (
+                    sum(aggregated_data.get(str(n), {}).get('total', {}).get(year, 0) for n in note_list)
+                    if isinstance(note_list, list) else 0
+                )
 
                 for row_data in template:
                     col_a, particulars, note, row_type = row_data
                     if row_type == "header_col":
-                        worksheet.write('B3', particulars, fmt_header); worksheet.write('C3', note, fmt_header)
-                        worksheet.write('D3', "As at March 31, 2025", fmt_header); worksheet.write('E3', "As at March 31, 2024", fmt_header)
+                        worksheet.write('B3', particulars, fmt_header)
+                        worksheet.write('C3', note, fmt_header)
+                        worksheet.write('D3', "As at March 31, 2025", fmt_header)
+                        worksheet.write('E3', "As at March 31, 2024", fmt_header)
                         continue
 
                     cy_val, py_val = 0, 0
                     if row_type in ["item", "item_sub", "item_no_alpha"]:
-                        note_total = aggregated_data.get(str(note), {}).get('total', {}); cy_val, py_val = note_total.get('CY', 0), note_total.get('PY', 0)
+                        note_total = aggregated_data.get(str(note), {}).get('total', {})
+                        cy_val, py_val = note_total.get('CY', 0), note_total.get('PY', 0)
                     elif row_type == "total":
-                        if note == 'PBT': cy_val, py_val = get_total(['21','22'],'CY') - get_total(['23','24','25','11','26'],'CY'), get_total(['21','22'],'PY') - get_total(['23','24','25','11','26'],'PY')
-                        elif note == 'PAT': cy_val, py_val = (get_total(['21','22'],'CY') - get_total(['23','24','25','11','26'],'CY')) - get_total(['4'],'CY'), (get_total(['21','22'],'PY') - get_total(['23','24','25','11','26'],'PY')) - get_total(['4'],'PY')
-                        else: cy_val, py_val = get_total(note, 'CY'), get_total(note, 'PY')
-                    
+                        if note == 'PBT':
+                            cy_val = get_total(['21', '22'], 'CY') - get_total(['23', '24', '25', '11', '26'], 'CY')
+                            py_val = get_total(['21', '22'], 'PY') - get_total(['23', '24', '25', '11', '26'], 'PY')
+                        elif note == 'PAT':
+                            cy_val = (get_total(['21', '22'], 'CY') - get_total(['23', '24', '25', '11', '26'], 'CY')) - get_total(['4'], 'CY')
+                            py_val = (get_total(['21', '22'], 'PY') - get_total(['23', '24', '25', '11', '26'], 'PY')) - get_total(['4'], 'PY')
+                        else:
+                            cy_val, py_val = get_total(note, 'CY'), get_total(note, 'PY')
+
                     is_asset = any(s in particulars for s in ['ASSETS', 'Fixed assets', 'Current assets', 'Revenue'])
                     is_lia_eq = any(s in particulars for s in ['EQUITY', 'LIABILITIES', 'Shareholder'])
-                    
+
                     if row_type in ["header", "sub_header"]:
                         fmt = fmt_sec_header_asset if is_asset else (fmt_sec_header_lia_eq if is_lia_eq else fmt_subheader)
-                        worksheet.write(row_num, 0, col_a, fmt); worksheet.write(row_num, 1, particulars, fmt)
+                        worksheet.write(row_num, 0, col_a, fmt)
+                        worksheet.write(row_num, 1, particulars, fmt)
                     elif row_type == "total":
                         worksheet.write(row_num, 1, particulars, fmt_total_text)
-                        worksheet.write_number(row_num, 3, cy_val, fmt_total_num); worksheet.write_number(row_num, 4, py_val, fmt_total_num)
+                        worksheet.write_number(row_num, 3, cy_val, fmt_total_num)
+                        worksheet.write_number(row_num, 4, py_val, fmt_total_num)
                     elif row_type not in ["spacer", "item_no_note", "item_no_note_sub"]:
                         worksheet.write(row_num, 0, col_a, fmt_item_text)
                         worksheet.write(row_num, 1, particulars, fmt_item_text)
                         worksheet.write_string(row_num, 2, str(note) if note else '', fmt_item_text)
-                        worksheet.write_number(row_num, 3, cy_val, fmt_item_num); worksheet.write_number(row_num, 4, py_val, fmt_item_num)
+                        worksheet.write_number(row_num, 3, cy_val, fmt_item_num)
+                        worksheet.write_number(row_num, 4, py_val, fmt_item_num)
                     row_num += 1
 
-            # --- 2. RENDER THE NOTE SHEETS ---
-            for note_num_str in sorted(NOTES_STRUCTURE_AND_MAPPING.keys(), key=lambda x: int(x.split('.')[0])):
+            # --- 2) NOTE SHEETS ---
+            for note_num_str in sorted(NOTES_STRUCTURE_AND_MNAPPING.keys(), key=lambda x: int(x.split('.'))):
                 note_data = aggregated_data.get(note_num_str)
-                if not note_data or 'sub_items' not in note_data: continue
+                if not note_data or 'sub_items' not in note_data:
+                    continue
 
-                sheet_name = f"Note {note_num_str}"; worksheet = workbook.add_worksheet(sheet_name)
-                worksheet.set_column('A:A', 65); worksheet.set_column('B:C', 20)
+                sheet_name = f"Note {note_num_str}"
+                worksheet = workbook.add_worksheet(sheet_name)
+                worksheet.set_column('A:A', 65)
+                worksheet.set_column('B:C', 20)
+
                 worksheet.merge_range('A1:C1', f"Note {note_num_str}: {note_data.get('title', '')}", fmt_title)
-                worksheet.write('A3', 'Particulars', fmt_header); worksheet.write('B3', 'As at March 31, 2025', fmt_header); worksheet.write('C3', 'As at March 31, 2024', fmt_header)
-                
+                worksheet.write('A3', 'Particulars', fmt_header)
+                worksheet.write('B3', 'As at March 31, 2025', fmt_header)
+                worksheet.write('C3', 'As at March 31, 2024', fmt_header)
+
                 row_num = 3
+
+                # --- helper writers for sectioned layout ---
+                def write_kv_row(label, cy, py):
+                    nonlocal row_num
+                    worksheet.write(row_num, 0, label, fmt_item_text)
+                    worksheet.write_number(row_num, 1, cy or 0, fmt_item_num)
+                    worksheet.write_number(row_num, 2, py or 0, fmt_item_num)
+                    row_num += 1
+
+                def write_spacer(rows=1):
+                    nonlocal row_num
+                    row_num += rows
+
+                def write_section_title(title):
+                    nonlocal row_num
+                    worksheet.merge_range(row_num, 0, row_num, 2, title, fmt_subheader)
+                    row_num += 1
+
+                # --- special, sectioned rendering for Note 1 only ---
+                def render_note1(n1):
+                    # A) Main Share Capital block
+                    write_section_title("Particulars")
+                    si = n1.get('sub_items', {})
+
+                    def extract_cy_py(d):
+                        if isinstance(d, dict) and 'CY' in d:
+                            return d.get('CY', 0), d.get('PY', 0)
+                        return None, None
+
+                    cy, py = extract_cy_py(si.get('Authorised share capital', {}))
+                    write_kv_row("Authorised share capital", cy, py)
+
+                    cy, py = extract_cy_py(si.get('Issued, subscribed and fully paid up capital', {}))
+                    write_kv_row("Issued, subscribed and fully paid up capital", cy, py)
+
+                    cy, py = extract_cy_py(si.get('Issued, subscribed and Partly up capital', {}))
+                    write_kv_row("Issued, subscribed and Partly up capital", cy, py)
+
+                    write_spacer(1)
+
+                    # B) 1.1 Reconciliation
+                    recon = si.get('1.1 Reconciliation of number of shares', {})
+                    write_section_title("1.1 Reconciliation of number of shares")
+
+                    cy, py = extract_cy_py(recon.get('Equity shares', {}))
+                    write_kv_row("Equity shares (No. of shares 10,000 of Rs. 10 each)", cy, py)
+
+                    cy, py = extract_cy_py(recon.get('Add: Additions to share capital on account of fresh issue or bonus issue etc.,', {}))
+                    write_kv_row("Add: Additions to share capital on account of fresh/bonus issue", cy, py)
+
+                    cy, py = extract_cy_py(recon.get('Ded: Deductions from share capital on account of shares bought back, redemption etc.,', {}))
+                    write_kv_row("Ded: Deductions (buyback/redemption)", cy, py)
+
+                    cy, py = extract_cy_py(recon.get('Balance at the end of the year', {}))
+                    write_kv_row("Balance at the end of the year (No. of shares 10,000 of Rs. 10 each)", cy, py)
+
+                    write_spacer(1)
+
+                    # C) 1.2 Shareholders >5%
+                    write_section_title("1.2 Details of shareholders holding more than 5%")
+                    worksheet.write(row_num, 0, "Name of the shareholders", fmt_header)
+                    worksheet.write(row_num, 1, "Number of shares", fmt_header)
+                    worksheet.write(row_num, 2, "Percentage of share holding", fmt_header)
+                    row_num += 1
+
+                    sh = si.get('1.2 Details of share held by shareholders holding more than 5% of the aggregate shares in the company', {})
+                    for name in ['M A Waheed Khan', 'M A Qhuddus Khan', 'M A Khadir Khan Asif', 'M A Rauf Khan']:
+                        row = sh.get(name, {})
+                        shares = (row.get('CY', 0) if isinstance(row, dict) and 'CY' in row else 0)
+                        pct = (row.get('PCT', 0) if isinstance(row, dict) and 'PCT' in row else 0)
+                        worksheet.write(row_num, 0, name, fmt_item_text)
+                        worksheet.write_number(row_num, 1, shares, fmt_item_num)
+                        worksheet.write_number(row_num, 2, pct, fmt_item_num)
+                        row_num += 1
+
+                # --- generic recursive fallback for all other notes ---
                 def write_note_level(items, indent_level=0):
                     nonlocal row_num
                     for key, value in items.items():
@@ -108,8 +234,14 @@ def report_finalizer_agent(aggregated_data, company_name):
                             worksheet.write(row_num, 0, f"{prefix}{key}", fmt_subheader)
                             row_num += 1
                             write_note_level(value, indent_level + 1)
-                
-                write_note_level(note_data['sub_items'])
+
+                # choose renderer
+                if note_num_str == '1':
+                    render_note1(note_data)
+                else:
+                    write_note_level(note_data['sub_items'])
+
+                # note total (unchanged)
                 worksheet.write(row_num, 0, "Total", fmt_total_text)
                 worksheet.write_number(row_num, 1, note_data.get('total', {}).get('CY', 0), fmt_total_num)
                 worksheet.write_number(row_num, 2, note_data.get('total', {}).get('PY', 0), fmt_total_num)
@@ -121,4 +253,3 @@ def report_finalizer_agent(aggregated_data, company_name):
         print(f"❌ Report Finalizer FAILED with exception: {e}")
         traceback.print_exc()
         return None
-
